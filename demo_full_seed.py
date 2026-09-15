@@ -706,6 +706,58 @@ _DEMO_MONTHLY_REVENUE_BASE = [
 ]
 _DEMO_EXPENSE_RATIO = 0.80  # مصروفات = 80% من الإيراد → هامش ~20%
 
+# توزيع المصروفات الشهرية (مجموع النسب = 1.0)
+_DEMO_EXPENSE_SLICES = (
+    ('S', 'رواتب', 0.40, 'رواتب وأجور الفنيين', 25),
+    ('F', 'محروقات', 0.18, 'محروقات ووقود — أسطول مكة', 5),
+    ('P', 'قطع غيار', 0.14, 'قطع غيار وزيوت', 12),
+    ('V', 'صيانة سيارات', 0.08, 'صيانة وتأمين سيارات الفنيين', 18),
+    ('M', 'مصاريف صيانة', 0.12, 'مصاريف صيانة ميدانية', 22),
+    ('O', 'مصروفات أساسية', 0.08, 'إيجار مستودع، اتصالات، وأدوات', 28),
+)
+
+
+def _upsert_demo_expense(
+    oid: int,
+    code: str,
+    *,
+    year: int,
+    month: int,
+    day: int,
+    expense_type: str,
+    description: str,
+    amount: float,
+    dry_run: bool,
+) -> bool:
+    exp = (
+        Expense.query.execution_options(skip_tenant=True)
+        .filter_by(organization_id=oid, code=code)
+        .first()
+    )
+    if exp:
+        if not dry_run:
+            exp.amount = amount
+            exp.expense_date = date(year, month, min(day, 28))
+            exp.expense_type = expense_type
+            exp.description = description
+            exp.responsible = 'الإدارة المالية'
+            exp.payment_method = 'تحويل'
+            exp.notes = DEMO_OPS_MARKER
+        return True
+    if dry_run:
+        return True
+    db.session.add(Expense(
+        organization_id=oid,
+        code=code,
+        expense_date=date(year, month, min(day, 28)),
+        expense_type=expense_type,
+        description=description,
+        responsible='الإدارة المالية',
+        payment_method='تحويل',
+        amount=amount,
+        notes=DEMO_OPS_MARKER,
+    ))
+    return True
 
 def rebalance_demo_finances(organization_id: int, *, dry_run: bool = False) -> dict:
     """موازنة الحسابات: زيارات مكتملة + إيرادات/مصروفات متناسقة + ربح."""
@@ -841,35 +893,36 @@ def rebalance_demo_finances(organization_id: int, *, dry_run: bool = False) -> d
             ))
             rev_touch += 1
 
-        exp_base = round(base * _DEMO_EXPENSE_RATIO, 2)
-        exp_code = f'EXP-D{m:03d}'
-        exp = (
+        budget = round(base * _DEMO_EXPENSE_RATIO, 2)
+        for suffix, etype, ratio, desc, day in _DEMO_EXPENSE_SLICES:
+            slice_type = 'وقود' if suffix == 'F' and m % 3 == 0 else etype
+            amt = round(budget * ratio, 2)
+            code = f'EXP-D{suffix}{m:02d}'
+            if _upsert_demo_expense(
+                oid,
+                code,
+                year=year,
+                month=m,
+                day=day,
+                expense_type=slice_type,
+                description=desc,
+                amount=amt,
+                dry_run=dry_run,
+            ):
+                exp_touch += 1
+
+        legacy_code = f'EXP-D{m:03d}'
+        legacy = (
             Expense.query.execution_options(skip_tenant=True)
-            .filter_by(organization_id=oid, code=exp_code)
+            .filter_by(organization_id=oid, code=legacy_code)
             .first()
         )
-        if exp:
-            if not dry_run:
-                exp.amount = exp_base
-                exp.expense_date = date(year, m, 20)
-                exp.expense_type = 'رواتب' if m % 2 else 'قطع غيار'
-            exp_touch += 1
-        elif not dry_run:
-            db.session.add(Expense(
-                organization_id=oid,
-                code=exp_code,
-                expense_date=date(year, m, 20),
-                expense_type='رواتب' if m % 2 else 'قطع غيار',
-                description='مصروف تشغيلي شهري — تجريبي',
-                responsible='الإدارة المالية',
-                payment_method='تحويل',
-                amount=exp_base,
-                notes=DEMO_OPS_MARKER,
-            ))
-            exp_touch += 1
+        if legacy and not dry_run:
+            db.session.delete(legacy)
 
     stats['revenues_rebalanced'] = rev_touch
     stats['expenses_rebalanced'] = exp_touch
+    stats['expense_lines_per_month'] = len(_DEMO_EXPENSE_SLICES)
 
     if not dry_run:
         for rev in (
