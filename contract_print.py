@@ -226,7 +226,7 @@ def contract_print_payload(contract_id: int) -> dict:
     elevators = elevators_for_contract(contract)
     elevator_count = len(contract.elevators) or 1
     company = company_info()
-    amount = int(round(contract.value or contract.total or 0))
+    amount = int(round(contract.total or contract.value or 0))
     maint = contract.maint_frequency or 'شهري'
     pay = contract.payment_terms or 'دفعة واحدة'
 
