@@ -196,16 +196,11 @@ def company_info() -> dict:
 
 
 def customer_address_parts(customer, contract=None) -> tuple[str, str]:
-    """(الشارع/العنوان، المنطقة أو الحي) لسطر عنوان الطرف الثاني."""
+    """(الشارع/العنوان، الحي أو المنطقة) لسطر عنوان الطرف الثاني."""
     if not contract:
         return '—', ''
-    city = (contract.city or '').strip()
-    if city in ('مكة', 'مكة المكرمة'):
-        return 'مكة المكرمــــة –', ''
     main = (contract.address or '').strip() or '—'
     tail = (contract.district or '').strip()
-    if not tail and city and city not in main:
-        tail = city
     return main, tail
 
 
