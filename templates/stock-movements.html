@@ -544,6 +544,16 @@ function saveRecord() {
   if (!itemId) { alert('اختر الصنف'); return; }
   if (!qty || parseFloat(qty) <= 0) { alert('أدخل كمية صحيحة'); return; }
   if (!date) { alert('أدخل التاريخ'); return; }
+  var dir = document.getElementById('m-dir').value;
+  if (dir === 'صادر') {
+    var item = ITEMS.find(function (x) { return String(x.id) === String(itemId); });
+    var avail = item ? parseFloat(item.current_qty || 0) : 0;
+    var need = parseFloat(qty);
+    if (need > avail + 1e-9) {
+      alert('الكمية أكبر من الرصيد المتاح (' + avail + ')');
+      return;
+    }
+  }
   const fd = new FormData();
   fd.append('item_id', itemId);
   fd.append('movement_date', date);

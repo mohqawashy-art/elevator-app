@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — كارت صنف {{ item.code }}</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--gold:#c8a055;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--success:#1fb87a;--warning:#e09030;--danger:#e04848;--sidebar-w:240px;--header-h:60px;--font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;--r:10px;--r-sm:7px}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex}
+.sidebar{width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);height:100vh;position:sticky;top:0}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.content{flex:1;padding:24px;overflow-y:auto}
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:12px}
+.page-title{font-size:18px;font-weight:600}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r-sm);font-size:13px;border:none;cursor:pointer;text-decoration:none;font-family:var(--font-ar)}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.grid-top{display:grid;grid-template-columns:1.2fr 1fr;gap:16px;margin-bottom:16px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.panel-title{font-size:14px;font-weight:600;margin-bottom:12px}
+.meta-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.meta-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:10px 12px}
+.meta-label{font-size:10px;color:var(--text3);margin-bottom:4px}
+.meta-val{font-size:15px;font-weight:600;font-family:var(--font-en)}
+.meta-val.warn{color:var(--warning)}
+.meta-val.ok{color:var(--success)}
+.meta-val.bad{color:var(--danger)}
+.badge{display:inline-flex;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500}
+.badge-green{background:rgba(31,184,122,.12);color:var(--success)}
+.badge-gold{background:rgba(200,160,85,.12);color:var(--gold)}
+.badge-red{background:rgba(224,72,72,.1);color:var(--danger)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{padding:10px 12px;text-align:right;color:var(--text3);font-size:11px;background:var(--bg3);border-bottom:1px solid var(--border)}
+tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
+.td-code{font-family:var(--font-en);color:var(--accent);font-weight:600}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-full{grid-column:1/-1}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px}
+.field input,.field select{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.issue-wrap{display:none}
+@media(max-width:900px){.grid-top{grid-template-columns:1fr}.meta-grid{grid-template-columns:1fr 1fr}}
+</style>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+</head>
+<body>
+<aside class="sidebar"><div style="padding:12px;text-align:center"><img src="{{ brand_logo_url }}" alt="LiftCore" style="max-width:150px"></div><nav>{% include 'partials/app_sidebar_nav.html' %}</nav></aside>
+<div class="main">
+  {% set page_title = 'كارت صنف' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    {% include 'partials/flash_messages.html' %}
+    <div class="page-header">
+      <div class="page-title">{{ item.name }} <span style="color:var(--text3);font-weight:400;font-size:13px">{{ item.code }}</span></div>
+      <div class="actions" style="margin:0">
+        <a class="btn btn-secondary" href="/inventory">← الأصناف</a>
+        <a class="btn btn-secondary" href="/stock-movements">حركة المخزن</a>
+      </div>
+    </div>
+
+    <div class="grid-top">
+      <div class="panel">
+        <div class="panel-title">ملخص الصنف</div>
+        <div class="meta-grid">
+          <div class="meta-box"><div class="meta-label">الرصيد المتاح</div><div class="meta-val" id="avail-qty">{{ item.current_qty }} {{ item.unit }}</div></div>
+          <div class="meta-box"><div class="meta-label">الحد الأدنى</div><div class="meta-val">{{ item.min_qty }} {{ item.unit }}</div></div>
+          <div class="meta-box"><div class="meta-label">حالة الطلب</div><div class="meta-val"><span class="badge {% if item.order_status=='كافي' %}badge-green{% elif item.order_status=='منخفض' %}badge-gold{% else %}badge-red{% endif %}">{{ item.order_status }}</span></div></div>
+          <div class="meta-box"><div class="meta-label">التصنيف</div><div class="meta-val" style="font-family:var(--font-ar)">{{ item.category or '—' }}</div></div>
+          <div class="meta-box"><div class="meta-label">سعر الشراء</div><div class="meta-val">{{ item.buy_price }}</div></div>
+          <div class="meta-box"><div class="meta-label">قيمة المخزون</div><div class="meta-val ok">{{ item.stock_value }}</div></div>
+          <div class="meta-box"><div class="meta-label">رصيد افتتاحي مسجّل</div><div class="meta-val">{{ card.opening_qty }} {{ item.unit }}</div></div>
+          <div class="meta-box"><div class="meta-label">عهدة الفنيين</div><div class="meta-val warn">{{ card.custody.custody_qty or 0 }}</div></div>
+          <div class="meta-box"><div class="meta-label">المورد / الموقع</div><div class="meta-val" style="font-family:var(--font-ar);font-size:12px">{{ item.supplier or '—' }} · {{ item.location or '—' }}</div></div>
+        </div>
+        {% if item.notes %}<p style="margin-top:12px;font-size:12px;color:var(--text3)">{{ item.notes }}</p>{% endif %}
+        {% if card.custody.custody_summary and card.custody.custody_summary != '—' %}
+        <p style="margin-top:8px;font-size:12px;color:var(--warning)">عهدة: {{ card.custody.custody_summary }}</p>
+        {% endif %}
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">إجراء سريع — إذن صرف</div>
+        <form method="post" action="/inventory/issue" class="form-grid" onsubmit="return validateIssue()">
+          <input type="hidden" name="item_id" value="{{ item.id }}">
+          <div class="field"><label>التاريخ</label><input type="date" name="movement_date" value="{{ today if today else '' }}" lang="en-GB"></div>
+          <div class="field"><label>الكمية</label><input type="number" name="quantity" id="issue-qty" min="0.01" step="0.01" required></div>
+          <div class="field form-full"><label>نوع الصرف</label>
+            <select name="target" id="issue-target" onchange="syncIssueFields()">
+              <option value="consumable">مستهلكات صيانة</option>
+              <option value="custody">عهدة فني</option>
+              <option value="client">على عميل (عقد صيانة)</option>
+              <option value="project">على مشروع (عقد تركيب)</option>
+            </select>
+          </div>
+          <div class="field form-full issue-wrap" id="issue-tech-wrap"><label>الفني</label>
+            <select name="technician_id" id="issue-tech"><option value="">—</option>{% for t in technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+          </div>
+          <div class="field form-full issue-wrap" id="issue-client-wrap"><label>عقد الصيانة</label>
+            <select name="contract_id" id="issue-contract"><option value="">—</option></select>
+          </div>
+          <div class="field form-full issue-wrap" id="issue-project-wrap"><label>عقد التركيب</label>
+            <select name="install_contract_id" id="issue-install"><option value="">—</option></select>
+          </div>
+          <div class="field form-full"><label>ملاحظات</label><input name="notes" placeholder="اختياري"></div>
+          <div class="form-full"><button type="submit" class="btn btn-primary">تسجيل الصرف</button></div>
+        </form>
+        <form method="post" action="/inventory/opening-stock" class="form-grid" style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+          <div class="panel-title" style="grid-column:1/-1;margin:0">إضافة رصيد افتتاحي</div>
+          <input type="hidden" name="item_id" value="{{ item.id }}">
+          <div class="field"><label>التاريخ</label><input type="date" name="movement_date" lang="en-GB"></div>
+          <div class="field"><label>الكمية</label><input type="number" name="quantity" min="0.01" step="0.01" required></div>
+          <div class="field"><label>سعر الوحدة</label><input type="number" name="unit_price" step="0.01" value="{{ item.buy_price or 0 }}"></div>
+          <div class="field"><label>ملاحظات</label><input name="notes"></div>
+          <div class="form-full"><button type="submit" class="btn btn-secondary">تسجيل رصيد افتتاحي</button></div>
+        </form>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">حركة الصنف ({{ card.movement_count }})</div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>الحركة</th><th>التاريخ</th><th>الاتجاه</th><th>النوع</th><th>الكمية</th><th>القيمة</th><th>الفني</th><th>السبب</th></tr></thead>
+          <tbody>
+          {% for m in card.movements %}
+            <tr>
+              <td class="td-code">{{ m.code }}</td>
+              <td>{{ m.movement_date }}</td>
+              <td>{{ m.direction }}</td>
+              <td>{{ m.movement_type }}</td>
+              <td style="font-family:var(--font-en)">{{ m.quantity }}</td>
+              <td style="font-family:var(--font-en)">{{ m.total_value }}</td>
+              <td>{{ m.technician }}</td>
+              <td style="font-size:11px;color:var(--text3);max-width:260px;white-space:normal">{{ m.reason or '—' }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">لا حركات مسجّلة بعد</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+var AVAIL_QTY = {{ item.current_qty | tojson }};
+var MAINT_CONTRACTS = {{ maintenance_contracts_js | tojson }};
+var INSTALL_CONTRACTS = {{ installation_contracts_js | tojson }};
+function fillSelect(id, rows, placeholder) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = '<option value="">' + placeholder + '</option>' +
+    (rows || []).map(function (r) { return '<option value="' + r.id + '">' + (r.name || r.code || '') + '</option>'; }).join('');
+}
+fillSelect('issue-contract', MAINT_CONTRACTS, '— عقد صيانة —');
+fillSelect('issue-install', INSTALL_CONTRACTS, '— عقد تركيب —');
+function syncIssueFields() {
+  var t = document.getElementById('issue-target').value;
+  ['issue-tech-wrap','issue-client-wrap','issue-project-wrap'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  if (t === 'custody' || t === 'consumable') document.getElementById('issue-tech-wrap').style.display = 'block';
+  if (t === 'client') document.getElementById('issue-client-wrap').style.display = 'block';
+  if (t === 'project') document.getElementById('issue-project-wrap').style.display = 'block';
+}
+function validateIssue() {
+  var q = parseFloat(document.getElementById('issue-qty').value || '0');
+  if (q > AVAIL_QTY + 1e-9) {
+    alert('الكمية أكبر من الرصيد المتاح (' + AVAIL_QTY + ')');
+    return false;
+  }
+  return true;
+}
+document.addEventListener('DOMContentLoaded', function () {
+  var d = document.querySelector('input[name="movement_date"]');
+  if (d && !d.value) d.value = new Date().toISOString().slice(0, 10);
+  syncIssueFields();
+});
+</script>
+</body>
+</html>

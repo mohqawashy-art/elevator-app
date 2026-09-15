@@ -1502,6 +1502,7 @@ def inventory_item_js_dict(i):
         'unit': i.unit or 'قطعة',
         'buy_price': i.buy_price or 0,
         'sell_price': i.sell_price or 0,
+        'current_qty': float(i.current_qty or 0),
     }
 
 
@@ -11891,6 +11892,7 @@ def inventory():
     custody_snapshot = build_technician_custody_snapshot()
     maintenance_contracts_js = maintenance_contracts_for_custody()
     installation_contracts_js = installation_contracts_for_custody()
+    technicians = tenant_query(Technician).filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).order_by(Technician.name).all()
     items_json = []
     for i in items:
         row = {
@@ -11920,8 +11922,148 @@ def inventory():
         custody_summary=custody_snapshot['summary'],
         maintenance_contracts_js=maintenance_contracts_js,
         installation_contracts_js=installation_contracts_js,
+        technicians_js=[{'id': t.id, 'name': t.name} for t in technicians],
         next_item_code=next_code(InventoryItem, '#', digits=3),
     )
+
+
+@app.route('/inventory/item/<int:item_id>')
+def inventory_item_card(item_id):
+    from inventory_custody import installation_contracts_for_custody, maintenance_contracts_for_custody
+    from inventory_warehouse import item_card_payload
+
+    payload = item_card_payload(item_id)
+    technicians = tenant_query(Technician).filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).order_by(Technician.name).all()
+    return render_template(
+        'inventory_item_card.html',
+        card=payload,
+        item=payload['item'],
+        technicians=technicians,
+        technicians_js=[{'id': t.id, 'name': t.name} for t in technicians],
+        maintenance_contracts_js=maintenance_contracts_for_custody(),
+        installation_contracts_js=installation_contracts_for_custody(),
+        items_js=[inventory_item_js_dict(i) for i in tenant_query(InventoryItem).order_by(InventoryItem.name).all()],
+        today=date.today().isoformat(),
+    )
+
+
+@app.route('/inventory/opening-stock', methods=['POST'])
+def inventory_opening_stock():
+    from inventory_warehouse import record_opening_stock
+
+    try:
+        item_id = int(request.form.get('item_id') or 0)
+        quantity = float(request.form.get('quantity') or 0)
+    except (TypeError, ValueError):
+        flash('بيانات غير صالحة', 'error')
+        return redirect(url_for('inventory', tab='opening'))
+
+    movement_date = date.today()
+    raw_date = (request.form.get('movement_date') or '').strip()
+    if raw_date:
+        try:
+            movement_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except ValueError:
+            flash('تاريخ غير صالح', 'error')
+            return redirect(url_for('inventory', tab='opening'))
+
+    unit_price = None
+    raw_price = (request.form.get('unit_price') or '').strip()
+    if raw_price:
+        try:
+            unit_price = float(raw_price)
+        except (TypeError, ValueError):
+            unit_price = None
+
+    try:
+        movement = record_opening_stock(
+            item_id=item_id,
+            quantity=quantity,
+            movement_date=movement_date,
+            unit_price=unit_price,
+            notes=(request.form.get('notes') or '').strip(),
+        )
+        db.session.commit()
+        flash(f'تم تسجيل رصيد افتتاحي — {movement.code}', 'success')
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('inventory_opening_stock failed')
+        flash('تعذّر تسجيل رصيد أول المدة', 'error')
+    return redirect(url_for('inventory_item_card', item_id=item_id) if item_id else url_for('inventory', tab='opening'))
+
+
+@app.route('/inventory/issue', methods=['POST'])
+def inventory_issue():
+    from inventory_warehouse import record_issue_authorization
+
+    try:
+        item_id = int(request.form.get('item_id') or 0)
+        quantity = float(request.form.get('quantity') or 0)
+    except (TypeError, ValueError):
+        flash('بيانات غير صالحة', 'error')
+        return redirect(url_for('inventory', tab='issue'))
+
+    target = (request.form.get('target') or '').strip()
+    technician_id = request.form.get('technician_id') or None
+    contract_id = request.form.get('contract_id') or None
+    install_contract_id = request.form.get('install_contract_id') or None
+    if technician_id not in (None, ''):
+        try:
+            technician_id = int(technician_id)
+        except (TypeError, ValueError):
+            technician_id = None
+    else:
+        technician_id = None
+    if contract_id not in (None, ''):
+        try:
+            contract_id = int(contract_id)
+        except (TypeError, ValueError):
+            contract_id = None
+    else:
+        contract_id = None
+    if install_contract_id not in (None, ''):
+        try:
+            install_contract_id = int(install_contract_id)
+        except (TypeError, ValueError):
+            install_contract_id = None
+    else:
+        install_contract_id = None
+
+    movement_date = date.today()
+    raw_date = (request.form.get('movement_date') or '').strip()
+    if raw_date:
+        try:
+            movement_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except ValueError:
+            flash('تاريخ غير صالح', 'error')
+            return redirect(url_for('inventory', tab='issue'))
+
+    try:
+        movement = record_issue_authorization(
+            item_id=item_id,
+            quantity=quantity,
+            target=target,
+            movement_date=movement_date,
+            technician_id=technician_id,
+            contract_id=contract_id,
+            install_contract_id=install_contract_id,
+            reason=(request.form.get('reason') or '').strip(),
+            notes=(request.form.get('notes') or '').strip(),
+        )
+        db.session.commit()
+        flash(f'تم تسجيل إذن الصرف — {movement.code}', 'success')
+        return redirect(url_for('inventory_item_card', item_id=item_id))
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('inventory_issue failed')
+        flash('تعذّر تسجيل إذن الصرف', 'error')
+    return redirect(url_for('inventory', tab='issue'))
 
 
 @app.route('/inventory/custody/settle', methods=['POST'])
@@ -12341,11 +12483,10 @@ def _po_status_bilingual(status):
 def _apply_purchase_receipt(order):
     if order.status != 'مستلم' or order.received_at:
         return
-    from supplier_prices import find_or_create_supplier, upsert_supplier_price
+    from inventory_warehouse import record_purchase_receipt_movements
+    from supplier_prices import find_or_create_supplier
 
     db.session.flush()
-    updated = False
-    supplier_row = None
     if order.supplier_id:
         supplier_row = db.session.get(Supplier, order.supplier_id)
     elif order.supplier:
@@ -12353,27 +12494,8 @@ def _apply_purchase_receipt(order):
             order.supplier, order.supplier_phone, order.supplier_email, assign_organization,
         )
         order.supplier_id = supplier_row.id if supplier_row else None
-    for line in order.lines:
-        item = db.session.get(InventoryItem, line.item_id)
-        if item:
-            item.current_qty = (item.current_qty or 0) + (line.quantity or 0)
-            if line.unit_price and float(line.unit_price) > 0:
-                item.buy_price = float(line.unit_price)
-                if order.supplier:
-                    item.supplier = order.supplier
-            updated = True
-            if supplier_row and line.unit_price and float(line.unit_price) > 0:
-                upsert_supplier_price(
-                    supplier_row.id,
-                    line.item_id,
-                    float(line.unit_price),
-                    source='po',
-                    source_ref=order.code,
-                    assign_org_fn=assign_organization,
-                    sync_inventory=False,
-                )
-    if updated:
-        order.received_at = datetime.utcnow()
+    record_purchase_receipt_movements(order)
+    order.received_at = datetime.utcnow()
 
 
 @app.route('/purchase-orders')
@@ -13384,6 +13506,7 @@ def stock_movements():
 @app.route('/stock-movements/add', methods=['POST'])
 def stock_add():
     from inventory_custody import item_eligible_for_custody
+    from inventory_warehouse import validate_outbound_stock
 
     item_id   = int(request.form['item_id'])
     qty       = float(request.form.get('quantity', 0))
@@ -13396,9 +13519,28 @@ def stock_add():
         flash('الصنف غير موجود — اختر صنفاً من قائمة المخزون', 'error')
         return redirect(url_for('stock_movements'))
 
+    if qty <= 0:
+        flash('أدخل كمية أكبر من صفر', 'error')
+        return redirect(url_for('stock_movements'))
+
+    if direction == 'صادر':
+        try:
+            validate_outbound_stock(item, qty)
+        except ValueError as exc:
+            flash(str(exc), 'error')
+            return redirect(url_for('stock_movements'))
+
     if movement_type == 'صرف عهدة للفني' and not item_eligible_for_custody(item):
         movement_type = 'صرف لفني'
         flash(f'«{item.name}» مستهلك — سُجّل كصرف مباشر (بدون عهدة)', 'info')
+
+    tech_raw = request.form.get('technician_id') or None
+    technician_id = None
+    if tech_raw not in (None, ''):
+        try:
+            technician_id = int(tech_raw)
+        except (TypeError, ValueError):
+            technician_id = None
 
     m = StockMovement(
         code          = next_code(StockMovement, 'MV-', digits=3),
@@ -13409,7 +13551,7 @@ def stock_add():
         quantity      = qty,
         unit_price    = unit_price,
         total_value   = qty * unit_price,
-        technician_id = request.form.get('technician_id') or None,
+        technician_id = technician_id,
         reason        = request.form.get('reason',''),
         notes         = request.form.get('notes',''),
     )
@@ -13530,9 +13672,10 @@ def parts_billing():
                 'code': i.code,
                 'name': i.name,
                 'unit': i.unit or 'قطعة',
-                'buy_price': i.buy_price or 0,
-                'sell_price': i.sell_price or 0,
-            }
+        'buy_price': i.buy_price or 0,
+        'sell_price': i.sell_price or 0,
+        'current_qty': float(i.current_qty or 0),
+    }
             for i in inventory_items
         ],
         technicians_js=[{'id': t.id, 'name': t.name} for t in technicians],

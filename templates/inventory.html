@@ -152,6 +152,15 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
   .form-grid{grid-template-columns:1fr}
 }
 @media(max-width:480px){.filters-bar{flex-direction:column};.search-wrap{min-width:100%}}
+.wh-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;padding:4px;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm)}
+.wh-tab{padding:8px 14px;border:none;background:transparent;color:var(--text2);font-size:12px;border-radius:var(--r-sm);cursor:pointer;font-family:var(--font-ar)}
+.wh-tab.active{background:rgba(42,127,255,.15);color:var(--accent);font-weight:600}
+.wh-panel{display:none}
+.wh-panel.active{display:block}
+.wh-form-panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:16px;max-width:720px}
+.wh-form-title{font-size:14px;font-weight:600;margin-bottom:12px}
+.wh-hint{font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6}
+.issue-wrap{display:none}
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
@@ -200,6 +209,16 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
     </div>
 
     {% include 'partials/flash_messages.html' %}
+
+    <div class="wh-tabs" id="wh-tabs">
+      <button type="button" class="wh-tab active" data-tab="items" onclick="switchWhTab('items')">الأصناف</button>
+      <button type="button" class="wh-tab" data-tab="opening" onclick="switchWhTab('opening')">رصيد أول المدة</button>
+      <button type="button" class="wh-tab" data-tab="issue" onclick="switchWhTab('issue')">أذون صرف</button>
+      <a class="wh-tab" href="/stock-movements" style="text-decoration:none">حركة المخزن</a>
+      <a class="wh-tab" href="/purchase-orders" style="text-decoration:none">المشتريات (PO)</a>
+    </div>
+
+    <div id="panel-items" class="wh-panel active">
     <div class="page-header">
       <div class="page-title">الأصناف <span id="inv-count" data-i18n-skip></span></div>
       <div class="page-actions">
@@ -296,6 +315,75 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       <div class="table-footer">
         <span class="table-info" id="page-info"></span>
         <div class="pagination" id="page-btns"></div>
+      </div>
+    </div>
+
+    </div><!-- panel-items -->
+
+    <div id="panel-opening" class="wh-panel">
+      <div class="wh-form-panel">
+        <div class="wh-form-title">تسجيل رصيد أول المدة</div>
+        <form method="post" action="/inventory/opening-stock" class="form-grid">
+          <div class="field form-full">
+            <label>الصنف <span>*</span></label>
+            <select name="item_id" id="open-item-id" required>
+              <option value="">— اختر صنفاً —</option>
+              {% for i in items %}
+              <option value="{{ i.id }}">{{ i.code }} — {{ i.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field"><label>التاريخ</label><input type="date" name="movement_date" id="open-date" lang="en-GB"></div>
+          <div class="field"><label>الكمية <span>*</span></label><input type="number" name="quantity" min="0.01" step="0.01" required></div>
+          <div class="field"><label>سعر الوحدة</label><input type="number" name="unit_price" step="0.01" placeholder="0"></div>
+          <div class="field form-full"><label>ملاحظات</label><input name="notes" placeholder="رصيد افتتاحي"></div>
+          <div class="form-full"><button type="submit" class="btn btn-primary">تسجيل الرصيد الافتتاحي</button></div>
+        </form>
+        <p class="wh-hint">يُسجَّل كحركة «رصيد افتتاحي» في المخزن ويُحدَّث الرصيد. لعرض تفاصيل الصنف بعد التسجيل افتح <strong>كارت الصنف</strong>.</p>
+      </div>
+    </div>
+
+    <div id="panel-issue" class="wh-panel">
+      <div class="wh-form-panel">
+        <div class="wh-form-title">إذن صرف بضاعة</div>
+        <form method="post" action="/inventory/issue" class="form-grid" onsubmit="return validateWhIssue()">
+          <div class="field form-full">
+            <label>الصنف <span>*</span></label>
+            <select name="item_id" id="issue-item-id" required onchange="syncIssueItemAvail()">
+              <option value="">— اختر صنفاً —</option>
+              {% for i in items %}
+              <option value="{{ i.id }}" data-qty="{{ i.current_qty or 0 }}">{{ i.code }} — {{ i.name }} (متاح {{ i.current_qty or 0 }})</option>
+              {% endfor %}
+            </select>
+            <p class="wh-hint" id="issue-avail-hint">المتاح: —</p>
+          </div>
+          <div class="field"><label>التاريخ</label><input type="date" name="movement_date" id="issue-date" lang="en-GB"></div>
+          <div class="field"><label>الكمية <span>*</span></label><input type="number" name="quantity" id="wh-issue-qty" min="0.01" step="0.01" required></div>
+          <div class="field form-full">
+            <label>نوع الصرف <span>*</span></label>
+            <select name="target" id="wh-issue-target" onchange="syncWhIssueFields()">
+              <option value="consumable">مستهلكات صيانة</option>
+              <option value="custody">عهدة فني (قطع غيار)</option>
+              <option value="client">تحميل على عميل — عقد صيانة</option>
+              <option value="project">تحميل على مشروع — عقد تركيب</option>
+            </select>
+          </div>
+          <div class="field form-full issue-wrap" id="wh-issue-tech-wrap">
+            <label>الفني</label>
+            <select name="technician_id"><option value="">—</option>{% for t in technicians_js %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+          </div>
+          <div class="field form-full issue-wrap" id="wh-issue-client-wrap">
+            <label>عقد الصيانة</label>
+            <select name="contract_id" id="wh-issue-contract"><option value="">—</option></select>
+          </div>
+          <div class="field form-full issue-wrap" id="wh-issue-project-wrap">
+            <label>عقد التركيب</label>
+            <select name="install_contract_id" id="wh-issue-install"><option value="">—</option></select>
+          </div>
+          <div class="field form-full"><label>ملاحظات</label><input name="notes"></div>
+          <div class="form-full"><button type="submit" class="btn btn-primary">تسجيل إذن الصرف</button></div>
+        </form>
+        <p class="wh-hint">لا يمكن صرف كمية أكبر من الرصيد المتاح. المستهلكات لا تُسجَّل عهدة.</p>
       </div>
     </div>
 
@@ -577,6 +665,7 @@ function renderTable(data) {
       <td><span class="badge ${ORDER_BADGE[i.order_status] || 'badge-gray'}">${D(i.order_status)}</span></td>
       <td>${custodyCell}</td>
       <td class="td-actions">
+        <a class="btn btn-primary btn-sm" href="/inventory/item/${i.id}">كارت</a>
         <button class="btn btn-secondary btn-sm" onclick="editItem(${i.id})">تعديل</button>
         <button class="btn btn-secondary btn-sm lc-admin-delete" onclick="askDelete(${i.id})">حذف</button>
       </td>
@@ -1063,6 +1152,90 @@ if (hDateEl) hDateEl.textContent = `${days[now.getDay()]}، ${now.getDate()} ${m
 updateStats();
 if (tableSort) tableSort.bindHeaders();
 renderTable(ITEMS);
+
+function switchWhTab(tab) {
+  document.querySelectorAll('.wh-tab[data-tab]').forEach(function (btn) {
+    btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+  });
+  document.querySelectorAll('.wh-panel').forEach(function (p) { p.classList.remove('active'); });
+  var panel = document.getElementById('panel-' + tab);
+  if (panel) panel.classList.add('active');
+  if (window.history && window.history.replaceState) {
+    var url = new URL(window.location.href);
+    if (tab === 'items') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', tab);
+    window.history.replaceState({}, '', url);
+  }
+}
+
+function syncWhIssueFields() {
+  var t = (document.getElementById('wh-issue-target') || {}).value || '';
+  ['wh-issue-tech-wrap', 'wh-issue-client-wrap', 'wh-issue-project-wrap'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  if (t === 'custody' || t === 'consumable') {
+    var tw = document.getElementById('wh-issue-tech-wrap');
+    if (tw) tw.style.display = 'block';
+  }
+  if (t === 'client') {
+    var cw = document.getElementById('wh-issue-client-wrap');
+    if (cw) cw.style.display = 'block';
+  }
+  if (t === 'project') {
+    var pw = document.getElementById('wh-issue-project-wrap');
+    if (pw) pw.style.display = 'block';
+  }
+}
+
+function syncIssueItemAvail() {
+  var sel = document.getElementById('issue-item-id');
+  var hint = document.getElementById('issue-avail-hint');
+  if (!sel || !hint) return;
+  var opt = sel.options[sel.selectedIndex];
+  var qty = opt ? parseFloat(opt.getAttribute('data-qty') || '0') : 0;
+  hint.textContent = 'المتاح: ' + (isNaN(qty) ? '—' : qty);
+}
+
+function validateWhIssue() {
+  var sel = document.getElementById('issue-item-id');
+  var qtyEl = document.getElementById('wh-issue-qty');
+  if (!sel || !qtyEl) return true;
+  var opt = sel.options[sel.selectedIndex];
+  var avail = opt ? parseFloat(opt.getAttribute('data-qty') || '0') : 0;
+  var need = parseFloat(qtyEl.value || '0');
+  if (need > avail + 1e-9) {
+    alert('الكمية أكبر من الرصيد المتاح (' + avail + ')');
+    return false;
+  }
+  return true;
+}
+
+(function initWhTabs() {
+  var params = new URLSearchParams(window.location.search);
+  var tab = params.get('tab') || 'items';
+  if (tab !== 'items') switchWhTab(tab);
+  var today = new Date().toISOString().slice(0, 10);
+  ['open-date', 'issue-date'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && !el.value) el.value = today;
+  });
+  if (typeof MAINT_CONTRACTS !== 'undefined') {
+    var mc = document.getElementById('wh-issue-contract');
+    if (mc) mc.innerHTML = '<option value="">—</option>' + (MAINT_CONTRACTS || []).map(function (r) {
+      return '<option value="' + r.id + '">' + (r.name || r.code) + '</option>';
+    }).join('');
+  }
+  if (typeof INSTALL_CONTRACTS !== 'undefined') {
+    var ic = document.getElementById('wh-issue-install');
+    if (ic) ic.innerHTML = '<option value="">—</option>' + (INSTALL_CONTRACTS || []).map(function (r) {
+      return '<option value="' + r.id + '">' + (r.name || r.code) + '</option>';
+    }).join('');
+  }
+  syncWhIssueFields();
+  syncIssueItemAvail();
+})();
+
 window.__lcRefreshPage = function () {
   if (typeof updateStats === 'function') updateStats();
   renderTable(typeof filtered !== 'undefined' ? filtered : ITEMS);
