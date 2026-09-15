@@ -76,9 +76,8 @@ body{
 }
 .w-contact-phone{flex:0 0 auto;white-space:nowrap}
 .w-contact-start{
-  flex:1 1 auto;
-  min-width:0;
-  text-align:justify;
+  flex:0 0 auto;
+  white-space:nowrap;
 }
 .w-contact-email{
   flex:1 1 auto;
@@ -86,6 +85,7 @@ body{
   white-space:nowrap;
   min-width:0;
 }
+.w-intro-location{margin-top:0}
 
 .w-maint-head{font-weight:700}
 
@@ -149,8 +149,10 @@ body{
   <p class="doc-head-num">عقد رقم ({{ contract_code }})</p>
 </div>
 
-<p class="w-body w-t16 w-contact-line doc-intro">
-  <span class="w-contact-start">انه في يوم {{ sign_day }} {{ sign_hijri }} الموافق {{ sign_gregorian }} م، تم الاتفاق والتراضي بين كل من الطرف الأول: شركة / <strong class="w-co-name">{{ company.company_name }}</strong> ومقرها:</span>
+<p class="w-body w-t16 doc-intro">انه في يوم {{ sign_day }} {{ sign_hijri }} الموافق {{ sign_gregorian }} م، تم الاتفاق والتراضي بين كل من الطرف الأول: شركة / <strong class="w-co-name">{{ company.company_name }}</strong></p>
+
+<p class="w-body w-t16 w-contact-line w-intro-location">
+  <span class="w-contact-start">ومقرها:</span>
   <span class="w-contact-email">{{ company.city_full }}</span>
 </p>
 
