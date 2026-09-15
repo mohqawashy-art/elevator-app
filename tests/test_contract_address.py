@@ -1,7 +1,7 @@
 """عنوان موقع الخدمة — من العقد فقط."""
 from __future__ import annotations
 
-from contract_print import customer_address_line
+from contract_print import customer_address_line, customer_address_parts, format_phone_local
 
 
 class _FakeContract:
@@ -25,12 +25,26 @@ def test_contract_address_ignores_customer_record():
     contract = _FakeContract(
         address='شارع العقد 12',
         district='حي العقد',
-        city='مكة',
+        city='جدة',
     )
     line = customer_address_line(cust, contract)
     assert 'عنوان قديم' not in line
     assert 'شارع العقد 12' in line
     assert 'حي العقد' in line
+
+
+def test_customer_address_parts_splits_street_and_district():
+    contract = _FakeContract(address='شارع 1', district='حي النزهة', city='جدة')
+    main, tail = customer_address_parts(None, contract)
+    assert main == 'شارع 1'
+    assert tail == 'حي النزهة'
+
+
+def test_format_phone_local_strips_country_code():
+    assert format_phone_local('+966501234567') == '0501234567'
+    assert format_phone_local('966501234567') == '0501234567'
+    assert format_phone_local('0501234567') == '0501234567'
+    assert format_phone_local('', placeholder='0000000000') == '0000000000'
 
 
 def test_contract_address_empty_when_contract_has_no_site():

@@ -155,9 +155,17 @@ body{
 
 <p class="w-body w-t16">الطرف الثاني: {% if customer and (customer.entity_type or 'فرد') == 'شركة' %}شركة / {% else %}السيد / {% endif %}{% if customer %}<strong class="w-cust-name">{{ customer.name }}</strong>{% endif %}</p>
 
-<p class="w-body">وعنوانه /   {{ customer_address }} </p>
+<p class="w-body w-t16 w-contact-line">
+  <span class="w-contact-phone">وعنوانه / {{ customer_address_main }}</span>
+  {% if customer_address_tail %}
+  <span class="w-contact-email">{{ customer_address_tail }}</span>
+  {% endif %}
+</p>
 
-<p class="w-body">هاتف: {{ customer.phone or '0000000000' }}                                                     {% if customer and (customer.entity_type or 'فرد') == 'شركة' %}رقم السجل التجاري: {{ customer.cr_number or '0000000000' }}{% else %}رقم هوية المتعاقد: {{ customer.national_id or '0000000000' }}{% endif %}</p>
+<p class="w-body w-t16 w-contact-line">
+  <span class="w-contact-phone">هاتف: {{ customer_phone }}</span>
+  <span class="w-contact-email">{% if customer and (customer.entity_type or 'فرد') == 'شركة' %}رقم السجل التجاري: {{ customer.cr_number or '0000000000' }}{% else %}رقم هوية المتعاقد: {{ customer.national_id or '0000000000' }}{% endif %}</span>
+</p>
 
 <p class="w-body">على البنود التالية: </p>
 

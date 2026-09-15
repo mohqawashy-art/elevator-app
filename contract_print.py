@@ -161,6 +161,20 @@ def format_contract_code(code: str | None) -> str:
     return 'CN' + digits.zfill(4)[-4:]
 
 
+def format_phone_local(phone: str | None, *, placeholder: str = '') -> str:
+    """عرض محلي للطباعة: 05… بدلاً من +966…"""
+    if not phone or not str(phone).strip():
+        return placeholder
+    digits = re.sub(r'\D', '', str(phone))
+    if not digits:
+        return placeholder
+    if digits.startswith('966'):
+        digits = digits[3:]
+    if digits.startswith('0'):
+        return digits
+    return '0' + digits
+
+
 def company_info() -> dict:
     """بيانات الطرف الأول من إعدادات الشركة المشغّلة للبرنامج."""
     s = Settings.query.first()
@@ -168,10 +182,10 @@ def company_info() -> dict:
     if not s:
         return info
     info['company_name'] = (s.company_name or '').strip()
-    info['phone'] = (s.phone or '').strip()
+    info['phone'] = format_phone_local((s.phone or '').strip())
     info['email'] = (s.email or '').strip()
     info['rep_name'] = (getattr(s, 'rep_name', None) or '').strip()
-    info['rep_mobile'] = (getattr(s, 'rep_mobile', None) or '').strip()
+    info['rep_mobile'] = format_phone_local((getattr(s, 'rep_mobile', None) or '').strip())
     city = (s.city or '').strip()
     info['city'] = city
     if city in ('مكة', 'مكة المكرمة') or 'مكة' in city:
@@ -181,21 +195,28 @@ def company_info() -> dict:
     return info
 
 
-def customer_address_line(customer, contract=None) -> str:
-    """سطر عنوان موقع الخدمة — من العقد فقط (لا يُجلب من صفحة العميل)."""
+def customer_address_parts(customer, contract=None) -> tuple[str, str]:
+    """(الشارع/العنوان، المنطقة أو الحي) لسطر عنوان الطرف الثاني."""
     if not contract:
-        return '—'
+        return '—', ''
     city = (contract.city or '').strip()
     if city in ('مكة', 'مكة المكرمة'):
-        return 'مكة المكرمــــة –'
-    parts = []
-    if (contract.address or '').strip():
-        parts.append(contract.address.strip())
-    if (contract.district or '').strip():
-        parts.append(contract.district.strip())
-    if city and city not in str(parts):
-        parts.append(city)
-    return ' — '.join(parts) if parts else '—'
+        return 'مكة المكرمــــة –', ''
+    main = (contract.address or '').strip() or '—'
+    tail = (contract.district or '').strip()
+    if not tail and city and city not in main:
+        tail = city
+    return main, tail
+
+
+def customer_address_line(customer, contract=None) -> str:
+    """سطر عنوان موقع الخدمة — من العقد فقط (لا يُجلب من صفحة العميل)."""
+    main, tail = customer_address_parts(customer, contract)
+    if main == '—' and not tail:
+        return '—'
+    if tail:
+        return f'{main} — {tail}'
+    return main
 
 
 def elevators_for_contract(contract: Contract) -> list[dict]:
@@ -229,6 +250,7 @@ def contract_print_payload(contract_id: int) -> dict:
     amount = int(round(contract.total or contract.value or 0))
     maint = contract.maint_frequency or 'شهري'
     pay = contract.payment_terms or 'دفعة واحدة'
+    addr_main, addr_tail = customer_address_parts(customer, contract)
 
     return {
         'contract': contract,
@@ -244,6 +266,12 @@ def contract_print_payload(contract_id: int) -> dict:
         'start_gregorian': fmt_gregorian(contract.start_date),
         'end_gregorian': fmt_gregorian(contract.end_date),
         'customer_address': customer_address_line(customer, contract),
+        'customer_address_main': addr_main,
+        'customer_address_tail': addr_tail,
+        'customer_phone': format_phone_local(
+            (customer.phone if customer else None) or None,
+            placeholder='0000000000',
+        ),
         'maint_phrase': MAINT_FREQ_PHRASE.get(maint, 'مرة شهريا'),
         'pay_phrase': PAY_TERMS_PHRASE.get(pay, 'مقدم'),
         'amount': amount,
