@@ -85,26 +85,21 @@ body{
   white-space:nowrap;
   min-width:0;
 }
-.w-intro-line{
-  flex-wrap:nowrap;
-  justify-content:flex-start;
-  gap:8pt;
+.doc-intro{
+  text-align:justify;
+  overflow:hidden;
 }
-.w-intro-head{
-  flex:0 1 auto;
-  min-width:0;
-  white-space:nowrap;
+.doc-intro::after{
+  content:"";
+  display:table;
+  clear:both;
 }
-.w-intro-loc{
-  flex:1 1 auto;
-  min-width:0;
-  display:flex;
-  flex-direction:row;
-  align-items:baseline;
-  justify-content:space-between;
-  gap:16pt;
+.w-intro-hq{
+  float:left;
+  direction:rtl;
+  text-align:left;
+  max-width:50%;
 }
-.w-intro-loc .w-contact-email{flex:0 0 auto;text-align:left}
 
 .w-maint-head{font-weight:700}
 
@@ -168,13 +163,7 @@ body{
   <p class="doc-head-num">عقد رقم ({{ contract_code }})</p>
 </div>
 
-<p class="w-body w-t16 w-contact-line w-intro-line doc-intro">
-  <span class="w-intro-head">انه في يوم {{ sign_day }} {{ sign_hijri }} الموافق {{ sign_gregorian }} م، تم الاتفاق والتراضي بين كل من الطرف الأول: شركة / <strong class="w-co-name">{{ company.company_name }}</strong></span>
-  <span class="w-intro-loc">
-    <span class="w-contact-start">ومقرها:</span>
-    <span class="w-contact-email">{{ company.city_full }}</span>
-  </span>
-</p>
+<p class="w-body w-t16 doc-intro">انه في يوم {{ sign_day }} {{ sign_hijri }} الموافق {{ sign_gregorian }} م، تم الاتفاق والتراضي بين كل من الطرف الأول: شركة / <strong class="w-co-name">{{ company.company_name }}</strong> <span class="w-intro-hq">ومقرها: {{ company.city_full }}</span></p>
 
 <p class="w-body w-t16 w-contact-line">
   <span class="w-contact-phone">هاتف :{{ company.phone }}</span>
