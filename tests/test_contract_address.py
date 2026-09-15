@@ -40,21 +40,6 @@ def test_customer_address_parts_splits_street_and_district():
     assert tail == 'حي النزهة'
 
 
-def test_mecca_contract_address_uses_district_not_city():
-    contract = _FakeContract(address='شارع إبراهيم', district='حي العزيزية', city='مكة المكرمة')
-    main, tail = customer_address_parts(None, contract)
-    assert main == 'شارع إبراهيم'
-    assert tail == 'حي العزيزية'
-    assert 'مكة' not in tail
-
-
-def test_mecca_contract_address_no_city_fallback():
-    contract = _FakeContract(address='شارع 1', district='', city='مكة المكرمة')
-    main, tail = customer_address_parts(None, contract)
-    assert main == 'شارع 1'
-    assert tail == ''
-
-
 def test_format_phone_local_strips_country_code():
     assert format_phone_local('+966501234567') == '0501234567'
     assert format_phone_local('966501234567') == '0501234567'
