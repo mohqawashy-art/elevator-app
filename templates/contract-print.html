@@ -19,6 +19,12 @@ body{
   color:#000;background:#fff;
   -webkit-print-color-adjust:exact;print-color-adjust:exact;
 }
+html,html[data-theme],html[data-theme] body{
+  background:#fff!important;
+  color:#000!important;
+  color-scheme:light!important;
+  min-height:auto!important;
+}
 .toolbar{
   position:fixed;top:0;left:0;right:0;z-index:99;
   background:#333;color:#fff;padding:8px 14px;
@@ -31,7 +37,7 @@ body{
 
 .doc{
   max-width:210mm;margin:48px auto 24px;
-  padding:33.3mm 17.9mm 25.4mm 14.3mm;
+  padding:33.3mm 17.9mm 0 14.3mm;
   background:#fff;
   font-family:"Arial (Body CS)",Arial,Tahoma,sans-serif;
   font-size:16pt;
@@ -104,7 +110,7 @@ body{
 .w-maint-head{font-weight:700}
 
 .signatures-block{
-  margin-top:20pt;
+  margin-top:8pt;
   page-break-inside:avoid;
   break-inside:avoid;
 }
@@ -128,7 +134,7 @@ body{
   max-width:100%;
   text-align:right;
 }
-.sig-party-name{margin-bottom:6pt;min-height:2em;padding:0}
+.sig-party-name{margin-bottom:6pt;padding:0}
 .sig-label{margin-bottom:4pt;padding:0}
 
 .w-empty{height:14pt}
@@ -252,7 +258,6 @@ body{
 <p class="w-body">المبالغ المستحقة في أوقاتها وإذا ما قرر الطرفان إيقاف العمل قبل انتهاء مدته يحتفظ الطرف الأول بكامل حقوقه المالية عن الفترة السابقة لإنهاء العقد.</p>
 <p class="w-body">21ـ يعمل بهذا العقد لمدة سنة كاملة تبدأ من {{ start_gregorian }} م إلى {{ end_gregorian }} م والتوقيع عليه من الطرفين واستلام الطرف الأول الدفعة المتوجبة.</p>
 <p class="w-body">22ـ حرر هذا العقد من نسختين وتم توقيع الطرفين على جميع صفحاتها وبيد كل طرف نسخة للمعمل بموجبها ولإبرازه عند اللزوم لجهات الاختصاص في أي نزاع لا قدر الله قد ينشأ بين الطرفين. </p>
-<p class="w-empty">&nbsp;</p>
 
 <div class="signatures-block">
   <div class="signatures-row">
