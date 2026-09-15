@@ -22,6 +22,10 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .lines-table th{padding:8px 10px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)}
 .lines-table td{padding:8px 10px;border-bottom:1px solid rgba(100,160,255,.06);vertical-align:middle}
 .lines-table select,.lines-table input{width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.line-total{font-family:var(--font-en);color:var(--text1);font-weight:600;white-space:nowrap;text-align:left;direction:ltr}
+.doc-total-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:13px}
+.doc-total-label{color:var(--text2)}
+.doc-total-value{font-family:var(--font-en);font-size:16px;font-weight:700;color:var(--accent);direction:ltr}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:var(--font-ar);font-size:13px;text-decoration:none}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
@@ -69,7 +73,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
 
         <table class="lines-table lc-table-inputs">
           <thead>
-            <tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th></th></tr>
+            <tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>إجمالي قيمة الصنف</th><th></th></tr>
           </thead>
           <tbody id="lines-body">
             <tr class="line-row">
@@ -83,10 +87,17 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
               </td>
               <td><input type="number" name="quantity" min="0.01" step="0.01" value="1" required></td>
               <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
+              <td class="line-total">0.00</td>
               <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
             </tr>
           </tbody>
         </table>
+
+        <div class="doc-total-row">
+          <span class="doc-total-label">إجمالي قيمة المستند</span>
+          <span class="doc-total-value" id="doc-total">0.00</span>
+          <span class="lc-sar" role="img" aria-label="ريال"></span>
+        </div>
 
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
           <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ إضافة صنف</button>
@@ -135,20 +146,57 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
     </td>
     <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
     <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
+    <td class="line-total">0.00</td>
     <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
   </tr>
 </template>
 
 <script>
+function fmtLineMoney(v) {
+  var n = Number(v) || 0;
+  return (window.fmtNum ? fmtNum(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n.toFixed(2));
+}
+function updateLineTotal(row) {
+  if (!row) return;
+  var qtyEl = row.querySelector('input[name="quantity"]');
+  var priceEl = row.querySelector('input[name="unit_price"]');
+  var totalEl = row.querySelector('.line-total');
+  if (!qtyEl || !priceEl || !totalEl) return;
+  var total = (parseFloat(qtyEl.value || '0') || 0) * (parseFloat(priceEl.value || '0') || 0);
+  totalEl.textContent = fmtLineMoney(total);
+}
+function updateDocTotal() {
+  var sum = 0;
+  document.querySelectorAll('#lines-body .line-row').forEach(function (row) {
+    var qtyEl = row.querySelector('input[name="quantity"]');
+    var priceEl = row.querySelector('input[name="unit_price"]');
+    sum += (parseFloat(qtyEl && qtyEl.value || '0') || 0) * (parseFloat(priceEl && priceEl.value || '0') || 0);
+  });
+  var el = document.getElementById('doc-total');
+  if (el) el.textContent = fmtLineMoney(sum);
+}
 function bindLine(row) {
   var sel = row.querySelector('select[name="item_id"]');
   var price = row.querySelector('input[name="unit_price"]');
-  if (!sel || !price || sel.dataset.bound) return;
-  sel.dataset.bound = '1';
-  sel.addEventListener('change', function () {
-    var opt = sel.options[sel.selectedIndex];
-    if (opt && opt.dataset.price) price.value = opt.dataset.price;
+  var qty = row.querySelector('input[name="quantity"]');
+  if (sel && !sel.dataset.bound) {
+    sel.dataset.bound = '1';
+    sel.addEventListener('change', function () {
+      var opt = sel.options[sel.selectedIndex];
+      if (opt && opt.dataset.price && price) price.value = opt.dataset.price;
+      updateLineTotal(row);
+      updateDocTotal();
+    });
+  }
+  [qty, price].forEach(function (el) {
+    if (!el || el.dataset.bound) return;
+    el.dataset.bound = '1';
+    el.addEventListener('input', function () {
+      updateLineTotal(row);
+      updateDocTotal();
+    });
   });
+  updateLineTotal(row);
 }
 function addLine() {
   var tpl = document.getElementById('line-tpl');
@@ -157,13 +205,16 @@ function addLine() {
   var row = tpl.content.firstElementChild.cloneNode(true);
   body.appendChild(row);
   bindLine(row);
+  updateDocTotal();
 }
 function removeLine(btn) {
   var body = document.getElementById('lines-body');
   if (!body || body.querySelectorAll('.line-row').length <= 1) return;
   btn.closest('.line-row').remove();
+  updateDocTotal();
 }
 document.querySelectorAll('.line-row').forEach(bindLine);
+updateDocTotal();
 </script>
 </body>
 </html>
