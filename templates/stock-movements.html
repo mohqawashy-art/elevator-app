@@ -494,6 +494,12 @@ function onItemPicked() {
   if (item) {
     const priceEl = document.getElementById('m-price');
     if (priceEl && (!priceEl.value || priceEl.value === '0')) priceEl.value = item.buy_price || 0;
+    const typeEl = document.getElementById('m-type');
+    const cat = (item.category || '').trim();
+    const isConsumable = cat === 'مستهلكات' || cat.indexOf('مستهلك') >= 0;
+    if (typeEl && isConsumable) {
+      typeEl.value = 'صرف لفني';
+    }
   }
   calcTotal();
 }

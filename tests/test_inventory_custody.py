@@ -48,7 +48,7 @@ def test_custody_net_after_return(client):
             item_id=item.id,
             movement_date=date.today(),
             direction='صادر',
-            movement_type='صرف لفني',
+            movement_type='صرف عهدة للفني',
             quantity=5,
             technician_id=tech.id,
         ))
@@ -57,7 +57,7 @@ def test_custody_net_after_return(client):
             item_id=item.id,
             movement_date=date.today(),
             direction='وارد',
-            movement_type='صرف عهدة للفني',
+            movement_type='إرجاع عهدة للمخزن',
             quantity=2,
             technician_id=tech.id,
         ))
@@ -65,6 +65,48 @@ def test_custody_net_after_return(client):
 
         fields = item_custody_fields(item.id)
         assert fields['custody_qty'] == 3
+
+
+def test_direct_issue_to_technician_not_custody(client):
+    with client.application.app_context():
+        item, tech = _seed_item_and_tech()
+        db.session.add(StockMovement(
+            code='MV-C5',
+            item_id=item.id,
+            movement_date=date.today(),
+            direction='صادر',
+            movement_type='صرف لفني',
+            quantity=6,
+            technician_id=tech.id,
+        ))
+        db.session.commit()
+        assert item_custody_fields(item.id)['custody_qty'] == 0
+
+
+def test_consumable_custody_issue_ignored(client):
+    with client.application.app_context():
+        tech = Technician(code='T-C2', name='فني مستهلكات', status='نشط')
+        db.session.add(tech)
+        db.session.flush()
+        item = InventoryItem(
+            code='#C2',
+            name='زيت تشحيم',
+            category='مستهلكات',
+            current_qty=10,
+        )
+        db.session.add(item)
+        db.session.flush()
+        db.session.add(StockMovement(
+            code='MV-C6',
+            item_id=item.id,
+            movement_date=date.today(),
+            direction='صادر',
+            movement_type='صرف عهدة للفني',
+            quantity=3,
+            technician_id=tech.id,
+        ))
+        db.session.commit()
+        assert item_custody_fields(item.id)['custody_qty'] == 0
 
 
 def test_non_custody_movement_ignored(client):

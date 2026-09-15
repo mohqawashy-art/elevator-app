@@ -1498,6 +1498,7 @@ def inventory_item_js_dict(i):
         'id': i.id,
         'code': i.code,
         'name': i.name,
+        'category': i.category or '',
         'unit': i.unit or 'قطعة',
         'buy_price': i.buy_price or 0,
         'sell_price': i.sell_price or 0,
@@ -5805,6 +5806,8 @@ def _visit_map_points(visits, today_only=True):
         elev = v.elevator
         cust = elev.customer if elev else None
         coords = visit_coordinates(v)
+        if not coords:
+            coords = _coords_from_customer(cust)
         if not coords:
             continue
         points.append({
@@ -13380,22 +13383,29 @@ def stock_movements():
 
 @app.route('/stock-movements/add', methods=['POST'])
 def stock_add():
+    from inventory_custody import item_eligible_for_custody
+
     item_id   = int(request.form['item_id'])
     qty       = float(request.form.get('quantity', 0))
     direction = request.form.get('direction','صادر')
     unit_price= float(request.form.get('unit_price', 0))
+    movement_type = (request.form.get('movement_type') or '').strip()
 
     item = tenant_query(InventoryItem).filter_by(id=item_id).first()
     if not item:
         flash('الصنف غير موجود — اختر صنفاً من قائمة المخزون', 'error')
         return redirect(url_for('stock_movements'))
 
+    if movement_type == 'صرف عهدة للفني' and not item_eligible_for_custody(item):
+        movement_type = 'صرف لفني'
+        flash(f'«{item.name}» مستهلك — سُجّل كصرف مباشر (بدون عهدة)', 'info')
+
     m = StockMovement(
         code          = next_code(StockMovement, 'MV-', digits=3),
         item_id       = item_id,
         movement_date = datetime.strptime(request.form['movement_date'], '%Y-%m-%d').date(),
         direction     = direction,
-        movement_type = request.form.get('movement_type',''),
+        movement_type = movement_type,
         quantity      = qty,
         unit_price    = unit_price,
         total_value   = qty * unit_price,
