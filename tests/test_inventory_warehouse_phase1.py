@@ -178,7 +178,7 @@ def test_warehouse_department_pages(client):
 
     login_as(client, 'admin')
     for path, needle in (
-        ('/warehouse/opening', 'مستند رصيد أول المدة'),
+        ('/warehouse/opening', 'ابحث بالكود أو اسم الصنف'),
         ('/warehouse/issue', 'إذن صرف'),
         ('/warehouse/purchases', 'المشتريات'),
         ('/inventory', 'الأصناف'),

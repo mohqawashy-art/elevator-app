@@ -494,6 +494,16 @@ def warehouse_page_context() -> dict:
         'today': date.today().isoformat(),
         'opening_documents': opening_stock_documents(),
         'next_opening_doc': next_opening_doc_code(),
+        'items_js': [
+            {
+                'id': i.id,
+                'code': i.code or '',
+                'name': i.name or '',
+                'buy_price': float(i.buy_price or 0),
+                'current_qty': float(i.current_qty or 0),
+            }
+            for i in items
+        ],
     }
 
 

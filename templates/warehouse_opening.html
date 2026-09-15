@@ -21,7 +21,10 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .lines-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
 .lines-table th{padding:8px 10px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)}
 .lines-table td{padding:8px 10px;border-bottom:1px solid rgba(100,160,255,.06);vertical-align:middle}
-.lines-table select,.lines-table input{width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.lines-table input{width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.open-item-cell .lc-client-select{position:relative;min-width:200px}
+.open-item-cell .lc-client-select-input{width:100%;font-size:12px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1)}
+.open-item-cell .lc-client-select-list{z-index:400;max-height:220px;overflow-y:auto}
 .line-total{font-family:var(--font-en);color:var(--text1);font-weight:600;white-space:nowrap;text-align:left;direction:ltr}
 .doc-total-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:13px}
 .doc-total-label{color:var(--text2)}
@@ -77,14 +80,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
           </thead>
           <tbody id="lines-body">
             <tr class="line-row">
-              <td>
-                <select name="item_id" required>
-                  <option value="">— اختر صنفاً —</option>
-                  {% for i in items %}
-                  <option value="{{ i.id }}" data-price="{{ i.buy_price or 0 }}">{{ i.code }} — {{ i.name }}</option>
-                  {% endfor %}
-                </select>
-              </td>
+              <td class="open-item-cell"></td>
               <td><input type="number" name="quantity" min="0.01" step="0.01" value="1" required></td>
               <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
               <td class="line-total">0.00</td>
@@ -138,14 +134,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
 
 <template id="line-tpl">
   <tr class="line-row">
-    <td>
-      <select name="item_id">
-        <option value="">— اختر صنفاً —</option>
-        {% for i in items %}
-        <option value="{{ i.id }}" data-price="{{ i.buy_price or 0 }}">{{ i.code }} — {{ i.name }}</option>
-        {% endfor %}
-      </select>
-    </td>
+    <td class="open-item-cell"></td>
     <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
     <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
     <td class="line-total">0.00</td>
@@ -155,6 +144,68 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
 </template>
 
 <script>
+var OPENING_ITEMS = {{ items_js | tojson }};
+var openingItemRowSeq = 0;
+
+function inventorySelectOptions() {
+  return OPENING_ITEMS.map(function (i) {
+    return { id: String(i.id), code: i.code || '', name: i.name || '' };
+  });
+}
+
+function mountOpeningItemSelect(row, selectedId) {
+  var cell = row.querySelector('.open-item-cell');
+  if (!cell || cell.dataset.openItemMounted === '1') return;
+  openingItemRowSeq += 1;
+  var uid = 'open-item-' + openingItemRowSeq;
+  var wrapId = uid + '-wrap';
+  var inputId = uid + '-input';
+  var listId = uid + '-list';
+  var hiddenId = uid + '-id';
+  cell.innerHTML =
+    '<div class="lc-client-select" id="' + wrapId + '">' +
+    '<input type="text" class="lc-client-select-input" id="' + inputId + '" placeholder="ابحث بالكود أو اسم الصنف..." autocomplete="off">' +
+    '<input type="hidden" name="item_id" id="' + hiddenId + '" value="' + (selectedId || '') + '">' +
+    '<ul class="lc-client-select-list" id="' + listId + '" hidden role="listbox"></ul>' +
+    '</div>';
+  if (typeof LcClientSelect === 'undefined') {
+    cell.dataset.openNeedMount = '1';
+    return;
+  }
+  cell.dataset.openNeedMount = '';
+  cell.dataset.openItemMounted = '1';
+  LcClientSelect.mount({
+    wrapId: wrapId,
+    hiddenId: hiddenId,
+    inputId: inputId,
+    listId: listId,
+    customers: inventorySelectOptions(),
+    selectedId: selectedId || '',
+    onChange: function () { onOpeningItemPicked(row); },
+  });
+}
+
+function remountOpeningItemSelects() {
+  if (typeof LcClientSelect === 'undefined') return;
+  document.querySelectorAll('#lines-body .line-row').forEach(function (row) {
+    var cell = row.querySelector('.open-item-cell');
+    if (!cell || cell.dataset.openNeedMount !== '1') return;
+    var hidden = row.querySelector('input[name="item_id"]');
+    mountOpeningItemSelect(row, hidden ? hidden.value : '');
+  });
+}
+
+function onOpeningItemPicked(row) {
+  var hidden = row.querySelector('input[name="item_id"]');
+  var item = OPENING_ITEMS.find(function (x) { return String(x.id) === String(hidden && hidden.value); });
+  if (item) {
+    var priceEl = row.querySelector('input[name="unit_price"]');
+    if (priceEl) priceEl.value = item.buy_price || 0;
+  }
+  updateLineTotal(row);
+  updateDocTotal();
+}
+
 function fmtLineMoney(v) {
   var n = Number(v) || 0;
   return (window.fmtNum ? fmtNum(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n.toFixed(2));
@@ -179,18 +230,9 @@ function updateDocTotal() {
   if (el) el.textContent = fmtLineMoney(sum);
 }
 function bindLine(row) {
-  var sel = row.querySelector('select[name="item_id"]');
-  var price = row.querySelector('input[name="unit_price"]');
+  mountOpeningItemSelect(row, '');
   var qty = row.querySelector('input[name="quantity"]');
-  if (sel && !sel.dataset.bound) {
-    sel.dataset.bound = '1';
-    sel.addEventListener('change', function () {
-      var opt = sel.options[sel.selectedIndex];
-      if (opt && opt.dataset.price && price) price.value = opt.dataset.price;
-      updateLineTotal(row);
-      updateDocTotal();
-    });
-  }
+  var price = row.querySelector('input[name="unit_price"]');
   [qty, price].forEach(function (el) {
     if (!el || el.dataset.bound) return;
     el.dataset.bound = '1';
@@ -218,6 +260,24 @@ function removeLine(btn) {
 }
 document.querySelectorAll('.line-row').forEach(bindLine);
 updateDocTotal();
+
+document.getElementById('opening-form').addEventListener('submit', function (e) {
+  var hasItem = false;
+  document.querySelectorAll('#lines-body input[name="item_id"]').forEach(function (el) {
+    if (el.value) hasItem = true;
+  });
+  if (!hasItem) {
+    e.preventDefault();
+    alert('اختر صنفاً واحداً على الأقل');
+  }
+});
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', remountOpeningItemSelects);
+} else {
+  remountOpeningItemSelects();
+}
+window.addEventListener('load', remountOpeningItemSelects);
 </script>
 </body>
 </html>

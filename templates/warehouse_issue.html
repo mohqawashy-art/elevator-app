@@ -17,6 +17,9 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .form-full{grid-column:1/-1}
 .field label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px}
 .field input,.field select{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.lc-client-select{position:relative}
+.lc-client-select-input{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px}
+.lc-client-select-list{z-index:400;max-height:220px;overflow-y:auto}
 .btn{display:inline-flex;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:var(--font-ar);font-size:13px}
 .btn-primary{background:var(--accent);color:#fff}
 .hint{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
@@ -81,8 +84,30 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
   </div>
 </div>
 <script>
+var ISSUE_ITEMS = {{ items_js | tojson }};
 var MAINT_CONTRACTS = {{ maintenance_contracts_js | tojson }};
 var INSTALL_CONTRACTS = {{ installation_contracts_js | tojson }};
+
+function issueItemOptions() {
+  return ISSUE_ITEMS.map(function (i) {
+    var label = (i.name || '') + ' (متاح ' + (i.current_qty || 0) + ')';
+    return { id: String(i.id), code: i.code || '', name: label };
+  });
+}
+
+function initIssueItemSelect() {
+  if (typeof LcClientSelect === 'undefined') return;
+  if (!LcClientSelect.isUpgraded('issue-item-id')) {
+    LcClientSelect.upgradeSelect('issue-item-id', {
+      customers: issueItemOptions(),
+      placeholder: 'ابحث بالكود أو اسم الصنف...',
+      onChange: syncAvail,
+    });
+  } else {
+    LcClientSelect.setCustomers('issue-item-id', issueItemOptions(), '');
+  }
+}
+
 function syncIssueFields() {
   var t = document.getElementById('issue-target').value;
   ['issue-tech-wrap','issue-client-wrap','issue-project-wrap'].forEach(function (id) {
@@ -96,15 +121,16 @@ function syncIssueFields() {
 function syncAvail() {
   var sel = document.getElementById('issue-item-id');
   var hint = document.getElementById('issue-avail-hint');
-  var opt = sel.options[sel.selectedIndex];
-  var qty = opt ? parseFloat(opt.getAttribute('data-qty') || '0') : 0;
-  hint.textContent = 'المتاح: ' + (isNaN(qty) ? '—' : qty);
+  var item = ISSUE_ITEMS.find(function (x) { return String(x.id) === String(sel && sel.value); });
+  var qty = item ? parseFloat(item.current_qty || 0) : 0;
+  if (hint) hint.textContent = 'المتاح: ' + (isNaN(qty) ? '—' : qty);
 }
 function validateIssue() {
   var sel = document.getElementById('issue-item-id');
   var qtyEl = document.getElementById('issue-qty');
-  var opt = sel.options[sel.selectedIndex];
-  var avail = opt ? parseFloat(opt.getAttribute('data-qty') || '0') : 0;
+  if (!sel || !sel.value) { alert('اختر صنفاً'); return false; }
+  var item = ISSUE_ITEMS.find(function (x) { return String(x.id) === String(sel.value); });
+  var avail = item ? parseFloat(item.current_qty || 0) : 0;
   var need = parseFloat(qtyEl.value || '0');
   if (need > avail + 1e-9) { alert('الكمية أكبر من الرصيد المتاح (' + avail + ')'); return false; }
   return true;
@@ -112,6 +138,13 @@ function validateIssue() {
 document.getElementById('issue-contract').innerHTML = '<option value="">—</option>' + (MAINT_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'">'+(r.name||r.code)+'</option>';}).join('');
 document.getElementById('issue-install').innerHTML = '<option value="">—</option>' + (INSTALL_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'">'+(r.name||r.code)+'</option>';}).join('');
 syncIssueFields();
+initIssueItemSelect();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initIssueItemSelect);
+} else {
+  initIssueItemSelect();
+}
+window.addEventListener('load', initIssueItemSelect);
 </script>
 </body>
 </html>
