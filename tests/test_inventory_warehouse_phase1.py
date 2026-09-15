@@ -124,3 +124,18 @@ def test_stock_add_blocks_over_issue(client):
     with client.application.app_context():
         item = db.session.get(InventoryItem, item_id)
         assert float(item.current_qty or 0) == 1
+
+
+def test_warehouse_department_pages(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    for path, needle in (
+        ('/warehouse/opening', 'رصيد أول المدة'),
+        ('/warehouse/issue', 'إذن صرف'),
+        ('/warehouse/purchases', 'المشتريات'),
+        ('/inventory', 'الأصناف'),
+    ):
+        r = client.get(path)
+        assert r.status_code == 200, path
+        assert needle in r.get_data(as_text=True), path

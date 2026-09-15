@@ -113,8 +113,11 @@ DEPARTMENT_PORTALS = {
         'color': '#1fb87a',
         'links': (
             ('الأصناف', 'Inventory Items', '/inventory', 'inventory.read'),
+            ('رصيد أول المدة', 'Opening Stock', '/warehouse/opening', 'inventory.read'),
+            ('أذون صرف', 'Issue Orders', '/warehouse/issue', 'inventory.read'),
             ('حركة المخزن', 'Stock Movements', '/stock-movements', 'stock_movements.read'),
-            ('طلبات الشراء', 'Purchase Orders', '/purchase-orders', 'purchase_orders.read'),
+            ('المشتريات', 'Purchases', '/warehouse/purchases', 'stock_movements.read'),
+            ('طلب شراء', 'Purchase Order', '/purchase-orders', 'purchase_orders.read'),
         ),
         'reports': (),
     },
@@ -451,6 +454,7 @@ _PATH_DEPARTMENT_PREFIXES: list[tuple[re.Pattern[str], str]] = [
     (re.compile(r'^/parts-billing(?:/|$)'), 'maintenance'),
     (re.compile(r'^/elevators(?:/|$)'), 'maintenance'),
     (re.compile(r'^/inventory(?:/|$)'), 'inventory'),
+    (re.compile(r'^/warehouse(?:/|$)'), 'inventory'),
     (re.compile(r'^/stock-movements(?:/|$)'), 'inventory'),
     (re.compile(r'^/purchase-orders(?:/|$)'), 'inventory'),
     (re.compile(r'^/suppliers(?:/|$)'), 'inventory'),
@@ -474,6 +478,36 @@ _PATH_DEPARTMENT_PREFIXES: list[tuple[re.Pattern[str], str]] = [
 
 # إبراز التبويب عند صفحات تفصيلية (مثل /sales/maintenance-quotes/12)
 _HREF_CHILD_ROUTE_ACTIVE: list[tuple[str, re.Pattern[str], re.Pattern[str] | None]] = [
+    (
+        '/inventory',
+        re.compile(r'^/inventory(?:/|$)'),
+        None,
+    ),
+    (
+        '/warehouse/opening',
+        re.compile(r'^/warehouse/opening(?:/|$)'),
+        None,
+    ),
+    (
+        '/warehouse/issue',
+        re.compile(r'^/warehouse/issue(?:/|$)'),
+        None,
+    ),
+    (
+        '/warehouse/purchases',
+        re.compile(r'^/warehouse/purchases(?:/|$)'),
+        None,
+    ),
+    (
+        '/stock-movements',
+        re.compile(r'^/stock-movements(?:/|$)'),
+        None,
+    ),
+    (
+        '/purchase-orders',
+        re.compile(r'^/purchase-orders(?:/|$)'),
+        None,
+    ),
     (
         '/sales/maintenance-quotes',
         re.compile(r'^/sales/maintenance-quotes(?:/|$)'),

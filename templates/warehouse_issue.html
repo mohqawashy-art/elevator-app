@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — أذون صرف</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--sidebar-w:240px;--font-ar:'IBM Plex Sans Arabic',sans-serif;--r:10px;--r-sm:7px}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex}
+.sidebar{width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);height:100vh;position:sticky;top:0}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.content{flex:1;padding:24px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;max-width:760px}
+.panel-title{font-size:16px;font-weight:600;margin-bottom:14px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px}
+.field input,.field select{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.btn{display:inline-flex;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:var(--font-ar);font-size:13px}
+.btn-primary{background:var(--accent);color:#fff}
+.hint{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
+.issue-wrap{display:none}
+</style>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+</head>
+<body>
+<aside class="sidebar"><div style="padding:12px;text-align:center"><img src="{{ brand_logo_url }}" alt="LiftCore" style="max-width:150px"></div><nav>{% include 'partials/app_sidebar_nav.html' %}</nav></aside>
+<div class="main">
+  {% set page_title = 'أذون صرف' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    {% include 'partials/flash_messages.html' %}
+    <div class="panel">
+      <div class="panel-title">إذن صرف بضاعة</div>
+      <form method="post" action="/inventory/issue" class="form-grid" onsubmit="return validateIssue()">
+        <div class="field form-full">
+          <label>الصنف *</label>
+          <select name="item_id" id="issue-item-id" required onchange="syncAvail()">
+            <option value="">— اختر صنفاً —</option>
+            {% for i in items %}
+            <option value="{{ i.id }}" data-qty="{{ i.current_qty or 0 }}">{{ i.code }} — {{ i.name }} (متاح {{ i.current_qty or 0 }})</option>
+            {% endfor %}
+          </select>
+          <p class="hint" id="issue-avail-hint">المتاح: —</p>
+        </div>
+        <div class="field"><label>التاريخ</label><input type="date" name="movement_date" value="{{ today }}" lang="en-GB"></div>
+        <div class="field"><label>الكمية *</label><input type="number" name="quantity" id="issue-qty" min="0.01" step="0.01" required></div>
+        <div class="field form-full">
+          <label>نوع الصرف *</label>
+          <select name="target" id="issue-target" onchange="syncIssueFields()">
+            <option value="consumable">مستهلكات صيانة</option>
+            <option value="custody">عهدة فني (قطع غيار)</option>
+            <option value="client">تحميل على عميل — عقد صيانة</option>
+            <option value="project">تحميل على مشروع — عقد تركيب</option>
+          </select>
+        </div>
+        <div class="field form-full issue-wrap" id="issue-tech-wrap">
+          <label>الفني</label>
+          <select name="technician_id"><option value="">—</option>{% for t in technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+        </div>
+        <div class="field form-full issue-wrap" id="issue-client-wrap">
+          <label>عقد الصيانة</label>
+          <select name="contract_id" id="issue-contract"><option value="">—</option></select>
+        </div>
+        <div class="field form-full issue-wrap" id="issue-project-wrap">
+          <label>عقد التركيب</label>
+          <select name="install_contract_id" id="issue-install"><option value="">—</option></select>
+        </div>
+        <div class="field form-full"><label>ملاحظات</label><input name="notes"></div>
+        <div class="form-full"><button type="submit" class="btn btn-primary">تسجيل إذن الصرف</button></div>
+      </form>
+      <p class="hint">لا يمكن صرف كمية أكبر من الرصيد المتاح. المستهلكات لا تُسجَّل عهدة.</p>
+    </div>
+  </div>
+</div>
+<script>
+var MAINT_CONTRACTS = {{ maintenance_contracts_js | tojson }};
+var INSTALL_CONTRACTS = {{ installation_contracts_js | tojson }};
+function syncIssueFields() {
+  var t = document.getElementById('issue-target').value;
+  ['issue-tech-wrap','issue-client-wrap','issue-project-wrap'].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  if (t === 'custody' || t === 'consumable') document.getElementById('issue-tech-wrap').style.display = 'block';
+  if (t === 'client') document.getElementById('issue-client-wrap').style.display = 'block';
+  if (t === 'project') document.getElementById('issue-project-wrap').style.display = 'block';
+}
+function syncAvail() {
+  var sel = document.getElementById('issue-item-id');
+  var hint = document.getElementById('issue-avail-hint');
+  var opt = sel.options[sel.selectedIndex];
+  var qty = opt ? parseFloat(opt.getAttribute('data-qty') || '0') : 0;
+  hint.textContent = 'المتاح: ' + (isNaN(qty) ? '—' : qty);
+}
+function validateIssue() {
+  var sel = document.getElementById('issue-item-id');
+  var qtyEl = document.getElementById('issue-qty');
+  var opt = sel.options[sel.selectedIndex];
+  var avail = opt ? parseFloat(opt.getAttribute('data-qty') || '0') : 0;
+  var need = parseFloat(qtyEl.value || '0');
+  if (need > avail + 1e-9) { alert('الكمية أكبر من الرصيد المتاح (' + avail + ')'); return false; }
+  return true;
+}
+document.getElementById('issue-contract').innerHTML = '<option value="">—</option>' + (MAINT_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'">'+(r.name||r.code)+'</option>';}).join('');
+document.getElementById('issue-install').innerHTML = '<option value="">—</option>' + (INSTALL_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'">'+(r.name||r.code)+'</option>';}).join('');
+syncIssueFields();
+</script>
+</body>
+</html>

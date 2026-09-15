@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LiftCore — رصيد أول المدة</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--sidebar-w:240px;--header-h:60px;--font-ar:'IBM Plex Sans Arabic',sans-serif;--r:10px;--r-sm:7px}
+body{background:var(--bg);color:var(--text1);min-height:100vh;display:flex}
+.sidebar{width:var(--sidebar-w);background:var(--bg2);border-left:1px solid var(--border);height:100vh;position:sticky;top:0}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.content{flex:1;padding:24px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;max-width:720px}
+.panel-title{font-size:16px;font-weight:600;margin-bottom:14px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px}
+.field input,.field select{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.btn{display:inline-flex;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:var(--font-ar);font-size:13px}
+.btn-primary{background:var(--accent);color:#fff}
+.hint{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
+</style>
+{% include 'partials/liftcore_head.html' %}
+<link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
+</head>
+<body>
+<aside class="sidebar"><div style="padding:12px;text-align:center"><img src="{{ brand_logo_url }}" alt="LiftCore" style="max-width:150px"></div><nav>{% include 'partials/app_sidebar_nav.html' %}</nav></aside>
+<div class="main">
+  {% set page_title = 'رصيد أول المدة' %}
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    {% include 'partials/flash_messages.html' %}
+    <div class="panel">
+      <div class="panel-title">تسجيل رصيد أول المدة</div>
+      <form method="post" action="/inventory/opening-stock" class="form-grid">
+        <div class="field form-full">
+          <label>الصنف *</label>
+          <select name="item_id" required>
+            <option value="">— اختر صنفاً —</option>
+            {% for i in items %}
+            <option value="{{ i.id }}">{{ i.code }} — {{ i.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field"><label>التاريخ</label><input type="date" name="movement_date" id="open-date" lang="en-GB" value="{{ today }}"></div>
+        <div class="field"><label>الكمية *</label><input type="number" name="quantity" min="0.01" step="0.01" required></div>
+        <div class="field"><label>سعر الوحدة</label><input type="number" name="unit_price" step="0.01" placeholder="0"></div>
+        <div class="field form-full"><label>ملاحظات</label><input name="notes" placeholder="رصيد افتتاحي"></div>
+        <div class="form-full"><button type="submit" class="btn btn-primary">تسجيل الرصيد الافتتاحي</button></div>
+      </form>
+      <p class="hint">يُسجَّل كحركة «رصيد افتتاحي» في المخزن ويُحدَّث رصيد الصنف. للتفاصيل افتح كارت الصنف من تبويب الأصناف.</p>
+    </div>
+  </div>
+</div>
+</body>
+</html>

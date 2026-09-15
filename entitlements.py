@@ -158,7 +158,7 @@ def assert_feature(feature_key: str, org: Organization | None = None) -> dict[st
 
 _PATH_FEATURE_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
     (('/purchase-orders',), 'purchasing'),
-    (('/inventory', '/stock-movements'), 'inventory'),
+    (('/inventory', '/warehouse', '/stock-movements'), 'inventory'),
     (
         (
             '/accounts',

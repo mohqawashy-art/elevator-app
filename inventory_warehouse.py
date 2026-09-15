@@ -329,3 +329,58 @@ def item_card_payload(item_id: int) -> dict:
         'movements': movement_rows,
         'movement_count': len(movement_rows),
     }
+
+
+def warehouse_page_context() -> dict:
+    """بيانات مشتركة لصفحات المخزن (رصيد افتتاحي / أذون صرف)."""
+    from inventory_custody import installation_contracts_for_custody, maintenance_contracts_for_custody
+
+    items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    technicians = (
+        tenant_query(Technician)
+        .filter(Technician.status.in_(['نشط', 'متاح', 'مشغول']))
+        .order_by(Technician.name)
+        .all()
+    )
+    return {
+        'items': items,
+        'technicians': technicians,
+        'technicians_js': [{'id': t.id, 'name': t.name} for t in technicians],
+        'maintenance_contracts_js': maintenance_contracts_for_custody(),
+        'installation_contracts_js': installation_contracts_for_custody(),
+        'today': date.today().isoformat(),
+    }
+
+
+def purchase_movements(limit: int = 300) -> list[dict]:
+    """حركات المشتريات الواردة — PO وشراء مخزني."""
+    from sqlalchemy.orm import joinedload
+
+    purchase_types = (MOVEMENT_PURCHASE, 'اضافة مخزنية (شراء)')
+    rows = (
+        tenant_query(StockMovement)
+        .options(joinedload(StockMovement.item))
+        .filter(
+            StockMovement.direction == 'وارد',
+            StockMovement.movement_type.in_(purchase_types),
+        )
+        .order_by(StockMovement.movement_date.desc(), StockMovement.id.desc())
+        .limit(limit)
+        .all()
+    )
+    tech_names = {t.id: t.name for t in tenant_query(Technician).all()}
+    out = []
+    for m in rows:
+        out.append({
+            'code': m.code or '',
+            'movement_date': str(m.movement_date or ''),
+            'movement_type': m.movement_type or '',
+            'item_code': m.item.code if m.item else '',
+            'item_name': m.item.name if m.item else '—',
+            'quantity': float(m.quantity or 0),
+            'total_value': float(m.total_value or 0),
+            'reason': m.reason or '',
+            'reference': m.reference or '',
+            'technician': tech_names.get(m.technician_id, '—') if m.technician_id else '—',
+        })
+    return out

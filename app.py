@@ -11956,7 +11956,7 @@ def inventory_opening_stock():
         quantity = float(request.form.get('quantity') or 0)
     except (TypeError, ValueError):
         flash('بيانات غير صالحة', 'error')
-        return redirect(url_for('inventory', tab='opening'))
+        return redirect(url_for('warehouse_opening'))
 
     movement_date = date.today()
     raw_date = (request.form.get('movement_date') or '').strip()
@@ -11965,7 +11965,7 @@ def inventory_opening_stock():
             movement_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
         except ValueError:
             flash('تاريخ غير صالح', 'error')
-            return redirect(url_for('inventory', tab='opening'))
+            return redirect(url_for('warehouse_opening'))
 
     unit_price = None
     raw_price = (request.form.get('unit_price') or '').strip()
@@ -11992,7 +11992,7 @@ def inventory_opening_stock():
         db.session.rollback()
         app.logger.exception('inventory_opening_stock failed')
         flash('تعذّر تسجيل رصيد أول المدة', 'error')
-    return redirect(url_for('inventory_item_card', item_id=item_id) if item_id else url_for('inventory', tab='opening'))
+    return redirect(url_for('inventory_item_card', item_id=item_id) if item_id else url_for('warehouse_opening'))
 
 
 @app.route('/inventory/issue', methods=['POST'])
@@ -12004,7 +12004,7 @@ def inventory_issue():
         quantity = float(request.form.get('quantity') or 0)
     except (TypeError, ValueError):
         flash('بيانات غير صالحة', 'error')
-        return redirect(url_for('inventory', tab='issue'))
+        return redirect(url_for('warehouse_issue_page'))
 
     target = (request.form.get('target') or '').strip()
     technician_id = request.form.get('technician_id') or None
@@ -12039,7 +12039,7 @@ def inventory_issue():
             movement_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
         except ValueError:
             flash('تاريخ غير صالح', 'error')
-            return redirect(url_for('inventory', tab='issue'))
+            return redirect(url_for('warehouse_issue_page'))
 
     try:
         movement = record_issue_authorization(
@@ -12063,7 +12063,37 @@ def inventory_issue():
         db.session.rollback()
         app.logger.exception('inventory_issue failed')
         flash('تعذّر تسجيل إذن الصرف', 'error')
-    return redirect(url_for('inventory', tab='issue'))
+    return redirect(url_for('warehouse_issue_page'))
+
+
+@app.route('/warehouse/opening')
+def warehouse_opening():
+    from inventory_warehouse import warehouse_page_context
+
+    return render_template('warehouse_opening.html', **warehouse_page_context())
+
+
+@app.route('/warehouse/issue')
+def warehouse_issue_page():
+    from inventory_warehouse import warehouse_page_context
+
+    return render_template('warehouse_issue.html', **warehouse_page_context())
+
+
+@app.route('/warehouse/purchases')
+def warehouse_purchases():
+    from inventory_warehouse import purchase_movements
+
+    rows = purchase_movements()
+    total_qty = round(sum(r['quantity'] for r in rows), 4)
+    total_val = round(sum(r['total_value'] for r in rows), 2)
+    return render_template(
+        'warehouse_purchases.html',
+        movements=rows,
+        purchase_count=len(rows),
+        purchase_total_qty=total_qty,
+        purchase_total_value=total_val,
+    )
 
 
 @app.route('/inventory/custody/settle', methods=['POST'])
