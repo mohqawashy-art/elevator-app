@@ -3058,13 +3058,6 @@ function getContractPosition(c) {
   var fromContract = coordsFromLatLng(c.lat, c.lng);
   if (fromContract) return fromContract;
 
-  if (cust) {
-    var fromCust = window.LiftCoreLocation && LiftCoreLocation.coordsForCustomer
-      ? LiftCoreLocation.coordsForCustomer(cust)
-      : coordsFromLatLng(cust.lat, cust.lng);
-    if (fromCust) return fromCust;
-  }
-
   var city = ((c.city || '') + '').trim() || (cust && (cust.city || '').trim()) || '';
   if (city && window.LiftCoreLocation && LiftCoreLocation.resolveCityCoords) {
     var cc = LiftCoreLocation.resolveCityCoords(city);
@@ -3090,7 +3083,7 @@ function buildContractLocationGroups() {
   contractsMapPool().forEach(function(c) {
     var pos = getContractPosition(c);
     if (!pos) return;
-    var key = c.customer_id + '@' + pos.lat.toFixed(6) + ',' + pos.lng.toFixed(6);
+    var key = c.id + '@' + pos.lat.toFixed(6) + ',' + pos.lng.toFixed(6);
     if (!groups[key]) {
       groups[key] = {
         pos: pos,

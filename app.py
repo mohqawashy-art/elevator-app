@@ -5795,6 +5795,8 @@ def _faults_js_list(faults):
 
 
 def _visit_map_points(visits, today_only=True):
+    from maintenance_teams import visit_coordinates
+
     today = date.today()
     points = []
     for v in visits:
@@ -5802,13 +5804,13 @@ def _visit_map_points(visits, today_only=True):
             continue
         elev = v.elevator
         cust = elev.customer if elev else None
-        coords = _coords_from_customer(cust)
+        coords = visit_coordinates(v)
         if not coords:
             continue
         points.append({
             'lat': coords[0],
             'lng': coords[1],
-            'label': f'{v.code} — {cust.name}',
+            'label': f'{v.code} — {cust.name if cust else "—"}',
             'status': v.status or '',
         })
     return points
@@ -9662,13 +9664,19 @@ def api_field_verify_proximity():
         visit = tenant_get_or_404(MaintenanceVisit, item_id)
         if not visit_geofence_required(visit):
             return jsonify({'ok': True, 'skipped': True, 'reason': 'already_started'})
+        from field_geofence import visit_site_coords
+
+        site = visit_site_coords(visit)
         cust = visit.elevator.customer if visit.elevator else None
     else:
         fault = tenant_get_or_404(Fault, item_id)
         if not fault_geofence_required(fault):
             return jsonify({'ok': True, 'skipped': True, 'reason': 'already_started'})
+        from field_geofence import fault_site_coords
+
+        site = fault_site_coords(fault)
         cust = fault.elevator.customer if fault.elevator else None
-    result = check_field_proximity(lat, lng, cust)
+    result = check_field_proximity(lat, lng, cust, site_coords=site)
     status = 200 if result.get('ok') else 403
     return jsonify(result), status
 

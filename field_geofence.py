@@ -73,6 +73,39 @@ def customer_site_coords(customer: Customer | None) -> tuple[float, float] | Non
     return parse_coords(customer.lat, customer.lng)
 
 
+def visit_site_coords(visit: MaintenanceVisit) -> tuple[float, float] | None:
+    """إحداثيات موقع الزيارة — عقد الزيارة أولاً (لا عنوان العميل العام)."""
+    from maintenance_teams import visit_coordinates
+
+    coords = visit_coordinates(visit)
+    if coords:
+        return coords
+    if visit.contract_id or visit.contract:
+        return None
+    cust = visit.elevator.customer if visit.elevator else None
+    return customer_site_coords(cust)
+
+
+def fault_site_coords(fault: Fault) -> tuple[float, float] | None:
+    """إحداثيات موقع العطل — عقد المصعد النشط أولاً."""
+    from entity_links import active_contract_for_elevator
+    from maintenance_teams import visit_site_coordinates
+
+    elev = fault.elevator
+    cust = elev.customer if elev else None
+    contract = None
+    if elev:
+        ref = fault.reported_at.date() if fault.reported_at else None
+        if ref:
+            contract = active_contract_for_elevator(elev.id, ref)
+    coords = visit_site_coordinates(contract, elev, cust)
+    if coords:
+        return coords
+    if contract:
+        return None
+    return customer_site_coords(cust)
+
+
 def haversine_m(lat1: float, lng1: float, lat2: float, lng2: float) -> float:
     r = 6371000.0
     p1, p2 = math.radians(lat1), math.radians(lat2)
@@ -125,12 +158,13 @@ def fault_geofence_required(fault: Fault) -> bool:
 def check_field_proximity(
     tech_lat: float | None,
     tech_lng: float | None,
-    customer: Customer | None,
+    customer: Customer | None = None,
     *,
+    site_coords: tuple[float, float] | None = None,
     settings: Settings | None = None,
 ) -> dict[str, Any]:
     cfg = field_geofence_config(settings)
-    site = customer_site_coords(customer)
+    site = site_coords if site_coords is not None else customer_site_coords(customer)
     if not cfg['enabled']:
         return {'ok': True, 'skipped': True, 'reason': 'disabled'}
     if not site:
@@ -147,7 +181,7 @@ def check_field_proximity(
         return {
             'ok': False,
             'error': (
-                f'أنت بعيد عن موقع العميل المسجّل ({int(round(dist))} م — المسموح {cfg["radius_m"]} م). '
+                f'أنت بعيد عن موقع الخدمة المسجّل ({int(round(dist))} م — المسموح {cfg["radius_m"]} م). '
                 'اقترب من المبنى ثم أعد المحاولة.'
             ),
             'code': 'too_far',
@@ -170,8 +204,13 @@ def assert_field_proximity_for_visit(
 ) -> None:
     if not visit_geofence_required(visit):
         return
-    cust = visit.elevator.customer if visit.elevator else None
-    result = check_field_proximity(tech_lat, tech_lng, cust, settings=settings)
+    result = check_field_proximity(
+        tech_lat,
+        tech_lng,
+        visit.elevator.customer if visit.elevator else None,
+        site_coords=visit_site_coords(visit),
+        settings=settings,
+    )
     if not result.get('ok'):
         raise PermissionError(result.get('error') or 'يجب الاقتراب من موقع العميل أولاً')
 
@@ -185,8 +224,13 @@ def assert_field_proximity_for_fault(
 ) -> None:
     if not fault_geofence_required(fault):
         return
-    cust = fault.elevator.customer if fault.elevator else None
-    result = check_field_proximity(tech_lat, tech_lng, cust, settings=settings)
+    result = check_field_proximity(
+        tech_lat,
+        tech_lng,
+        fault.elevator.customer if fault.elevator else None,
+        site_coords=fault_site_coords(fault),
+        settings=settings,
+    )
     if not result.get('ok'):
         raise PermissionError(result.get('error') or 'يجب الاقتراب من موقع العميل أولاً')
 

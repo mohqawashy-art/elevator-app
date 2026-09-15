@@ -2251,7 +2251,17 @@ def _fault_tracking_action(f: Fault, meta: dict) -> tuple[str, str, int]:
     return st or '—', 'planned', 20
 
 
-def _tracking_coords(elev, cust):
+def _tracking_coords(elev, cust, contract=None, visit_date=None):
+    from entity_links import active_contract_for_elevator
+    from maintenance_teams import visit_site_coordinates
+
+    if not contract and elev and visit_date:
+        contract = active_contract_for_elevator(elev.id, visit_date)
+    coords = visit_site_coordinates(contract, elev, cust)
+    if coords:
+        return coords
+    if contract:
+        return None
     if not cust or not cust.lat or not cust.lng:
         return None
     try:
@@ -2300,7 +2310,7 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
         action, tone, prio = _visit_tracking_action(v, meta)
         tech_label = visit_technicians_label(v)
         tech_id = v.technician_id or 0
-        coords = _tracking_coords(elev, cust)
+        coords = _tracking_coords(elev, cust, contract=getattr(v, 'contract', None), visit_date=v.visit_date)
         row = {
             'kind': 'visit',
             'kind_label': 'زيارة',
@@ -2365,12 +2375,15 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
         elev = f.elevator
         cust = elev.customer if elev else None
         ref_date = f.reported_at.date() if f.reported_at else today
-        site = _field_site_payload(elev, visit_date=ref_date, base_url=base_url)
+        from entity_links import active_contract_for_elevator
+
+        fault_contract = active_contract_for_elevator(elev.id, ref_date) if elev else None
+        site = _field_site_payload(elev, contract=fault_contract, visit_date=ref_date, base_url=base_url)
         meta = _tracking_meta_times(f.report_json, parse_fault_report_json)
         action, tone, prio = _fault_tracking_action(f, meta)
         tech = f.technician
         tech_label = tech.name if tech else '—'
-        coords = _tracking_coords(elev, cust)
+        coords = _tracking_coords(elev, cust, contract=fault_contract, visit_date=ref_date)
         row = {
             'kind': 'fault',
             'kind_label': 'عطل',

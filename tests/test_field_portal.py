@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from models import Customer, Elevator, Fault, MaintenanceVisit, Technician, db
+from models import Contract, ContractElevator, Customer, Elevator, Fault, MaintenanceVisit, Technician, db
 from operations import _field_alert_stamp, field_technician_payload
 
 from tests.conftest import ensure_test_organization, login_as
@@ -629,6 +629,76 @@ def test_field_geofence_blocks_far_fault_in_progress(client):
 
     r = client.get(f'/field/fault/{fault_id}/report?lat=24.800000&lng=46.675300')
     assert r.status_code == 403
+
+
+def test_field_geofence_uses_contract_coords_not_customer(client):
+    """عميل بموقعين (عقدان) — التحقق من GPS العقد لا عنوان العميل."""
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid, code='T-2SITE', name='فني موقعين', phone='0506667788', team='صيانة',
+        )
+        db.session.add(tech)
+        cust = Customer(
+            organization_id=oid,
+            code='C-2SITE',
+            name='عميل 52',
+            status='نشط',
+            lat='24.713600',
+            lng='46.675300',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        contract = Contract(
+            organization_id=oid,
+            code='CN-2SITE',
+            customer_id=cust.id,
+            contract_type='صيانة',
+            start_date=date.today(),
+            end_date=date.today(),
+            value=1000,
+            total=1150,
+            status='نشط',
+            lat='24.800000',
+            lng='46.675300',
+            address='موقع العقد الثاني',
+        )
+        db.session.add(contract)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-2SITE', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        db.session.add(ContractElevator(organization_id=oid, contract_id=contract.id, elevator_id=elev.id))
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='V-2SITE',
+            contract_id=contract.id,
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            visit_date=date.today(),
+            status='مُرسلة للفني',
+        )
+        db.session.add(visit)
+        db.session.commit()
+        visit_id, tech_id = visit.id, tech.id
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+
+    api_near = client.get(
+        '/api/field/verify-proximity',
+        query_string={'kind': 'visit', 'id': visit_id, 'lat': 24.800050, 'lng': 46.675350},
+    )
+    assert api_near.status_code == 200
+
+    api_far = client.get(
+        '/api/field/verify-proximity',
+        query_string={'kind': 'visit', 'id': visit_id, 'lat': 24.713650, 'lng': 46.675350},
+    )
+    assert api_far.status_code == 403
+
+    r = client.get(f'/field/visit/{visit_id}/report?lat=24.800050&lng=46.675350')
+    assert r.status_code == 200
 
 
 def test_field_assistant_can_save_visit_report_items(client):
