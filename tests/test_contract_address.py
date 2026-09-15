@@ -29,15 +29,25 @@ def test_contract_address_ignores_customer_record():
     )
     line = customer_address_line(cust, contract)
     assert 'عنوان قديم' not in line
-    assert 'شارع العقد 12' in line
+    assert 'شارع العقد 12' not in line
+    assert 'جدة' in line
     assert 'حي العقد' in line
 
 
-def test_customer_address_parts_splits_street_and_district():
+def test_customer_address_parts_splits_city_and_district():
     contract = _FakeContract(address='شارع 1', district='حي النزهة', city='جدة')
     main, tail = customer_address_parts(None, contract)
-    assert main == 'شارع 1'
+    assert main == 'جدة'
     assert tail == 'حي النزهة'
+
+
+def test_mecca_address_uses_city_and_district():
+    contract = _FakeContract(city='MECCA', district='AZIZ', address='street')
+    contract.city = '\u0645\u0643\u0629'
+    contract.district = '\u062d\u064a \u0627\u0644\u0639\u0632\u064a\u0632\u064a\u0629'
+    main, tail = customer_address_parts(None, contract)
+    assert main == '\u0645\u0643\u0629 \u0627\u0644\u0645\u0643\u0631\u0645\u0629'
+    assert tail == '\u062d\u064a \u0627\u0644\u0639\u0632\u064a\u0632\u064a\u0629'
 
 
 def test_format_phone_local_strips_country_code():

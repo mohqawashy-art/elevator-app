@@ -195,28 +195,37 @@ def company_info() -> dict:
     return info
 
 
+def contract_city_display(contract) -> str:
+    """مدينة موقع العقد للطباعة."""
+    if not contract:
+        return '—'
+    city = (contract.city or '').strip()
+    if not city:
+        return '—'
+    if city in ('مكة', 'مكة المكرمة') or (city.startswith('مكة') and 'مكرمة' in city):
+        return 'مكة المكرمة'
+    return city
+
+
 def customer_address_parts(customer, contract=None) -> tuple[str, str]:
-    """(الشارع/العنوان، المنطقة أو الحي) لسطر عنوان الطرف الثاني."""
+    """(المدينة، الحي أو المنطقة) لسطر «وعنوانه / … - …»."""
     if not contract:
         return '—', ''
-    city = (contract.city or '').strip()
-    if city in ('مكة', 'مكة المكرمة'):
-        return 'مكة المكرمــــة –', ''
-    main = (contract.address or '').strip() or '—'
+    city = contract_city_display(contract)
     tail = (contract.district or '').strip()
-    if not tail and city and city not in main:
-        tail = city
-    return main, tail
+    if city == '—' and not tail:
+        return '—', ''
+    return city, tail
 
 
 def customer_address_line(customer, contract=None) -> str:
     """سطر عنوان موقع الخدمة — من العقد فقط (لا يُجلب من صفحة العميل)."""
-    main, tail = customer_address_parts(customer, contract)
-    if main == '—' and not tail:
+    city, tail = customer_address_parts(customer, contract)
+    if city == '—' and not tail:
         return '—'
     if tail:
-        return f'{main} — {tail}'
-    return main
+        return f'{city} - {tail}'
+    return city
 
 
 def elevators_for_contract(contract: Contract) -> list[dict]:
