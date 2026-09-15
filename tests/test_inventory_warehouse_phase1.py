@@ -46,8 +46,8 @@ def test_opening_stock_batch_single_document(client):
     with client.application.app_context():
         doc_code, movements = record_opening_stock_batch(
             lines=[
-                {'item_id': id1, 'quantity': 3, 'unit_price': 4},
-                {'item_id': id2, 'quantity': 5, 'unit_price': 2},
+                {'item_id': id1, 'quantity': 3, 'unit_price': 4, 'invoice_no': 'INV-100'},
+                {'item_id': id2, 'quantity': 5, 'unit_price': 2, 'invoice_no': 'INV-200'},
             ],
         )
         db.session.commit()
@@ -56,6 +56,8 @@ def test_opening_stock_batch_single_document(client):
         refs = {(m.reference or '') for m in movements}
         assert len(refs) == 2
         assert all(r.startswith(f'opening:{doc_code}:item:') for r in refs)
+        assert any(':inv:INV-100' in r for r in refs)
+        assert any(':inv:INV-200' in r for r in refs)
         item1 = db.session.get(InventoryItem, id1)
         item2 = db.session.get(InventoryItem, id2)
         assert float(item1.current_qty or 0) == 3
@@ -202,6 +204,7 @@ def test_opening_stock_post_batch(client):
         'item_id': [str(id1), str(id2)],
         'quantity': ['2', '4'],
         'unit_price': ['10', '5'],
+        'invoice_no': ['FAT-1', 'FAT-2'],
     }, follow_redirects=True)
     assert r.status_code == 200
     assert 'OS-' in r.get_data(as_text=True)

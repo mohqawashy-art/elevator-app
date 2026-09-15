@@ -73,7 +73,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
 
         <table class="lines-table lc-table-inputs">
           <thead>
-            <tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>إجمالي قيمة الصنف</th><th></th></tr>
+            <tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>إجمالي قيمة الصنف</th><th>رقم الفاتورة</th><th></th></tr>
           </thead>
           <tbody id="lines-body">
             <tr class="line-row">
@@ -88,6 +88,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
               <td><input type="number" name="quantity" min="0.01" step="0.01" value="1" required></td>
               <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
               <td class="line-total">0.00</td>
+              <td><input type="text" name="invoice_no" placeholder="اختياري" style="direction:ltr;font-family:var(--font-en)"></td>
               <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
             </tr>
           </tbody>
@@ -112,7 +113,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
       {% if opening_documents %}
       <table class="doc-list">
         <thead>
-          <tr><th>رقم المستند</th><th>التاريخ</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>إجمالي القيمة</th><th>ملاحظات</th></tr>
+          <tr><th>رقم المستند</th><th>التاريخ</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>إجمالي القيمة</th><th>أرقام الفواتير</th><th>ملاحظات</th></tr>
         </thead>
         <tbody>
           {% for d in opening_documents %}
@@ -122,6 +123,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
             <td style="font-family:var(--font-en)">{{ d.line_count }}</td>
             <td style="font-family:var(--font-en)">{{ d.total_qty }}</td>
             <td style="font-family:var(--font-en)">{{ d.total_value }}</td>
+            <td style="font-size:11px;direction:ltr">{{ d.invoice_summary }}</td>
             <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
           </tr>
           {% endfor %}
@@ -147,6 +149,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
     <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
     <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
     <td class="line-total">0.00</td>
+    <td><input type="text" name="invoice_no" placeholder="اختياري" style="direction:ltr;font-family:var(--font-en)"></td>
     <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
   </tr>
 </template>

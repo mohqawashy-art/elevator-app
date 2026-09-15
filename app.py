@@ -11965,14 +11965,21 @@ def inventory_opening_stock():
     item_ids = request.form.getlist('item_id')
     quantities = request.form.getlist('quantity')
     unit_prices = request.form.getlist('unit_price')
+    invoice_nos = request.form.getlist('invoice_no')
     lines_data = []
-    for item_id, qty, price in zip(item_ids, quantities, unit_prices):
+    n = max(len(item_ids), len(quantities), len(unit_prices), len(invoice_nos))
+    for i in range(n):
+        item_id = item_ids[i] if i < len(item_ids) else ''
+        qty = quantities[i] if i < len(quantities) else ''
+        price = unit_prices[i] if i < len(unit_prices) else ''
+        invoice_no = invoice_nos[i] if i < len(invoice_nos) else ''
         if not item_id:
             continue
         lines_data.append({
             'item_id': item_id,
             'quantity': qty,
             'unit_price': price,
+            'invoice_no': invoice_no,
         })
     if not lines_data:
         flash('أضف صنفاً واحداً على الأقل', 'error')

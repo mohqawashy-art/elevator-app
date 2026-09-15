@@ -118,6 +118,7 @@ tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,1
           <div class="field"><label>التاريخ</label><input type="date" name="movement_date" lang="en-GB"></div>
           <div class="field"><label>الكمية</label><input type="number" name="quantity" min="0.01" step="0.01" required></div>
           <div class="field"><label>سعر الوحدة</label><input type="number" name="unit_price" step="0.01" value="{{ item.buy_price or 0 }}"></div>
+          <div class="field"><label>رقم الفاتورة</label><input type="text" name="invoice_no" placeholder="اختياري" style="direction:ltr;font-family:var(--font-en)"></div>
           <div class="field"><label>ملاحظات</label><input name="notes"></div>
           <div class="form-full"><button type="submit" class="btn btn-secondary">تسجيل رصيد افتتاحي</button></div>
         </form>
@@ -128,7 +129,7 @@ tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,1
       <div class="panel-title">حركة الصنف ({{ card.movement_count }})</div>
       <div style="overflow-x:auto">
         <table>
-          <thead><tr><th>الحركة</th><th>التاريخ</th><th>الاتجاه</th><th>النوع</th><th>الكمية</th><th>القيمة</th><th>الفني</th><th>السبب</th></tr></thead>
+          <thead><tr><th>الحركة</th><th>التاريخ</th><th>الاتجاه</th><th>النوع</th><th>الكمية</th><th>القيمة</th><th>رقم الفاتورة</th><th>الفني</th><th>السبب</th></tr></thead>
           <tbody>
           {% for m in card.movements %}
             <tr>
@@ -138,11 +139,12 @@ tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,1
               <td>{{ m.movement_type }}</td>
               <td style="font-family:var(--font-en)">{{ m.quantity }}</td>
               <td style="font-family:var(--font-en)">{{ m.total_value }}</td>
+              <td style="font-family:var(--font-en);font-size:11px">{{ m.invoice_no or '—' }}</td>
               <td>{{ m.technician }}</td>
               <td style="font-size:11px;color:var(--text3);max-width:260px;white-space:normal">{{ m.reason or '—' }}</td>
             </tr>
           {% else %}
-            <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">لا حركات مسجّلة بعد</td></tr>
+            <tr><td colspan="9" style="text-align:center;color:var(--text3);padding:20px">لا حركات مسجّلة بعد</td></tr>
           {% endfor %}
           </tbody>
         </table>

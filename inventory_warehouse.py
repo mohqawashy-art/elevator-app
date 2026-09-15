@@ -18,8 +18,27 @@ OPENING_DOC_PREFIX = 'OS-'
 OPENING_DOC_REF_PREFIX = 'opening:'
 
 
-def opening_doc_reference(doc_code: str, item_id: int) -> str:
-    return f'{OPENING_DOC_REF_PREFIX}{doc_code}:item:{int(item_id)}'
+def opening_doc_reference(doc_code: str, item_id: int, invoice_no: str = '') -> str:
+    ref = f'{OPENING_DOC_REF_PREFIX}{doc_code}:item:{int(item_id)}'
+    inv = (invoice_no or '').strip()
+    if inv:
+        ref = f'{ref}:inv:{inv[:40]}'
+    return ref[:100]
+
+
+def parse_opening_invoice(reference: str | None) -> str:
+    ref = (reference or '').strip()
+    if ':inv:' not in ref:
+        return ''
+    return ref.split(':inv:', 1)[1].strip()
+
+
+def opening_reason(doc_code: str, invoice_no: str = '') -> str:
+    reason = f'رصيد أول المدة — {doc_code}'
+    inv = (invoice_no or '').strip()
+    if inv:
+        reason = f'{reason} | فاتورة: {inv[:80]}'
+    return reason[:300]
 
 
 def next_opening_doc_code() -> str:
@@ -131,12 +150,14 @@ def record_opening_stock(
     movement_date: date | None = None,
     unit_price: float | None = None,
     notes: str = '',
+    invoice_no: str = '',
 ) -> StockMovement:
     doc_code, movements = record_opening_stock_batch(
         lines=[{
             'item_id': item_id,
             'quantity': quantity,
             'unit_price': unit_price,
+            'invoice_no': invoice_no,
         }],
         movement_date=movement_date,
         notes=notes,
@@ -183,6 +204,7 @@ def record_opening_stock_batch(
 
         item = tenant_get_or_404(InventoryItem, item_id)
         price = float(unit_price if unit_price is not None else (item.buy_price or 0))
+        invoice_no = (raw.get('invoice_no') or '').strip()
         movement = create_stock_movement(
             item=item,
             movement_date=mv_date,
@@ -190,8 +212,8 @@ def record_opening_stock_batch(
             movement_type=MOVEMENT_OPENING,
             quantity=quantity,
             unit_price=price,
-            reason=f'رصيد أول المدة — {doc_code}',
-            reference=opening_doc_reference(doc_code, item_id),
+            reason=opening_reason(doc_code, invoice_no),
+            reference=opening_doc_reference(doc_code, item_id, invoice_no),
             notes=doc_notes or None,
         )
         if price > 0 and not float(item.buy_price or 0):
@@ -368,6 +390,7 @@ def item_card_payload(item_id: int) -> dict:
             'reason': m.reason or '',
             'notes': m.notes or '',
             'reference': m.reference or '',
+            'invoice_no': parse_opening_invoice(m.reference),
         })
 
     opening_qty = round(
@@ -408,7 +431,9 @@ def opening_stock_documents(limit: int = 40) -> list[dict]:
     import re
     from collections import OrderedDict
 
-    pattern = re.compile(r'^' + re.escape(OPENING_DOC_REF_PREFIX) + r'(OS-\d+):item:\d+$')
+    pattern = re.compile(
+        r'^' + re.escape(OPENING_DOC_REF_PREFIX) + r'(OS-\d+):item:\d+(?::inv:.+)?$'
+    )
     rows = (
         tenant_query(StockMovement)
         .filter(
@@ -433,12 +458,19 @@ def opening_stock_documents(limit: int = 40) -> list[dict]:
                 'total_qty': 0.0,
                 'total_value': 0.0,
                 'notes': m.notes or '',
+                'invoice_numbers': [],
             }
         entry = docs[doc_code]
         entry['line_count'] += 1
         entry['total_qty'] = round(entry['total_qty'] + float(m.quantity or 0), 4)
         entry['total_value'] = round(entry['total_value'] + float(m.total_value or 0), 2)
-    out = list(docs.values())
+        inv = parse_opening_invoice(ref)
+        if inv and inv not in entry['invoice_numbers']:
+            entry['invoice_numbers'].append(inv)
+    out = []
+    for doc in docs.values():
+        doc['invoice_summary'] = '، '.join(doc.pop('invoice_numbers', [])) or '—'
+        out.append(doc)
     return out[:limit]
 
 
