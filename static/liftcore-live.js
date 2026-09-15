@@ -166,9 +166,9 @@
   function refreshClientSelects() {
     if (typeof global.LcClientSelect === 'undefined' || !Array.isArray(global.CUSTOMERS)) return;
     CLIENT_SELECT_WRAPS.forEach(function (pair) {
-      if (!global.LcClientSelect.isUpgraded(pair[0])) return;
+      if (!global.LcClientSelect.isUpgraded(pair[1])) return;
       var hid = global.document.getElementById(pair[1]);
-      global.LcClientSelect.setCustomers(pair[0], global.CUSTOMERS, hid ? hid.value : '');
+      global.LcClientSelect.setCustomers(pair[1], global.CUSTOMERS, hid ? hid.value : '');
     });
   }
 

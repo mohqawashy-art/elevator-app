@@ -789,7 +789,9 @@ var CUSTOMERS = {{ customers_js|tojson }};
 
 const NEXT_ELEV_CODE = {{ next_elevator_code|tojson }};
 
-if (typeof LcClientSelect !== 'undefined') {
+function initElevClientSelect() {
+  if (typeof LcClientSelect === 'undefined') return;
+  if (LcClientSelect.isUpgraded('f-client-sel')) return;
   LcClientSelect.mount({
     wrapId: 'elev-client-select',
     hiddenId: 'f-client-sel',
@@ -798,6 +800,12 @@ if (typeof LcClientSelect !== 'undefined') {
     customers: CUSTOMERS,
     onChange: fillClientData,
   });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initElevClientSelect);
+} else {
+  initElevClientSelect();
 }
 
 const MACHINE_LABELS = {
@@ -948,18 +956,24 @@ function onElevCityFilterChange() {
   filterTable();
 }
 
-function fillClientSelect(selectedId) {
+function fillClientSelect(selectedId, opts) {
+  opts = opts || {};
   var cid = selectedId != null && selectedId !== '' ? String(selectedId) : '';
   if (typeof LcClientSelect !== 'undefined') {
+    initElevClientSelect();
     LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, cid);
     var cust = CUSTOMERS.find(function (x) { return String(x.id) === cid; });
     if (!cust && cid) {
-      var e = ELEVATORS.find(function (x) { return String(x.customer_id) === cid; });
+      var label = opts.fallbackLabel || '';
+      if (!label) {
+        var e = ELEVATORS.find(function (x) { return String(x.customer_id) === cid; });
+        label = e ? elevCustomer(e) : '';
+      }
       var input = document.getElementById('f-client-sel-input');
       var hidden = document.getElementById('f-client-sel');
-      if (input && hidden && e && e.customer) {
+      if (input && hidden && label) {
         hidden.value = cid;
-        input.value = e.customer;
+        input.value = label;
       }
     }
     return;
@@ -1447,7 +1461,7 @@ function editElevator(id) {
   if (!e) return;
   document.getElementById('modal-title').textContent = 'تعديل بيانات المصعد';
   document.getElementById('modal-add').dataset.editId = id;
-  fillClientSelect(e.customer_id);
+  fillClientSelect(e.customer_id, { fallbackLabel: elevCustomer(e) });
   document.getElementById('f-elev-code').value = e.code;
   document.getElementById('f-building').value = e.building || '';
   document.getElementById('f-elev-city').value = e.city || '';
