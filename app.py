@@ -11949,14 +11949,7 @@ def inventory_item_card(item_id):
 
 @app.route('/inventory/opening-stock', methods=['POST'])
 def inventory_opening_stock():
-    from inventory_warehouse import record_opening_stock
-
-    try:
-        item_id = int(request.form.get('item_id') or 0)
-        quantity = float(request.form.get('quantity') or 0)
-    except (TypeError, ValueError):
-        flash('بيانات غير صالحة', 'error')
-        return redirect(url_for('warehouse_opening'))
+    from inventory_warehouse import record_opening_stock_batch
 
     movement_date = date.today()
     raw_date = (request.form.get('movement_date') or '').strip()
@@ -11967,24 +11960,37 @@ def inventory_opening_stock():
             flash('تاريخ غير صالح', 'error')
             return redirect(url_for('warehouse_opening'))
 
-    unit_price = None
-    raw_price = (request.form.get('unit_price') or '').strip()
-    if raw_price:
-        try:
-            unit_price = float(raw_price)
-        except (TypeError, ValueError):
-            unit_price = None
+    notes = (request.form.get('notes') or '').strip()
+    return_to = (request.form.get('return_to') or '').strip()
+    item_ids = request.form.getlist('item_id')
+    quantities = request.form.getlist('quantity')
+    unit_prices = request.form.getlist('unit_price')
+    lines_data = []
+    for item_id, qty, price in zip(item_ids, quantities, unit_prices):
+        if not item_id:
+            continue
+        lines_data.append({
+            'item_id': item_id,
+            'quantity': qty,
+            'unit_price': price,
+        })
+    if not lines_data:
+        flash('أضف صنفاً واحداً على الأقل', 'error')
+        return redirect(url_for('warehouse_opening'))
 
     try:
-        movement = record_opening_stock(
-            item_id=item_id,
-            quantity=quantity,
+        doc_code, movements = record_opening_stock_batch(
+            lines=lines_data,
             movement_date=movement_date,
-            unit_price=unit_price,
-            notes=(request.form.get('notes') or '').strip(),
+            notes=notes,
         )
         db.session.commit()
-        flash(f'تم تسجيل رصيد افتتاحي — {movement.code}', 'success')
+        flash(
+            f'تم حفظ مستند رصيد أول المدة {doc_code} — {len(movements)} صنف',
+            'success',
+        )
+        if return_to == 'item' and len(movements) == 1:
+            return redirect(url_for('inventory_item_card', item_id=movements[0].item_id))
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), 'error')
@@ -11992,7 +11998,7 @@ def inventory_opening_stock():
         db.session.rollback()
         app.logger.exception('inventory_opening_stock failed')
         flash('تعذّر تسجيل رصيد أول المدة', 'error')
-    return redirect(url_for('inventory_item_card', item_id=item_id) if item_id else url_for('warehouse_opening'))
+    return redirect(url_for('warehouse_opening'))
 
 
 @app.route('/inventory/issue', methods=['POST'])

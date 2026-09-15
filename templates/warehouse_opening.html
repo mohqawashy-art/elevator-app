@@ -7,19 +7,31 @@
 <title>LiftCore — رصيد أول المدة</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--sidebar-w:240px;--header-h:60px;--font-ar:'IBM Plex Sans Arabic',sans-serif;--r:10px;--r-sm:7px}
+:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;--r:10px;--r-sm:7px}
 body{background:var(--bg);color:var(--text1);min-height:100vh}
 .main{flex:1;display:flex;flex-direction:column;min-width:0}
 .content{flex:1;padding:24px}
-.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;max-width:720px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px}
 .panel-title{font-size:16px;font-weight:600;margin-bottom:14px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-full{grid-column:1/-1}
 .field label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px}
-.field input,.field select{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
-.btn{display:inline-flex;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:var(--font-ar);font-size:13px}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.doc-no{font-family:var(--font-en);color:var(--accent);font-weight:700;font-size:15px}
+.lines-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+.lines-table th{padding:8px 10px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)}
+.lines-table td{padding:8px 10px;border-bottom:1px solid rgba(100,160,255,.06);vertical-align:middle}
+.lines-table select,.lines-table input{width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:var(--font-ar);font-size:13px;text-decoration:none}
 .btn-primary{background:var(--accent);color:#fff}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-sm{padding:6px 12px;font-size:12px}
 .hint{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
+table.doc-list{width:100%;border-collapse:collapse;font-size:13px}
+table.doc-list th{padding:10px 12px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px}
+table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
+.td-code{font-family:var(--font-en);color:var(--accent);font-weight:600}
+.empty-msg{color:var(--text3);font-size:13px;padding:12px 0}
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
@@ -36,27 +48,122 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
   {% include 'partials/app_header.html' %}
   <div class="content">
     {% include 'partials/flash_messages.html' %}
+
     <div class="panel">
-      <div class="panel-title">تسجيل رصيد أول المدة</div>
-      <form method="post" action="/inventory/opening-stock" class="form-grid">
-        <div class="field form-full">
-          <label>الصنف *</label>
-          <select name="item_id" required>
-            <option value="">— اختر صنفاً —</option>
-            {% for i in items %}
-            <option value="{{ i.id }}">{{ i.code }} — {{ i.name }}</option>
-            {% endfor %}
-          </select>
+      <div class="panel-title">مستند رصيد أول المدة</div>
+      <form method="post" action="/inventory/opening-stock" id="opening-form">
+        <div class="form-grid">
+          <div class="field">
+            <label>رقم المستند (تلقائي)</label>
+            <div class="doc-no">{{ next_opening_doc }}</div>
+          </div>
+          <div class="field">
+            <label>التاريخ</label>
+            <input type="date" name="movement_date" lang="en-GB" value="{{ today }}">
+          </div>
+          <div class="field form-full">
+            <label>ملاحظات المستند</label>
+            <textarea name="notes" rows="2" placeholder="رصيد افتتاحي — اختياري"></textarea>
+          </div>
         </div>
-        <div class="field"><label>التاريخ</label><input type="date" name="movement_date" id="open-date" lang="en-GB" value="{{ today }}"></div>
-        <div class="field"><label>الكمية *</label><input type="number" name="quantity" min="0.01" step="0.01" required></div>
-        <div class="field"><label>سعر الوحدة</label><input type="number" name="unit_price" step="0.01" placeholder="0"></div>
-        <div class="field form-full"><label>ملاحظات</label><input name="notes" placeholder="رصيد افتتاحي"></div>
-        <div class="form-full"><button type="submit" class="btn btn-primary">تسجيل الرصيد الافتتاحي</button></div>
+
+        <table class="lines-table lc-table-inputs">
+          <thead>
+            <tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th></th></tr>
+          </thead>
+          <tbody id="lines-body">
+            <tr class="line-row">
+              <td>
+                <select name="item_id" required>
+                  <option value="">— اختر صنفاً —</option>
+                  {% for i in items %}
+                  <option value="{{ i.id }}" data-price="{{ i.buy_price or 0 }}">{{ i.code }} — {{ i.name }}</option>
+                  {% endfor %}
+                </select>
+              </td>
+              <td><input type="number" name="quantity" min="0.01" step="0.01" value="1" required></td>
+              <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
+              <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ إضافة صنف</button>
+          <button type="submit" class="btn btn-primary">حفظ المستند</button>
+        </div>
       </form>
-      <p class="hint">يُسجَّل كحركة «رصيد افتتاحي» في المخزن ويُحدَّث رصيد الصنف. للتفاصيل افتح كارت الصنف من تبويب الأصناف.</p>
+      <p class="hint">أضف كل الأصناف في جدول واحد ثم احفظ مرة واحدة. يُولَّد رقم مستند <strong>OS-xxxx</strong> ويُسجَّل لكل صنف حركة مخزنية مرتبطة به.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">مستندات رصيد أول المدة ({{ opening_documents|length }})</div>
+      {% if opening_documents %}
+      <table class="doc-list">
+        <thead>
+          <tr><th>رقم المستند</th><th>التاريخ</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>إجمالي القيمة</th><th>ملاحظات</th></tr>
+        </thead>
+        <tbody>
+          {% for d in opening_documents %}
+          <tr>
+            <td class="td-code">{{ d.code }}</td>
+            <td>{{ d.movement_date }}</td>
+            <td style="font-family:var(--font-en)">{{ d.line_count }}</td>
+            <td style="font-family:var(--font-en)">{{ d.total_qty }}</td>
+            <td style="font-family:var(--font-en)">{{ d.total_value }}</td>
+            <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty-msg">لا مستندات مسجّلة بعد.</p>
+      {% endif %}
     </div>
   </div>
 </div>
+
+<template id="line-tpl">
+  <tr class="line-row">
+    <td>
+      <select name="item_id">
+        <option value="">— اختر صنفاً —</option>
+        {% for i in items %}
+        <option value="{{ i.id }}" data-price="{{ i.buy_price or 0 }}">{{ i.code }} — {{ i.name }}</option>
+        {% endfor %}
+      </select>
+    </td>
+    <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
+    <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
+    <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
+  </tr>
+</template>
+
+<script>
+function bindLine(row) {
+  var sel = row.querySelector('select[name="item_id"]');
+  var price = row.querySelector('input[name="unit_price"]');
+  if (!sel || !price || sel.dataset.bound) return;
+  sel.dataset.bound = '1';
+  sel.addEventListener('change', function () {
+    var opt = sel.options[sel.selectedIndex];
+    if (opt && opt.dataset.price) price.value = opt.dataset.price;
+  });
+}
+function addLine() {
+  var tpl = document.getElementById('line-tpl');
+  var body = document.getElementById('lines-body');
+  if (!tpl || !body) return;
+  var row = tpl.content.firstElementChild.cloneNode(true);
+  body.appendChild(row);
+  bindLine(row);
+}
+function removeLine(btn) {
+  var body = document.getElementById('lines-body');
+  if (!body || body.querySelectorAll('.line-row').length <= 1) return;
+  btn.closest('.line-row').remove();
+}
+document.querySelectorAll('.line-row').forEach(bindLine);
+</script>
 </body>
 </html>

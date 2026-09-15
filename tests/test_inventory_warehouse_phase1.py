@@ -5,6 +5,7 @@ from inventory_warehouse import (
     MOVEMENT_OPENING,
     record_issue_authorization,
     record_opening_stock,
+    record_opening_stock_batch,
     record_purchase_receipt_movements,
     validate_outbound_stock,
 )
@@ -31,6 +32,50 @@ def test_opening_stock_creates_movement(client):
         db.session.refresh(item)
         assert m.movement_type == MOVEMENT_OPENING
         assert item.current_qty == 7
+        assert 'OS-' in (m.reason or '')
+        assert (m.reference or '').startswith('opening:OS-')
+
+
+def test_opening_stock_batch_single_document(client):
+    with client.application.app_context():
+        item1 = _item(code='#WH-B1', qty=0)
+        item2 = _item(code='#WH-B2', qty=0)
+        db.session.commit()
+        id1, id2 = item1.id, item2.id
+
+    with client.application.app_context():
+        doc_code, movements = record_opening_stock_batch(
+            lines=[
+                {'item_id': id1, 'quantity': 3, 'unit_price': 4},
+                {'item_id': id2, 'quantity': 5, 'unit_price': 2},
+            ],
+        )
+        db.session.commit()
+        assert doc_code.startswith('OS-')
+        assert len(movements) == 2
+        refs = {(m.reference or '') for m in movements}
+        assert len(refs) == 2
+        assert all(r.startswith(f'opening:{doc_code}:item:') for r in refs)
+        item1 = db.session.get(InventoryItem, id1)
+        item2 = db.session.get(InventoryItem, id2)
+        assert float(item1.current_qty or 0) == 3
+        assert float(item2.current_qty or 0) == 5
+
+
+def test_opening_stock_batch_rejects_duplicate_item(client):
+    with client.application.app_context():
+        item = _item(qty=0)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        with __import__('pytest').raises(ValueError, match='مكرر'):
+            record_opening_stock_batch(
+                lines=[
+                    {'item_id': item_id, 'quantity': 1},
+                    {'item_id': item_id, 'quantity': 2},
+                ],
+            )
 
 
 def test_issue_rejects_insufficient_stock(client):
@@ -131,7 +176,7 @@ def test_warehouse_department_pages(client):
 
     login_as(client, 'admin')
     for path, needle in (
-        ('/warehouse/opening', 'رصيد أول المدة'),
+        ('/warehouse/opening', 'مستند رصيد أول المدة'),
         ('/warehouse/issue', 'إذن صرف'),
         ('/warehouse/purchases', 'المشتريات'),
         ('/inventory', 'الأصناف'),
@@ -139,3 +184,30 @@ def test_warehouse_department_pages(client):
         r = client.get(path)
         assert r.status_code == 200, path
         assert needle in r.get_data(as_text=True), path
+
+
+def test_opening_stock_post_batch(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        item1 = _item(code='#WH-P1', qty=0)
+        item2 = _item(code='#WH-P2', qty=0)
+        db.session.commit()
+        id1, id2 = item1.id, item2.id
+
+    r = client.post('/inventory/opening-stock', data={
+        'movement_date': date.today().isoformat(),
+        'notes': 'افتتاحي مجمّع',
+        'item_id': [str(id1), str(id2)],
+        'quantity': ['2', '4'],
+        'unit_price': ['10', '5'],
+    }, follow_redirects=True)
+    assert r.status_code == 200
+    assert 'OS-' in r.get_data(as_text=True)
+    with client.application.app_context():
+        item1 = db.session.get(InventoryItem, id1)
+        item2 = db.session.get(InventoryItem, id2)
+        assert float(item1.current_qty or 0) == 2
+        assert float(item2.current_qty or 0) == 4
+        assert StockMovement.query.filter_by(item_id=id1).count() == 1

@@ -14,6 +14,26 @@ MOVEMENT_ISSUE_TECH = 'صرف لفني'
 MOVEMENT_ISSUE_CUSTODY = 'صرف عهدة للفني'
 MOVEMENT_ISSUE_SITE = 'صرف لمشروع / عميل'
 
+OPENING_DOC_PREFIX = 'OS-'
+OPENING_DOC_REF_PREFIX = 'opening:'
+
+
+def opening_doc_reference(doc_code: str, item_id: int) -> str:
+    return f'{OPENING_DOC_REF_PREFIX}{doc_code}:item:{int(item_id)}'
+
+
+def next_opening_doc_code() -> str:
+    import re
+
+    max_num = 0
+    pattern = re.compile(r'^' + re.escape(OPENING_DOC_REF_PREFIX) + re.escape(OPENING_DOC_PREFIX) + r'(\d+):item:')
+    for row in tenant_query(StockMovement).with_entities(StockMovement.reference).all():
+        ref = (row[0] or '').strip()
+        match = pattern.match(ref)
+        if match:
+            max_num = max(max_num, int(match.group(1)))
+    return f'{OPENING_DOC_PREFIX}{str(max_num + 1).zfill(4)}'
+
 ISSUE_TARGET_CLIENT = 'client'
 ISSUE_TARGET_PROJECT = 'project'
 ISSUE_TARGET_CUSTODY = 'custody'
@@ -112,24 +132,76 @@ def record_opening_stock(
     unit_price: float | None = None,
     notes: str = '',
 ) -> StockMovement:
-    item = tenant_get_or_404(InventoryItem, item_id)
-    qty = float(quantity or 0)
-    if qty <= 0:
-        raise ValueError('أدخل كمية افتتاحية أكبر من صفر')
-    price = float(unit_price if unit_price is not None else (item.buy_price or 0))
-    movement = create_stock_movement(
-        item=item,
-        movement_date=movement_date or date.today(),
-        direction='وارد',
-        movement_type=MOVEMENT_OPENING,
-        quantity=qty,
-        unit_price=price,
-        reason='رصيد أول المدة',
+    doc_code, movements = record_opening_stock_batch(
+        lines=[{
+            'item_id': item_id,
+            'quantity': quantity,
+            'unit_price': unit_price,
+        }],
+        movement_date=movement_date,
         notes=notes,
     )
-    if price > 0 and not float(item.buy_price or 0):
-        item.buy_price = price
-    return movement
+    return movements[0]
+
+
+def record_opening_stock_batch(
+    *,
+    lines: list[dict],
+    movement_date: date | None = None,
+    notes: str = '',
+) -> tuple[str, list[StockMovement]]:
+    """تسجيل مستند رصيد أول المدة — عدة أصناف برقم مستند واحد OS-xxxx."""
+    if not lines:
+        raise ValueError('أضف صنفاً واحداً على الأقل')
+
+    mv_date = movement_date or date.today()
+    doc_notes = (notes or '').strip()
+    doc_code = next_opening_doc_code()
+    movements: list[StockMovement] = []
+    seen_items: set[int] = set()
+
+    for raw in lines:
+        try:
+            item_id = int(raw.get('item_id') or 0)
+            quantity = float(raw.get('quantity') or 0)
+        except (TypeError, ValueError):
+            raise ValueError('بيانات السطر غير صالحة') from None
+        if item_id <= 0 or quantity <= 0:
+            continue
+        if item_id in seen_items:
+            item = tenant_get_or_404(InventoryItem, item_id)
+            name = (item.name or item.code or 'الصنف').strip()
+            raise ValueError(f'الصنف «{name}» مكرر في المستند')
+        seen_items.add(item_id)
+
+        unit_price = raw.get('unit_price')
+        if unit_price not in (None, ''):
+            try:
+                unit_price = float(unit_price)
+            except (TypeError, ValueError):
+                unit_price = None
+
+        item = tenant_get_or_404(InventoryItem, item_id)
+        price = float(unit_price if unit_price is not None else (item.buy_price or 0))
+        movement = create_stock_movement(
+            item=item,
+            movement_date=mv_date,
+            direction='وارد',
+            movement_type=MOVEMENT_OPENING,
+            quantity=quantity,
+            unit_price=price,
+            reason=f'رصيد أول المدة — {doc_code}',
+            reference=opening_doc_reference(doc_code, item_id),
+            notes=doc_notes or None,
+        )
+        if price > 0 and not float(item.buy_price or 0):
+            item.buy_price = price
+        movements.append(movement)
+
+    if not movements:
+        raise ValueError('أضف صنفاً واحداً على الأقل بكمية أكبر من صفر')
+
+    return doc_code, movements
 
 
 def record_purchase_receipt_movements(order) -> bool:
@@ -331,6 +403,45 @@ def item_card_payload(item_id: int) -> dict:
     }
 
 
+def opening_stock_documents(limit: int = 40) -> list[dict]:
+    """مستندات رصيد أول المدة المجمّعة برقم OS-xxxx."""
+    import re
+    from collections import OrderedDict
+
+    pattern = re.compile(r'^' + re.escape(OPENING_DOC_REF_PREFIX) + r'(OS-\d+):item:\d+$')
+    rows = (
+        tenant_query(StockMovement)
+        .filter(
+            StockMovement.movement_type == MOVEMENT_OPENING,
+            StockMovement.direction == 'وارد',
+            StockMovement.reference.isnot(None),
+        )
+        .order_by(StockMovement.movement_date.desc(), StockMovement.id.desc())
+        .all()
+    )
+    docs: OrderedDict[str, dict] = OrderedDict()
+    for m in rows:
+        ref = (m.reference or '').strip()
+        if not pattern.match(ref):
+            continue
+        doc_code = ref.split(':')[1]
+        if doc_code not in docs:
+            docs[doc_code] = {
+                'code': doc_code,
+                'movement_date': str(m.movement_date or ''),
+                'line_count': 0,
+                'total_qty': 0.0,
+                'total_value': 0.0,
+                'notes': m.notes or '',
+            }
+        entry = docs[doc_code]
+        entry['line_count'] += 1
+        entry['total_qty'] = round(entry['total_qty'] + float(m.quantity or 0), 4)
+        entry['total_value'] = round(entry['total_value'] + float(m.total_value or 0), 2)
+    out = list(docs.values())
+    return out[:limit]
+
+
 def warehouse_page_context() -> dict:
     """بيانات مشتركة لصفحات المخزن (رصيد افتتاحي / أذون صرف)."""
     from inventory_custody import installation_contracts_for_custody, maintenance_contracts_for_custody
@@ -349,6 +460,8 @@ def warehouse_page_context() -> dict:
         'maintenance_contracts_js': maintenance_contracts_for_custody(),
         'installation_contracts_js': installation_contracts_for_custody(),
         'today': date.today().isoformat(),
+        'opening_documents': opening_stock_documents(),
+        'next_opening_doc': next_opening_doc_code(),
     }
 
 
