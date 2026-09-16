@@ -5,12 +5,15 @@ from inventory_warehouse import (
     MOVEMENT_OPENING,
     MOVEMENT_PURCHASE,
     DEFAULT_PURCHASE_TAX_PCT,
+    issue_document_for_edit,
+    issue_print_payload,
     purchase_invoice_for_edit,
     record_issue_authorization,
     record_issue_batch,
     record_opening_stock,
     record_opening_stock_batch,
     record_purchase_invoice_batch,
+    update_issue_batch,
     update_purchase_invoice_batch,
     validate_outbound_stock,
 )
@@ -443,3 +446,103 @@ def test_purchase_invoice_edit_post(client):
     with client.application.app_context():
         item = db.session.get(InventoryItem, item_id)
         assert float(item.current_qty or 0) == 4
+
+
+def test_issue_batch_update(client):
+    with client.application.app_context():
+        item1 = _item(code='#WH-IU1', qty=10)
+        item2 = _item(code='#WH-IU2', qty=8)
+        db.session.commit()
+        id1, id2 = item1.id, item2.id
+
+    with client.application.app_context():
+        doc_code, _ = record_issue_batch(
+            target='consumable',
+            lines=[{'item_id': id1, 'quantity': 2}],
+        )
+        db.session.commit()
+
+    with client.application.app_context():
+        update_issue_batch(
+            doc_code,
+            target='consumable',
+            lines=[
+                {'item_id': id1, 'quantity': 3},
+                {'item_id': id2, 'quantity': 1},
+            ],
+        )
+        db.session.commit()
+        item1 = db.session.get(InventoryItem, id1)
+        item2 = db.session.get(InventoryItem, id2)
+        assert float(item1.current_qty or 0) == 7
+        assert float(item2.current_qty or 0) == 7
+        edit = issue_document_for_edit(doc_code)
+        assert edit is not None
+        assert len(edit['lines']) == 2
+
+
+def test_issue_print_payload(client):
+    with client.application.app_context():
+        item = _item(code='#WH-IPR', qty=5)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, _ = record_issue_batch(
+            target='consumable',
+            lines=[{'item_id': item_id, 'quantity': 2}],
+        )
+        db.session.commit()
+        payload = issue_print_payload(doc_code)
+        assert payload is not None
+        assert payload['doc_code'] == doc_code
+        assert payload['line_count'] == 1
+
+
+def test_issue_edit_requires_admin(client):
+    from tests.conftest import login_as
+
+    with client.application.app_context():
+        item = _item(code='#WH-ADM', qty=4)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, _ = record_issue_batch(
+            target='consumable',
+            lines=[{'item_id': item_id, 'quantity': 1}],
+        )
+        db.session.commit()
+
+    login_as(client, 'viewer')
+    r = client.get(f'/warehouse/issue?edit={doc_code}', follow_redirects=True)
+    assert r.status_code == 200
+    assert 'مدير النظام' in r.get_data(as_text=True)
+
+    login_as(client, 'admin')
+    r = client.get(f'/warehouse/issue?edit={doc_code}')
+    assert r.status_code == 200
+    assert 'تعديل إذن صرف' in r.get_data(as_text=True)
+
+
+def test_issue_print_route(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        item = _item(code='#WH-PRT', qty=3)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, _ = record_issue_batch(
+            target='consumable',
+            lines=[{'item_id': item_id, 'quantity': 1}],
+        )
+        db.session.commit()
+
+    r = client.get(f'/warehouse/issue/print/{doc_code}')
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert doc_code in html
+    assert 'إذن صرف بضاعة' in html

@@ -12193,7 +12193,7 @@ def inventory_purchase_invoice():
 
 @app.route('/inventory/issue', methods=['POST'])
 def inventory_issue():
-    from inventory_warehouse import record_issue_authorization, record_issue_batch
+    from inventory_warehouse import record_issue_authorization, record_issue_batch, update_issue_batch
 
     target = (request.form.get('target') or '').strip()
     technician_id = request.form.get('technician_id') or None
@@ -12232,10 +12232,14 @@ def inventory_issue():
 
     notes = (request.form.get('notes') or '').strip()
     return_to = (request.form.get('return_to') or '').strip()
+    edit_doc_code = (request.form.get('edit_doc_code') or '').strip()
     item_ids = request.form.getlist('item_id')
     quantities = request.form.getlist('quantity')
 
     if request.form.get('batch') == '1':
+        if edit_doc_code and not require_admin():
+            flash('تعديل إذن الصرف متاح لمدير النظام فقط', 'error')
+            return redirect(url_for('warehouse_issue_page'))
         lines_data = []
         n = max(len(item_ids), len(quantities))
         for i in range(n):
@@ -12246,29 +12250,41 @@ def inventory_issue():
             lines_data.append({'item_id': item_id, 'quantity': qty})
         if not lines_data:
             flash('أضف صنفاً واحداً على الأقل', 'error')
+            if edit_doc_code:
+                return redirect(url_for('warehouse_issue_page', edit=edit_doc_code))
             return redirect(url_for('warehouse_issue_page'))
+        batch_kwargs = dict(
+            lines=lines_data,
+            target=target,
+            movement_date=movement_date,
+            technician_id=technician_id,
+            contract_id=contract_id,
+            install_contract_id=install_contract_id,
+            notes=notes,
+        )
         try:
-            doc_code, movements = record_issue_batch(
-                lines=lines_data,
-                target=target,
-                movement_date=movement_date,
-                technician_id=technician_id,
-                contract_id=contract_id,
-                install_contract_id=install_contract_id,
-                notes=notes,
-            )
+            if edit_doc_code:
+                doc_code, movements = update_issue_batch(edit_doc_code, **batch_kwargs)
+                action = 'تحديث'
+            else:
+                doc_code, movements = record_issue_batch(**batch_kwargs)
+                action = 'حفظ'
             db.session.commit()
             flash(
-                f'تم حفظ إذن الصرف {doc_code} — {len(movements)} صنف',
+                f'تم {action} إذن الصرف {doc_code} — {len(movements)} صنف',
                 'success',
             )
         except ValueError as exc:
             db.session.rollback()
             flash(str(exc), 'error')
+            if edit_doc_code:
+                return redirect(url_for('warehouse_issue_page', edit=edit_doc_code))
         except Exception:
             db.session.rollback()
             app.logger.exception('inventory_issue batch failed')
             flash('تعذّر تسجيل إذن الصرف', 'error')
+            if edit_doc_code:
+                return redirect(url_for('warehouse_issue_page', edit=edit_doc_code))
         return redirect(url_for('warehouse_issue_page'))
 
     try:
@@ -12313,9 +12329,40 @@ def warehouse_opening():
 
 @app.route('/warehouse/issue')
 def warehouse_issue_page():
-    from inventory_warehouse import warehouse_page_context
+    from inventory_warehouse import issue_document_for_edit, warehouse_page_context
 
-    return render_template('warehouse_issue.html', **warehouse_page_context())
+    ctx = warehouse_page_context()
+    edit_code = (request.args.get('edit') or '').strip()
+    edit_document = None
+    if edit_code:
+        if not require_admin():
+            flash('تعديل إذن الصرف متاح لمدير النظام فقط', 'error')
+        else:
+            edit_document = issue_document_for_edit(edit_code)
+            if edit_document is None:
+                flash(f'إذن الصرف «{edit_code}» غير موجود', 'error')
+    return render_template(
+        'warehouse_issue.html',
+        edit_document=edit_document,
+        **ctx,
+    )
+
+
+@app.route('/warehouse/issue/print/<doc_code>')
+def warehouse_issue_print(doc_code):
+    from inventory_warehouse import issue_print_payload
+
+    payload = issue_print_payload((doc_code or '').strip())
+    if not payload:
+        flash('إذن الصرف غير موجود', 'error')
+        return redirect(url_for('warehouse_issue_page'))
+    settings = get_app_settings()
+    return render_template(
+        'warehouse_issue_print.html',
+        brand_logo_url=brand_logo_url(settings),
+        company_settings=settings,
+        **payload,
+    )
 
 
 @app.route('/warehouse/purchases')

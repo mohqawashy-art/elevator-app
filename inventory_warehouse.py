@@ -37,6 +37,7 @@ def round_inventory_money(value: float) -> float:
 
 ISSUE_DOC_PREFIX = 'IS-'
 ISSUE_DOC_REF_PREFIX = 'issue:'
+ISSUE_META_MARKER = '\n---LC-IS-META---\n'
 
 
 def opening_doc_reference(doc_code: str, item_id: int, invoice_no: str = '') -> str:
@@ -397,6 +398,13 @@ ISSUE_TARGETS = (
     ISSUE_TARGET_CUSTODY,
     ISSUE_TARGET_CONSUMABLE,
 )
+
+ISSUE_TARGET_LABELS = {
+    ISSUE_TARGET_CLIENT: 'تحميل على عميل — عقد صيانة',
+    ISSUE_TARGET_PROJECT: 'تحميل على مشروع — عقد تركيب',
+    ISSUE_TARGET_CUSTODY: 'عهدة فني (قطع غيار)',
+    ISSUE_TARGET_CONSUMABLE: 'مستهلكات صيانة',
+}
 
 
 def available_stock_qty(item: InventoryItem | None) -> float:
@@ -772,6 +780,210 @@ def issue_doc_reason(doc_code: str, detail: str) -> str:
     return f'إذن صرف — {doc_code} | {detail}'[:300]
 
 
+def issue_doc_code_from_reference(reference: str | None) -> str:
+    ref = (reference or '').strip()
+    if not ref.startswith(ISSUE_DOC_REF_PREFIX):
+        return ''
+    parts = ref.split(':')
+    return parts[1] if len(parts) >= 2 else ''
+
+
+def parse_issue_user_notes(notes: str | None) -> str:
+    text = (notes or '').strip()
+    if ISSUE_META_MARKER in text:
+        return text.split(ISSUE_META_MARKER, 1)[0].strip()
+    return text
+
+
+def parse_issue_meta(notes: str | None) -> dict:
+    import json
+
+    text = notes or ''
+    if ISSUE_META_MARKER not in text:
+        return {}
+    raw = text.split(ISSUE_META_MARKER, 1)[1].strip()
+    try:
+        data = json.loads(raw)
+        return data if isinstance(data, dict) else {}
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return {}
+
+
+def build_issue_document_notes(user_notes: str, meta: dict | None) -> str | None:
+    import json
+
+    base = (user_notes or '').strip()
+    if meta:
+        clean_meta = {
+            key: meta[key]
+            for key in ('target', 'technician_id', 'contract_id', 'install_contract_id')
+            if key in meta and meta[key] not in (None, '')
+        }
+        if clean_meta:
+            base = (base + ISSUE_META_MARKER + json.dumps(clean_meta, ensure_ascii=False)).strip()
+    return base or None
+
+
+def issue_document_movements(doc_code: str) -> list[StockMovement]:
+    code = (doc_code or '').strip()
+    if not code.startswith(ISSUE_DOC_PREFIX):
+        return []
+    prefix = f'{ISSUE_DOC_REF_PREFIX}{code}:item:'
+    return (
+        tenant_query(StockMovement)
+        .filter(
+            StockMovement.direction == 'صادر',
+            StockMovement.reference.like(f'{prefix}%'),
+        )
+        .order_by(StockMovement.id)
+        .all()
+    )
+
+
+def reverse_issue_document(doc_code: str) -> int:
+    movements = issue_document_movements(doc_code)
+    if not movements:
+        raise ValueError(f'إذن الصرف «{doc_code}» غير موجود')
+    for movement in movements:
+        item = db.session.get(InventoryItem, movement.item_id)
+        if item:
+            adjust_inventory_qty(item, movement.direction, movement.quantity, reverse=True)
+        db.session.delete(movement)
+    return len(movements)
+
+
+def _match_contract_id_from_detail(detail: str) -> int | None:
+    from models import Contract
+
+    code = (detail or '').split('—', 1)[0].strip()
+    if not code:
+        return None
+    row = tenant_query(Contract).filter(Contract.code == code).first()
+    return int(row.id) if row else None
+
+
+def _match_install_contract_id_from_detail(detail: str) -> int | None:
+    from installation.models import InstallContract
+
+    code = (detail or '').split('—', 1)[0].strip()
+    if not code:
+        return None
+    row = tenant_query(InstallContract).filter(InstallContract.code == code).first()
+    return int(row.id) if row else None
+
+
+def infer_issue_edit_context(movements: list[StockMovement]) -> dict:
+    first = movements[0]
+    meta = parse_issue_meta(first.notes)
+    if meta.get('target'):
+        return meta
+    reason = first.reason or ''
+    detail = reason.split('|', 1)[1].strip() if '|' in reason else reason
+    target = ISSUE_TARGET_CONSUMABLE
+    contract_id = None
+    install_contract_id = None
+    movement_type = (first.movement_type or '').strip()
+    if movement_type == MOVEMENT_ISSUE_CUSTODY:
+        target = ISSUE_TARGET_CUSTODY
+    elif movement_type == MOVEMENT_ISSUE_SITE:
+        contract_id = _match_contract_id_from_detail(detail)
+        if contract_id:
+            target = ISSUE_TARGET_CLIENT
+        else:
+            install_contract_id = _match_install_contract_id_from_detail(detail)
+            target = ISSUE_TARGET_PROJECT if install_contract_id else ISSUE_TARGET_CONSUMABLE
+    return {
+        'target': target,
+        'technician_id': first.technician_id,
+        'contract_id': contract_id,
+        'install_contract_id': install_contract_id,
+    }
+
+
+def issue_document_for_edit(doc_code: str) -> dict | None:
+    movements = issue_document_movements(doc_code)
+    if not movements:
+        return None
+    first = movements[0]
+    ctx = infer_issue_edit_context(movements)
+    reason = first.reason or ''
+    detail = reason.split('|', 1)[1].strip() if '|' in reason else reason
+    lines = [
+        {
+            'item_id': movement.item_id,
+            'quantity': float(movement.quantity or 0),
+        }
+        for movement in movements
+    ]
+    return {
+        'code': doc_code,
+        'movement_date': str(first.movement_date or ''),
+        'target': ctx.get('target') or ISSUE_TARGET_CONSUMABLE,
+        'technician_id': ctx.get('technician_id'),
+        'contract_id': ctx.get('contract_id'),
+        'install_contract_id': ctx.get('install_contract_id'),
+        'notes': parse_issue_user_notes(first.notes),
+        'detail': detail or '—',
+        'movement_type': first.movement_type or '—',
+        'lines': lines,
+    }
+
+
+def issue_print_payload(doc_code: str) -> dict | None:
+    from sqlalchemy.orm import joinedload
+
+    movements = (
+        tenant_query(StockMovement)
+        .options(joinedload(StockMovement.item))
+        .filter(
+            StockMovement.direction == 'صادر',
+            StockMovement.reference.like(f'{ISSUE_DOC_REF_PREFIX}{doc_code}:item:%'),
+        )
+        .order_by(StockMovement.id)
+        .all()
+    )
+    if not movements:
+        return None
+    first = movements[0]
+    ctx = infer_issue_edit_context(movements)
+    reason = first.reason or ''
+    detail = reason.split('|', 1)[1].strip() if '|' in reason else reason
+    tech_names = {t.id: t.name for t in tenant_query(Technician).all()}
+    lines = []
+    total_qty = 0.0
+    total_value = 0.0
+    for movement in movements:
+        item = movement.item
+        qty = float(movement.quantity or 0)
+        unit_price = float(movement.unit_price or 0)
+        line_total = float(movement.total_value or 0)
+        total_qty += qty
+        total_value += line_total
+        lines.append({
+            'code': item.code if item else '—',
+            'name': item.name if item else '—',
+            'unit': (item.unit if item else '') or 'قطعة',
+            'quantity': qty,
+            'unit_price': unit_price,
+            'total_value': line_total,
+        })
+    target = ctx.get('target') or ISSUE_TARGET_CONSUMABLE
+    return {
+        'doc_code': doc_code,
+        'movement_date': str(first.movement_date or ''),
+        'target': target,
+        'target_label': ISSUE_TARGET_LABELS.get(target, target),
+        'detail': detail or '—',
+        'movement_type': first.movement_type or '—',
+        'technician': tech_names.get(first.technician_id, '—') if first.technician_id else '—',
+        'notes': parse_issue_user_notes(first.notes) or '—',
+        'lines': lines,
+        'line_count': len(lines),
+        'total_qty': round(total_qty, 4),
+        'total_value': round(total_value, 2),
+    }
+
+
 def next_issue_doc_code() -> str:
     import re
 
@@ -902,6 +1114,7 @@ def record_issue_batch(
     contract_id: int | None = None,
     install_contract_id: int | None = None,
     notes: str = '',
+    doc_code: str | None = None,
 ) -> tuple[str, list[StockMovement]]:
     """مستند إذن صرف — عدة أصniaف برقم IS-xxxx."""
     if not lines:
@@ -915,8 +1128,21 @@ def record_issue_batch(
         install_contract_id=install_contract_id,
     )
     mv_date = movement_date or date.today()
-    doc_notes = (notes or '').strip()
-    doc_code = next_issue_doc_code()
+    user_notes = (notes or '').strip()
+    resolved_doc = (doc_code or '').strip()
+    if resolved_doc:
+        if not resolved_doc.startswith(ISSUE_DOC_PREFIX):
+            raise ValueError('رقم الإذن غير صالح')
+        doc_code = resolved_doc
+    else:
+        doc_code = next_issue_doc_code()
+    meta = {
+        'target': target,
+        'technician_id': technician_id,
+        'contract_id': contract_id,
+        'install_contract_id': install_contract_id,
+    }
+    doc_notes = build_issue_document_notes(user_notes, meta)
     doc_reason = issue_doc_reason(doc_code, ctx['issue_reason'])
     movements: list[StockMovement] = []
     seen_items: set[int] = set()
@@ -977,6 +1203,34 @@ def record_issue_batch(
         raise ValueError('أضف صنفاً واحداً على الأقل بكمية أكبر من صفر')
 
     return doc_code, movements
+
+
+def update_issue_batch(
+    doc_code: str,
+    *,
+    lines: list[dict],
+    target: str,
+    movement_date: date | None = None,
+    technician_id: int | None = None,
+    contract_id: int | None = None,
+    install_contract_id: int | None = None,
+    notes: str = '',
+) -> tuple[str, list[StockMovement]]:
+    """تعديل إذن صرف — عكس المخزون القديم ثم إعادة التسجيل بنفس IS."""
+    code = (doc_code or '').strip()
+    if not code.startswith(ISSUE_DOC_PREFIX):
+        raise ValueError('رقم الإذن غير صالح')
+    reverse_issue_document(code)
+    return record_issue_batch(
+        lines=lines,
+        target=target,
+        movement_date=movement_date,
+        technician_id=technician_id,
+        contract_id=contract_id,
+        install_contract_id=install_contract_id,
+        notes=notes,
+        doc_code=code,
+    )
 
 
 def item_card_payload(item_id: int) -> dict:
@@ -1173,7 +1427,7 @@ def issue_documents(limit: int = 40) -> list[dict]:
                 'line_count': 0,
                 'total_qty': 0.0,
                 'total_value': 0.0,
-                'notes': m.notes or '',
+                'notes': parse_issue_user_notes(m.notes),
             }
         entry = docs[doc_code]
         entry['line_count'] += 1

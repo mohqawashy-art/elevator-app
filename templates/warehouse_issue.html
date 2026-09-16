@@ -36,8 +36,13 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .btn-sm{padding:6px 12px;font-size:12px}
 .hint{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
 table.doc-list{width:100%;border-collapse:collapse;font-size:13px}
-table.doc-list th{padding:10px 12px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px}
+table.doc-list th{padding:10px 12px;text-align:center;background:var(--bg3);color:var(--text3);font-size:11px}
 table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
+.doc-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+.doc-actions .btn{padding:4px 10px;font-size:11px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.panel-head .panel-title{margin-bottom:0}
+.admin-badge{font-size:10px;color:#fbbf24;margin-right:6px}
 .td-code{font-family:var(--font-en);color:var(--accent);font-weight:600}
 .empty-msg{color:var(--text3);font-size:13px;padding:12px 0}
 .issue-wrap{display:none}
@@ -59,30 +64,40 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
     {% include 'partials/flash_messages.html' %}
 
     <div class="panel">
-      <div class="panel-title">إذن صرف بضاعة</div>
+      <div class="panel-head">
+        <div class="panel-title">
+          {% if edit_document %}<span class="admin-badge">مدير</span>تعديل إذن صرف {{ edit_document.code }}{% else %}إذن صرف بضاعة{% endif %}
+        </div>
+        {% if edit_document %}
+        <a href="/warehouse/issue" class="btn btn-secondary btn-sm">إلغاء التعديل</a>
+        {% endif %}
+      </div>
       <form method="post" action="/inventory/issue" id="issue-form">
         <input type="hidden" name="batch" value="1">
+        {% if edit_document %}
+        <input type="hidden" name="edit_doc_code" value="{{ edit_document.code }}">
+        {% endif %}
         <div class="form-grid">
           <div class="field">
-            <label>رقم الإذن (تلقائي)</label>
-            <div class="doc-no">{{ next_issue_doc }}</div>
+            <label>رقم الإذن</label>
+            <div class="doc-no">{% if edit_document %}{{ edit_document.code }}{% else %}{{ next_issue_doc }}{% endif %}</div>
           </div>
           <div class="field">
             <label>التاريخ</label>
-            <input type="date" name="movement_date" lang="en-GB" value="{{ today }}">
+            <input type="date" name="movement_date" id="movement-date" lang="en-GB" value="{{ edit_document.movement_date if edit_document else today }}">
           </div>
           <div class="field form-full">
             <label>نوع الصرف *</label>
             <select name="target" id="issue-target" onchange="syncIssueFields()">
-              <option value="consumable">مستهلكات صيانة</option>
-              <option value="custody">عهدة فني (قطع غيار)</option>
-              <option value="client">تحميل على عميل — عقد صيانة</option>
-              <option value="project">تحميل على مشروع — عقد تركيب</option>
+              <option value="consumable"{% if edit_document and edit_document.target == 'consumable' %} selected{% endif %}>مستهلكات صيانة</option>
+              <option value="custody"{% if edit_document and edit_document.target == 'custody' %} selected{% endif %}>عهدة فني (قطع غيار)</option>
+              <option value="client"{% if edit_document and edit_document.target == 'client' %} selected{% endif %}>تحميل على عميل — عقد صيانة</option>
+              <option value="project"{% if edit_document and edit_document.target == 'project' %} selected{% endif %}>تحميل على مشروع — عقد تركيب</option>
             </select>
           </div>
           <div class="field form-full issue-wrap" id="issue-tech-wrap">
             <label>الفني</label>
-            <select name="technician_id"><option value="">—</option>{% for t in technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+            <select name="technician_id" id="issue-technician"><option value="">—</option>{% for t in technicians %}<option value="{{ t.id }}"{% if edit_document and edit_document.technician_id == t.id %} selected{% endif %}>{{ t.name }}</option>{% endfor %}</select>
           </div>
           <div class="field form-full issue-wrap" id="issue-client-wrap">
             <label>عقد الصيانة</label>
@@ -94,7 +109,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
           </div>
           <div class="field form-full">
             <label>ملاحظات</label>
-            <textarea name="notes" rows="2" placeholder="اختياري"></textarea>
+            <textarea name="notes" id="issue-notes" rows="2" placeholder="اختياري">{{ edit_document.notes if edit_document else '' }}</textarea>
           </div>
         </div>
 
@@ -121,10 +136,10 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
 
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
           <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ إضافة صنف</button>
-          <button type="submit" class="btn btn-primary">حفظ الإذن</button>
+          <button type="submit" class="btn btn-primary">{% if edit_document %}حفظ التعديلات{% else %}حفظ الإذن{% endif %}</button>
         </div>
       </form>
-      <p class="hint">أضف كل الأصناف في جدول واحد ثم احفظ. يُولَّد رقم مستند <strong>IS-xxxx</strong> ولا يمكن صرف كمية أكبر من الرصيد المتاح.</p>
+      <p class="hint">أضف كل الأصناف في جدول واحد ثم احفظ. يُولَّد رقم مستند <strong>IS-xxxx</strong>. {% if auth_user and auth_user.role == 'admin' %}تعديل الإذن متاح لمدير النظام فقط.{% endif %}</p>
     </div>
 
     <div class="panel">
@@ -132,7 +147,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
       {% if issue_documents %}
       <table class="doc-list">
         <thead>
-          <tr><th>رقم الإذن</th><th>التاريخ</th><th>نوع الصرف</th><th>التفاصيل</th><th>الفني</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>إجمالي القيمة</th><th>ملاحظات</th></tr>
+          <tr><th>رقم الإذن</th><th>التاريخ</th><th>نوع الصرف</th><th>التفاصيل</th><th>الفني</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>إجمالي القيمة</th><th>ملاحظات</th><th>إجراءات</th></tr>
         </thead>
         <tbody>
           {% for d in issue_documents %}
@@ -146,6 +161,14 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
             <td style="font-family:var(--font-en)">{{ d.total_qty|inv_qty }}</td>
             <td style="font-family:var(--font-en)">{{ d.total_value }}</td>
             <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
+            <td>
+              <div class="doc-actions">
+                <a href="/warehouse/issue/print/{{ d.code }}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">طباعة</a>
+                {% if auth_user and auth_user.role == 'admin' %}
+                <a href="/warehouse/issue?edit={{ d.code }}" class="btn btn-secondary btn-sm">تعديل</a>
+                {% endif %}
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -171,6 +194,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
 var ISSUE_ITEMS = {{ items_js | tojson }};
 var MAINT_CONTRACTS = {{ maintenance_contracts_js | tojson }};
 var INSTALL_CONTRACTS = {{ installation_contracts_js | tojson }};
+var EDIT_DOCUMENT = {{ edit_document | tojson }};
 var issueItemRowSeq = 0;
 
 function inventorySelectOptions() {
@@ -281,10 +305,12 @@ function updateDocTotal() {
   if (el) el.textContent = fmtLineMoney(sum);
 }
 
-function bindLine(row) {
-  mountIssueItemSelect(row, '');
+function bindLine(row, selectedId, qtyValue) {
+  mountIssueItemSelect(row, selectedId || '');
   var qty = row.querySelector('input[name="quantity"]');
-  if (qty && window.LcInventoryQty) LcInventoryQty.applyInput(qty, 'قطعة');
+  if (qty && qtyValue !== undefined && qtyValue !== null) qty.value = qtyValue;
+  var item = ISSUE_ITEMS.find(function (x) { return String(x.id) === String(selectedId || (row.querySelector('input[name="item_id"]') || {}).value); });
+  if (qty && window.LcInventoryQty) LcInventoryQty.applyInput(qty, item ? item.unit : 'قطعة');
   if (qty && !qty.dataset.bound) {
     qty.dataset.bound = '1';
     qty.addEventListener('input', function () {
@@ -292,7 +318,32 @@ function bindLine(row) {
       updateDocTotal();
     });
   }
-  updateLineTotal(row);
+  onIssueItemPicked(row);
+}
+
+function loadEditDocument() {
+  if (!EDIT_DOCUMENT || !EDIT_DOCUMENT.lines || !EDIT_DOCUMENT.lines.length) return;
+  var body = document.getElementById('lines-body');
+  if (!body) return;
+  body.innerHTML = '';
+  EDIT_DOCUMENT.lines.forEach(function (line) {
+    var tpl = document.getElementById('line-tpl');
+    if (!tpl) return;
+    var row = tpl.content.firstElementChild.cloneNode(true);
+    body.appendChild(row);
+    bindLine(row, line.item_id, line.quantity);
+  });
+  updateDocTotal();
+}
+
+function availableQtyForItem(itemId) {
+  var item = ISSUE_ITEMS.find(function (x) { return String(x.id) === String(itemId); });
+  var avail = item ? parseFloat(item.current_qty || 0) : 0;
+  if (EDIT_DOCUMENT && EDIT_DOCUMENT.lines) {
+    var oldLine = EDIT_DOCUMENT.lines.find(function (l) { return String(l.item_id) === String(itemId); });
+    if (oldLine) avail += parseFloat(oldLine.quantity || 0);
+  }
+  return avail;
 }
 
 function addLine() {
@@ -328,7 +379,7 @@ function validateIssueForm() {
     var qtyEl = row.querySelector('input[name="quantity"]');
     if (!hidden || !hidden.value) continue;
     var item = ISSUE_ITEMS.find(function (x) { return String(x.id) === String(hidden.value); });
-    var avail = item ? parseFloat(item.current_qty || 0) : 0;
+    var avail = availableQtyForItem(hidden.value);
     var need = parseFloat(qtyEl && qtyEl.value || '0');
     if (need > avail + 1e-9) {
       var availTxt = window.LcInventoryQty ? LcInventoryQty.fmt(avail, item.unit) : avail;
@@ -339,10 +390,11 @@ function validateIssueForm() {
   return true;
 }
 
-document.getElementById('issue-contract').innerHTML = '<option value="">—</option>' + (MAINT_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'">'+(r.name||r.code)+'</option>';}).join('');
-document.getElementById('issue-install').innerHTML = '<option value="">—</option>' + (INSTALL_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'">'+(r.name||r.code)+'</option>';}).join('');
+document.getElementById('issue-contract').innerHTML = '<option value="">—</option>' + (MAINT_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'"'+(EDIT_DOCUMENT && String(EDIT_DOCUMENT.contract_id||'')===String(r.id)?' selected':'')+'>'+(r.name||r.code)+'</option>';}).join('');
+document.getElementById('issue-install').innerHTML = '<option value="">—</option>' + (INSTALL_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'"'+(EDIT_DOCUMENT && String(EDIT_DOCUMENT.install_contract_id||'')===String(r.id)?' selected':'')+'>'+(r.name||r.code)+'</option>';}).join('');
 syncIssueFields();
-document.querySelectorAll('.line-row').forEach(bindLine);
+if (EDIT_DOCUMENT) loadEditDocument();
+else document.querySelectorAll('.line-row').forEach(function (row) { bindLine(row); });
 updateDocTotal();
 document.getElementById('issue-form').addEventListener('submit', function (e) {
   if (!validateIssueForm()) e.preventDefault();
