@@ -12069,14 +12069,7 @@ def inventory_purchase_invoice():
 
 @app.route('/inventory/issue', methods=['POST'])
 def inventory_issue():
-    from inventory_warehouse import record_issue_authorization
-
-    try:
-        item_id = int(request.form.get('item_id') or 0)
-        quantity = float(request.form.get('quantity') or 0)
-    except (TypeError, ValueError):
-        flash('بيانات غير صالحة', 'error')
-        return redirect(url_for('warehouse_issue_page'))
+    from inventory_warehouse import record_issue_authorization, record_issue_batch
 
     target = (request.form.get('target') or '').strip()
     technician_id = request.form.get('technician_id') or None
@@ -12113,6 +12106,54 @@ def inventory_issue():
             flash('تاريخ غير صالح', 'error')
             return redirect(url_for('warehouse_issue_page'))
 
+    notes = (request.form.get('notes') or '').strip()
+    return_to = (request.form.get('return_to') or '').strip()
+    item_ids = request.form.getlist('item_id')
+    quantities = request.form.getlist('quantity')
+
+    if request.form.get('batch') == '1':
+        lines_data = []
+        n = max(len(item_ids), len(quantities))
+        for i in range(n):
+            item_id = item_ids[i] if i < len(item_ids) else ''
+            qty = quantities[i] if i < len(quantities) else ''
+            if not item_id:
+                continue
+            lines_data.append({'item_id': item_id, 'quantity': qty})
+        if not lines_data:
+            flash('أضف صنفاً واحداً على الأقل', 'error')
+            return redirect(url_for('warehouse_issue_page'))
+        try:
+            doc_code, movements = record_issue_batch(
+                lines=lines_data,
+                target=target,
+                movement_date=movement_date,
+                technician_id=technician_id,
+                contract_id=contract_id,
+                install_contract_id=install_contract_id,
+                notes=notes,
+            )
+            db.session.commit()
+            flash(
+                f'تم حفظ إذن الصرف {doc_code} — {len(movements)} صنف',
+                'success',
+            )
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'error')
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('inventory_issue batch failed')
+            flash('تعذّر تسجيل إذن الصرف', 'error')
+        return redirect(url_for('warehouse_issue_page'))
+
+    try:
+        item_id = int(request.form.get('item_id') or 0)
+        quantity = float(request.form.get('quantity') or 0)
+    except (TypeError, ValueError):
+        flash('بيانات غير صالحة', 'error')
+        return redirect(url_for('warehouse_issue_page'))
+
     try:
         movement = record_issue_authorization(
             item_id=item_id,
@@ -12123,11 +12164,12 @@ def inventory_issue():
             contract_id=contract_id,
             install_contract_id=install_contract_id,
             reason=(request.form.get('reason') or '').strip(),
-            notes=(request.form.get('notes') or '').strip(),
+            notes=notes,
         )
         db.session.commit()
         flash(f'تم تسجيل إذن الصرف — {movement.code}', 'success')
-        return redirect(url_for('inventory_item_card', item_id=item_id))
+        if return_to == 'item':
+            return redirect(url_for('inventory_item_card', item_id=item_id))
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), 'error')

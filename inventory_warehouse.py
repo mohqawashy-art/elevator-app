@@ -21,6 +21,9 @@ OPENING_DOC_REF_PREFIX = 'opening:'
 PURCHASE_DOC_PREFIX = 'PI-'
 PURCHASE_DOC_REF_PREFIX = 'purchase:'
 
+ISSUE_DOC_PREFIX = 'IS-'
+ISSUE_DOC_REF_PREFIX = 'issue:'
+
 
 def opening_doc_reference(doc_code: str, item_id: int, invoice_no: str = '') -> str:
     ref = f'{OPENING_DOC_REF_PREFIX}{doc_code}:item:{int(item_id)}'
@@ -412,38 +415,55 @@ def record_purchase_receipt_movements(order) -> bool:
     return created
 
 
-def record_issue_authorization(
+def issue_doc_reference(doc_code: str, item_id: int) -> str:
+    return f'{ISSUE_DOC_REF_PREFIX}{doc_code}:item:{int(item_id)}'[:100]
+
+
+def issue_doc_reason(doc_code: str, detail: str) -> str:
+    detail = (detail or '').strip() or '—'
+    return f'إذن صرف — {doc_code} | {detail}'[:300]
+
+
+def next_issue_doc_code() -> str:
+    import re
+
+    max_num = 0
+    pattern = re.compile(
+        r'^' + re.escape(ISSUE_DOC_REF_PREFIX) + re.escape(ISSUE_DOC_PREFIX) + r'(\d+):item:'
+    )
+    for row in tenant_query(StockMovement).with_entities(StockMovement.reference).all():
+        ref = (row[0] or '').strip()
+        match = pattern.match(ref)
+        if match:
+            max_num = max(max_num, int(match.group(1)))
+    return f'{ISSUE_DOC_PREFIX}{str(max_num + 1).zfill(4)}'
+
+
+def _resolve_issue_context(
     *,
-    item_id: int,
-    quantity: float,
     target: str,
-    movement_date: date | None = None,
+    item: InventoryItem | None = None,
     technician_id: int | None = None,
     contract_id: int | None = None,
     install_contract_id: int | None = None,
     reason: str = '',
-    notes: str = '',
-) -> StockMovement:
-    """إذن صرف — عميل / مشروع / عهدة / مستhlكات."""
+) -> dict:
+    """تحديد نوع الحركة والسبب والفني/المصعد حسب نوع الصرف."""
     from inventory_custody import item_eligible_for_custody
-
-    item = tenant_get_or_404(InventoryItem, item_id)
-    validate_outbound_stock(item, quantity)
 
     target = (target or '').strip().lower()
     if target not in ISSUE_TARGETS:
         raise ValueError('نوع إذن الصرف غير صالح')
 
-    qty = float(quantity or 0)
-    mv_date = movement_date or date.today()
     elev_id = None
     movement_type = MOVEMENT_ISSUE_SITE
     issue_reason = (reason or '').strip()
+    tech_id = technician_id
 
     if target == ISSUE_TARGET_CUSTODY:
-        if not technician_id:
+        if not tech_id:
             raise ValueError('اختر الفني لصرف العهدة')
-        if not item_eligible_for_custody(item):
+        if item and not item_eligible_for_custody(item):
             movement_type = MOVEMENT_ISSUE_TECH
             issue_reason = issue_reason or 'مستهلكات — صرف مباشر'
         else:
@@ -475,18 +495,140 @@ def record_issue_authorization(
         proj_label = (proj.title or '').strip() if proj and proj.title else ic.client_display
         issue_reason = issue_reason or f'{ic.code} — {proj_label}'
 
+    return {
+        'movement_type': movement_type,
+        'issue_reason': issue_reason,
+        'technician_id': tech_id,
+        'elevator_id': elev_id,
+        'target': target,
+    }
+
+
+def record_issue_authorization(
+    *,
+    item_id: int,
+    quantity: float,
+    target: str,
+    movement_date: date | None = None,
+    technician_id: int | None = None,
+    contract_id: int | None = None,
+    install_contract_id: int | None = None,
+    reason: str = '',
+    notes: str = '',
+) -> StockMovement:
+    """إذن صرف — صنف واحد (كارت الصنف)."""
+    item = tenant_get_or_404(InventoryItem, item_id)
+    validate_outbound_stock(item, quantity)
+
+    ctx = _resolve_issue_context(
+        target=target,
+        item=item,
+        technician_id=technician_id,
+        contract_id=contract_id,
+        install_contract_id=install_contract_id,
+        reason=reason,
+    )
+    qty = float(quantity or 0)
+    mv_date = movement_date or date.today()
+
     return create_stock_movement(
         item=item,
         movement_date=mv_date,
         direction='صادر',
-        movement_type=movement_type,
+        movement_type=ctx['movement_type'],
         quantity=qty,
         unit_price=item.buy_price or 0,
-        technician_id=technician_id,
-        elevator_id=elev_id,
-        reason=issue_reason,
+        technician_id=ctx['technician_id'],
+        elevator_id=ctx['elevator_id'],
+        reason=ctx['issue_reason'],
         notes=notes,
     )
+
+
+def record_issue_batch(
+    *,
+    lines: list[dict],
+    target: str,
+    movement_date: date | None = None,
+    technician_id: int | None = None,
+    contract_id: int | None = None,
+    install_contract_id: int | None = None,
+    notes: str = '',
+) -> tuple[str, list[StockMovement]]:
+    """مستند إذن صرف — عدة أصniaف برقم IS-xxxx."""
+    if not lines:
+        raise ValueError('أضف صنفاً واحداً على الأقل')
+
+    ctx = _resolve_issue_context(
+        target=target,
+        item=None,
+        technician_id=technician_id,
+        contract_id=contract_id,
+        install_contract_id=install_contract_id,
+    )
+    mv_date = movement_date or date.today()
+    doc_notes = (notes or '').strip()
+    doc_code = next_issue_doc_code()
+    doc_reason = issue_doc_reason(doc_code, ctx['issue_reason'])
+    movements: list[StockMovement] = []
+    seen_items: set[int] = set()
+    qty_by_item: dict[int, float] = {}
+
+    for raw in lines:
+        try:
+            item_id = int(raw.get('item_id') or 0)
+            quantity = float(raw.get('quantity') or 0)
+        except (TypeError, ValueError):
+            raise ValueError('بيانات السطر غير صالحة') from None
+        if item_id <= 0 or quantity <= 0:
+            continue
+        if item_id in seen_items:
+            item = tenant_get_or_404(InventoryItem, item_id)
+            name = (item.name or item.code or 'الصنف').strip()
+            raise ValueError(f'الصنف «{name}» مكرر في الإذن')
+        seen_items.add(item_id)
+        qty_by_item[item_id] = qty_by_item.get(item_id, 0.0) + quantity
+
+    for item_id, total_qty in qty_by_item.items():
+        item = tenant_get_or_404(InventoryItem, item_id)
+        validate_outbound_stock(item, total_qty)
+
+    for raw in lines:
+        try:
+            item_id = int(raw.get('item_id') or 0)
+            quantity = float(raw.get('quantity') or 0)
+        except (TypeError, ValueError):
+            continue
+        if item_id <= 0 or quantity <= 0:
+            continue
+
+        item = tenant_get_or_404(InventoryItem, item_id)
+        line_ctx = _resolve_issue_context(
+            target=target,
+            item=item,
+            technician_id=technician_id,
+            contract_id=contract_id,
+            install_contract_id=install_contract_id,
+        )
+        movement = create_stock_movement(
+            item=item,
+            movement_date=mv_date,
+            direction='صادر',
+            movement_type=line_ctx['movement_type'],
+            quantity=quantity,
+            unit_price=item.buy_price or 0,
+            technician_id=line_ctx['technician_id'],
+            elevator_id=line_ctx['elevator_id'],
+            reason=doc_reason,
+            reference=issue_doc_reference(doc_code, item_id),
+            notes=doc_notes or None,
+        )
+        movements.append(movement)
+
+    if not movements:
+        raise ValueError('أضف صنفاً واحداً على الأقل بكمية أكبر من صفر')
+
+    return doc_code, movements
 
 
 def item_card_payload(item_id: int) -> dict:
@@ -628,6 +770,8 @@ def warehouse_page_context() -> dict:
         'next_opening_doc': next_opening_doc_code(),
         'next_purchase_doc': next_purchase_doc_code(),
         'purchase_documents': purchase_invoice_documents(),
+        'next_issue_doc': next_issue_doc_code(),
+        'issue_documents': issue_documents(),
         'suppliers': tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all(),
         'items_js': [
             {
@@ -640,6 +784,51 @@ def warehouse_page_context() -> dict:
             for i in items
         ],
     }
+
+
+def issue_documents(limit: int = 40) -> list[dict]:
+    """مستندات إذن الصرف المجمّعة برقم IS-xxxx."""
+    import re
+    from collections import OrderedDict
+
+    pattern = re.compile(
+        r'^' + re.escape(ISSUE_DOC_REF_PREFIX) + r'(IS-\d+):item:\d+$'
+    )
+    rows = (
+        tenant_query(StockMovement)
+        .filter(
+            StockMovement.direction == 'صادر',
+            StockMovement.reference.isnot(None),
+        )
+        .order_by(StockMovement.movement_date.desc(), StockMovement.id.desc())
+        .all()
+    )
+    tech_names = {t.id: t.name for t in tenant_query(Technician).all()}
+    docs: OrderedDict[str, dict] = OrderedDict()
+    for m in rows:
+        ref = (m.reference or '').strip()
+        if not pattern.match(ref):
+            continue
+        doc_code = ref.split(':')[1]
+        if doc_code not in docs:
+            reason = m.reason or ''
+            detail = reason.split('|', 1)[1].strip() if '|' in reason else reason
+            docs[doc_code] = {
+                'code': doc_code,
+                'movement_date': str(m.movement_date or ''),
+                'detail': detail or '—',
+                'movement_type': m.movement_type or '—',
+                'technician': tech_names.get(m.technician_id, '—') if m.technician_id else '—',
+                'line_count': 0,
+                'total_qty': 0.0,
+                'total_value': 0.0,
+                'notes': m.notes or '',
+            }
+        entry = docs[doc_code]
+        entry['line_count'] += 1
+        entry['total_qty'] = round(entry['total_qty'] + float(m.quantity or 0), 4)
+        entry['total_value'] = round(entry['total_value'] + float(m.total_value or 0), 2)
+    return list(docs.values())[:limit]
 
 
 def purchase_invoice_documents(limit: int = 40) -> list[dict]:

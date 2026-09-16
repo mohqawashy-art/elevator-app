@@ -88,6 +88,7 @@ tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,1
       <div class="panel">
         <div class="panel-title">إجراء سريع — إذن صرف</div>
         <form method="post" action="/inventory/issue" class="form-grid" onsubmit="return validateIssue()">
+          <input type="hidden" name="return_to" value="item">
           <input type="hidden" name="item_id" value="{{ item.id }}">
           <div class="field"><label>التاريخ</label><input type="date" name="movement_date" value="{{ today if today else '' }}" lang="en-GB"></div>
           <div class="field"><label>الكمية</label><input type="number" name="quantity" id="issue-qty" min="0.01" step="0.01" required></div>

@@ -7,22 +7,39 @@
 <title>LiftCore — أذون صرف</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--sidebar-w:240px;--font-ar:'IBM Plex Sans Arabic',sans-serif;--r:10px;--r-sm:7px}
+:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;--r:10px;--r-sm:7px}
 body{background:var(--bg);color:var(--text1);min-height:100vh}
 .main{flex:1;display:flex;flex-direction:column;min-width:0}
 .content{flex:1;padding:24px}
-.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;max-width:760px}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px}
 .panel-title{font-size:16px;font-weight:600;margin-bottom:14px}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-full{grid-column:1/-1}
 .field label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px}
-.field input,.field select{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
-.lc-client-select{position:relative}
-.lc-client-select-input{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px}
-.lc-client-select-list{z-index:400;max-height:220px;overflow-y:auto}
-.btn{display:inline-flex;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:var(--font-ar);font-size:13px}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.doc-no{font-family:var(--font-en);color:var(--accent);font-weight:700;font-size:15px}
+.lines-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+.lines-table th{padding:8px 10px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)}
+.lines-table td{padding:8px 10px;border-bottom:1px solid rgba(100,160,255,.06);vertical-align:middle}
+.lines-table input{width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.issue-item-cell .lc-client-select{position:relative;min-width:200px}
+.issue-item-cell .lc-client-select-input{width:100%;font-size:12px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1)}
+.issue-item-cell .lc-client-select-list{z-index:400;max-height:220px;overflow-y:auto}
+.line-total{font-family:var(--font-en);color:var(--text1);font-weight:600;white-space:nowrap;text-align:left;direction:ltr}
+.avail-hint{font-size:10px;color:var(--text3);margin-top:4px}
+.doc-total-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:13px}
+.doc-total-label{color:var(--text2)}
+.doc-total-value{font-family:var(--font-en);font-size:16px;font-weight:700;color:var(--accent);direction:ltr}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:var(--font-ar);font-size:13px;text-decoration:none}
 .btn-primary{background:var(--accent);color:#fff}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-sm{padding:6px 12px;font-size:12px}
 .hint{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
+table.doc-list{width:100%;border-collapse:collapse;font-size:13px}
+table.doc-list th{padding:10px 12px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px}
+table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
+.td-code{font-family:var(--font-en);color:var(--accent);font-weight:600}
+.empty-msg{color:var(--text3);font-size:13px;padding:12px 0}
 .issue-wrap{display:none}
 </style>
 {% include 'partials/liftcore_head.html' %}
@@ -40,72 +57,169 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
   {% include 'partials/app_header.html' %}
   <div class="content">
     {% include 'partials/flash_messages.html' %}
+
     <div class="panel">
       <div class="panel-title">إذن صرف بضاعة</div>
-      <form method="post" action="/inventory/issue" class="form-grid" onsubmit="return validateIssue()">
-        <div class="field form-full">
-          <label>الصنف *</label>
-          <select name="item_id" id="issue-item-id" required onchange="syncAvail()">
-            <option value="">— اختر صنفاً —</option>
-            {% for i in items %}
-            <option value="{{ i.id }}" data-qty="{{ i.current_qty or 0 }}">{{ i.code }} — {{ i.name }} (متاح {{ i.current_qty or 0 }})</option>
-            {% endfor %}
-          </select>
-          <p class="hint" id="issue-avail-hint">المتاح: —</p>
+      <form method="post" action="/inventory/issue" id="issue-form">
+        <input type="hidden" name="batch" value="1">
+        <div class="form-grid">
+          <div class="field">
+            <label>رقم الإذن (تلقائي)</label>
+            <div class="doc-no">{{ next_issue_doc }}</div>
+          </div>
+          <div class="field">
+            <label>التاريخ</label>
+            <input type="date" name="movement_date" lang="en-GB" value="{{ today }}">
+          </div>
+          <div class="field form-full">
+            <label>نوع الصرف *</label>
+            <select name="target" id="issue-target" onchange="syncIssueFields()">
+              <option value="consumable">مستهلكات صيانة</option>
+              <option value="custody">عهدة فني (قطع غيار)</option>
+              <option value="client">تحميل على عميل — عقد صيانة</option>
+              <option value="project">تحميل على مشروع — عقد تركيب</option>
+            </select>
+          </div>
+          <div class="field form-full issue-wrap" id="issue-tech-wrap">
+            <label>الفني</label>
+            <select name="technician_id"><option value="">—</option>{% for t in technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+          </div>
+          <div class="field form-full issue-wrap" id="issue-client-wrap">
+            <label>عقد الصيانة</label>
+            <select name="contract_id" id="issue-contract"><option value="">—</option></select>
+          </div>
+          <div class="field form-full issue-wrap" id="issue-project-wrap">
+            <label>عقد التركيب</label>
+            <select name="install_contract_id" id="issue-install"><option value="">—</option></select>
+          </div>
+          <div class="field form-full">
+            <label>ملاحظات</label>
+            <textarea name="notes" rows="2" placeholder="اختياري"></textarea>
+          </div>
         </div>
-        <div class="field"><label>التاريخ</label><input type="date" name="movement_date" value="{{ today }}" lang="en-GB"></div>
-        <div class="field"><label>الكمية *</label><input type="number" name="quantity" id="issue-qty" min="0.01" step="0.01" required></div>
-        <div class="field form-full">
-          <label>نوع الصرف *</label>
-          <select name="target" id="issue-target" onchange="syncIssueFields()">
-            <option value="consumable">مستهلكات صيانة</option>
-            <option value="custody">عهدة فني (قطع غيار)</option>
-            <option value="client">تحميل على عميل — عقد صيانة</option>
-            <option value="project">تحميل على مشروع — عقد تركيب</option>
-          </select>
+
+        <table class="lines-table lc-table-inputs">
+          <thead>
+            <tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>إجمالي قيمة الصنف</th><th></th></tr>
+          </thead>
+          <tbody id="lines-body">
+            <tr class="line-row">
+              <td class="issue-item-cell"></td>
+              <td><input type="number" name="quantity" min="0.01" step="0.01" value="1" required></td>
+              <td class="line-price" style="font-family:var(--font-en);color:var(--text2)">0.00</td>
+              <td class="line-total">0.00</td>
+              <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="doc-total-row">
+          <span class="doc-total-label">إجمالي قيمة الإذن</span>
+          <span class="doc-total-value" id="doc-total">0.00</span>
+          <span class="lc-sar" role="img" aria-label="ريال"></span>
         </div>
-        <div class="field form-full issue-wrap" id="issue-tech-wrap">
-          <label>الفني</label>
-          <select name="technician_id"><option value="">—</option>{% for t in technicians %}<option value="{{ t.id }}">{{ t.name }}</option>{% endfor %}</select>
+
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ إضافة صنف</button>
+          <button type="submit" class="btn btn-primary">حفظ الإذن</button>
         </div>
-        <div class="field form-full issue-wrap" id="issue-client-wrap">
-          <label>عقد الصيانة</label>
-          <select name="contract_id" id="issue-contract"><option value="">—</option></select>
-        </div>
-        <div class="field form-full issue-wrap" id="issue-project-wrap">
-          <label>عقد التركيب</label>
-          <select name="install_contract_id" id="issue-install"><option value="">—</option></select>
-        </div>
-        <div class="field form-full"><label>ملاحظات</label><input name="notes"></div>
-        <div class="form-full"><button type="submit" class="btn btn-primary">تسجيل إذن الصرف</button></div>
       </form>
-      <p class="hint">لا يمكن صرف كمية أكبر من الرصيد المتاح. المستهلكات لا تُسجَّل عهدة.</p>
+      <p class="hint">أضف كل الأصناف في جدول واحد ثم احفظ. يُولَّد رقم مستند <strong>IS-xxxx</strong> ولا يمكن صرف كمية أكبر من الرصيد المتاح.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">أذون الصرف المسجّلة ({{ issue_documents|length }})</div>
+      {% if issue_documents %}
+      <table class="doc-list">
+        <thead>
+          <tr><th>رقم الإذن</th><th>التاريخ</th><th>نوع الصرف</th><th>التفاصيل</th><th>الفني</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>إجمالي القيمة</th><th>ملاحظات</th></tr>
+        </thead>
+        <tbody>
+          {% for d in issue_documents %}
+          <tr>
+            <td class="td-code">{{ d.code }}</td>
+            <td>{{ d.movement_date }}</td>
+            <td>{{ d.movement_type }}</td>
+            <td style="font-size:11px">{{ d.detail }}</td>
+            <td>{{ d.technician }}</td>
+            <td style="font-family:var(--font-en)">{{ d.line_count }}</td>
+            <td style="font-family:var(--font-en)">{{ d.total_qty }}</td>
+            <td style="font-family:var(--font-en)">{{ d.total_value }}</td>
+            <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="empty-msg">لا أذون صرف مسجّلة بعد.</p>
+      {% endif %}
     </div>
   </div>
 </div>
+
+<template id="line-tpl">
+  <tr class="line-row">
+    <td class="issue-item-cell"></td>
+    <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
+    <td class="line-price" style="font-family:var(--font-en);color:var(--text2)">0.00</td>
+    <td class="line-total">0.00</td>
+    <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
+  </tr>
+</template>
+
 <script>
 var ISSUE_ITEMS = {{ items_js | tojson }};
 var MAINT_CONTRACTS = {{ maintenance_contracts_js | tojson }};
 var INSTALL_CONTRACTS = {{ installation_contracts_js | tojson }};
+var issueItemRowSeq = 0;
 
-function issueItemOptions() {
+function inventorySelectOptions() {
   return ISSUE_ITEMS.map(function (i) {
-    var label = (i.name || '') + ' (متاح ' + (i.current_qty || 0) + ')';
-    return { id: String(i.id), code: i.code || '', name: label };
+    return { id: String(i.id), code: i.code || '', name: (i.name || '') + ' (متاح ' + (i.current_qty || 0) + ')' };
   });
 }
 
-function initIssueItemSelect() {
-  if (typeof LcClientSelect === 'undefined') return;
-  if (!LcClientSelect.isUpgraded('issue-item-id')) {
-    LcClientSelect.upgradeSelect('issue-item-id', {
-      customers: issueItemOptions(),
-      placeholder: 'ابحث بالكود أو اسم الصنف...',
-      onChange: syncAvail,
-    });
-  } else {
-    LcClientSelect.setCustomers('issue-item-id', issueItemOptions(), '');
+function mountIssueItemSelect(row, selectedId) {
+  var cell = row.querySelector('.issue-item-cell');
+  if (!cell || cell.dataset.issueItemMounted === '1') return;
+  issueItemRowSeq += 1;
+  var uid = 'issue-item-' + issueItemRowSeq;
+  var wrapId = uid + '-wrap';
+  var inputId = uid + '-input';
+  var listId = uid + '-list';
+  var hiddenId = uid + '-id';
+  cell.innerHTML =
+    '<div class="lc-client-select" id="' + wrapId + '">' +
+    '<input type="text" class="lc-client-select-input" id="' + inputId + '" placeholder="ابحث بالكود أو اسم الصنف..." autocomplete="off">' +
+    '<input type="hidden" name="item_id" id="' + hiddenId + '" value="' + (selectedId || '') + '">' +
+    '<ul class="lc-client-select-list" id="' + listId + '" hidden role="listbox"></ul>' +
+    '</div>' +
+    '<div class="avail-hint issue-avail-hint">المتاح: —</div>';
+  if (typeof LcClientSelect === 'undefined') {
+    cell.dataset.issueNeedMount = '1';
+    return;
   }
+  cell.dataset.issueNeedMount = '';
+  cell.dataset.issueItemMounted = '1';
+  LcClientSelect.mount({
+    wrapId: wrapId,
+    hiddenId: hiddenId,
+    inputId: inputId,
+    listId: listId,
+    customers: inventorySelectOptions(),
+    selectedId: selectedId || '',
+    onChange: function () { onIssueItemPicked(row); },
+  });
+}
+
+function remountIssueItemSelects() {
+  if (typeof LcClientSelect === 'undefined') return;
+  document.querySelectorAll('#lines-body .line-row').forEach(function (row) {
+    var cell = row.querySelector('.issue-item-cell');
+    if (!cell || cell.dataset.issueNeedMount !== '1') return;
+    var hidden = row.querySelector('input[name="item_id"]');
+    mountIssueItemSelect(row, hidden ? hidden.value : '');
+  });
 }
 
 function syncIssueFields() {
@@ -118,33 +232,120 @@ function syncIssueFields() {
   if (t === 'client') document.getElementById('issue-client-wrap').style.display = 'block';
   if (t === 'project') document.getElementById('issue-project-wrap').style.display = 'block';
 }
-function syncAvail() {
-  var sel = document.getElementById('issue-item-id');
-  var hint = document.getElementById('issue-avail-hint');
-  var item = ISSUE_ITEMS.find(function (x) { return String(x.id) === String(sel && sel.value); });
-  var qty = item ? parseFloat(item.current_qty || 0) : 0;
-  if (hint) hint.textContent = 'المتاح: ' + (isNaN(qty) ? '—' : qty);
+
+function onIssueItemPicked(row) {
+  var hidden = row.querySelector('input[name="item_id"]');
+  var item = ISSUE_ITEMS.find(function (x) { return String(x.id) === String(hidden && hidden.value); });
+  var hint = row.querySelector('.issue-avail-hint');
+  var priceEl = row.querySelector('.line-price');
+  if (item) {
+    if (priceEl) priceEl.textContent = fmtLineMoney(item.buy_price || 0);
+    if (hint) hint.textContent = 'المتاح: ' + (item.current_qty || 0);
+  } else {
+    if (priceEl) priceEl.textContent = '0.00';
+    if (hint) hint.textContent = 'المتاح: —';
+  }
+  updateLineTotal(row);
+  updateDocTotal();
 }
-function validateIssue() {
-  var sel = document.getElementById('issue-item-id');
-  var qtyEl = document.getElementById('issue-qty');
-  if (!sel || !sel.value) { alert('اختر صنفاً'); return false; }
-  var item = ISSUE_ITEMS.find(function (x) { return String(x.id) === String(sel.value); });
-  var avail = item ? parseFloat(item.current_qty || 0) : 0;
-  var need = parseFloat(qtyEl.value || '0');
-  if (need > avail + 1e-9) { alert('الكمية أكبر من الرصيد المتاح (' + avail + ')'); return false; }
+
+function fmtLineMoney(v) {
+  var n = Number(v) || 0;
+  return (window.fmtNum ? fmtNum(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n.toFixed(2));
+}
+
+function updateLineTotal(row) {
+  if (!row) return;
+  var qtyEl = row.querySelector('input[name="quantity"]');
+  var priceEl = row.querySelector('.line-price');
+  var totalEl = row.querySelector('.line-total');
+  if (!qtyEl || !totalEl) return;
+  var price = parseFloat((priceEl && priceEl.textContent) || '0') || 0;
+  var total = (parseFloat(qtyEl.value || '0') || 0) * price;
+  totalEl.textContent = fmtLineMoney(total);
+}
+
+function updateDocTotal() {
+  var sum = 0;
+  document.querySelectorAll('#lines-body .line-row').forEach(function (row) {
+    var qtyEl = row.querySelector('input[name="quantity"]');
+    var priceEl = row.querySelector('.line-price');
+    sum += (parseFloat(qtyEl && qtyEl.value || '0') || 0) * (parseFloat((priceEl && priceEl.textContent) || '0') || 0);
+  });
+  var el = document.getElementById('doc-total');
+  if (el) el.textContent = fmtLineMoney(sum);
+}
+
+function bindLine(row) {
+  mountIssueItemSelect(row, '');
+  var qty = row.querySelector('input[name="quantity"]');
+  if (qty && !qty.dataset.bound) {
+    qty.dataset.bound = '1';
+    qty.addEventListener('input', function () {
+      updateLineTotal(row);
+      updateDocTotal();
+    });
+  }
+  updateLineTotal(row);
+}
+
+function addLine() {
+  var tpl = document.getElementById('line-tpl');
+  var body = document.getElementById('lines-body');
+  if (!tpl || !body) return;
+  var row = tpl.content.firstElementChild.cloneNode(true);
+  body.appendChild(row);
+  bindLine(row);
+  updateDocTotal();
+}
+
+function removeLine(btn) {
+  var body = document.getElementById('lines-body');
+  if (!body || body.querySelectorAll('.line-row').length <= 1) return;
+  btn.closest('.line-row').remove();
+  updateDocTotal();
+}
+
+function validateIssueForm() {
+  var hasItem = false;
+  document.querySelectorAll('#lines-body input[name="item_id"]').forEach(function (el) {
+    if (el.value) hasItem = true;
+  });
+  if (!hasItem) {
+    alert('اختر صنفاً واحداً على الأقل');
+    return false;
+  }
+  var rows = document.querySelectorAll('#lines-body .line-row');
+  for (var i = 0; i < rows.length; i++) {
+    var row = rows[i];
+    var hidden = row.querySelector('input[name="item_id"]');
+    var qtyEl = row.querySelector('input[name="quantity"]');
+    if (!hidden || !hidden.value) continue;
+    var item = ISSUE_ITEMS.find(function (x) { return String(x.id) === String(hidden.value); });
+    var avail = item ? parseFloat(item.current_qty || 0) : 0;
+    var need = parseFloat(qtyEl && qtyEl.value || '0');
+    if (need > avail + 1e-9) {
+      alert('الكمية أكبر من الرصيد المتاح للصنف «' + (item && item.name || '') + '» (' + avail + ')');
+      return false;
+    }
+  }
   return true;
 }
+
 document.getElementById('issue-contract').innerHTML = '<option value="">—</option>' + (MAINT_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'">'+(r.name||r.code)+'</option>';}).join('');
 document.getElementById('issue-install').innerHTML = '<option value="">—</option>' + (INSTALL_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'">'+(r.name||r.code)+'</option>';}).join('');
 syncIssueFields();
-initIssueItemSelect();
+document.querySelectorAll('.line-row').forEach(bindLine);
+updateDocTotal();
+document.getElementById('issue-form').addEventListener('submit', function (e) {
+  if (!validateIssueForm()) e.preventDefault();
+});
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initIssueItemSelect);
+  document.addEventListener('DOMContentLoaded', remountIssueItemSelects);
 } else {
-  initIssueItemSelect();
+  remountIssueItemSelects();
 }
-window.addEventListener('load', initIssueItemSelect);
+window.addEventListener('load', remountIssueItemSelects);
 </script>
 </body>
 </html>

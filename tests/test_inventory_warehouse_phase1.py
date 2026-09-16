@@ -5,6 +5,7 @@ from inventory_warehouse import (
     MOVEMENT_OPENING,
     MOVEMENT_PURCHASE,
     record_issue_authorization,
+    record_issue_batch,
     record_opening_stock,
     record_opening_stock_batch,
     record_purchase_invoice_batch,
@@ -150,6 +151,59 @@ def test_purchase_invoice_rejects_duplicate_invoice_no(client):
             )
 
 
+def test_issue_batch_single_document(client):
+    with client.application.app_context():
+        item1 = _item(code='#WH-I1', qty=10)
+        item2 = _item(code='#WH-I2', qty=8)
+        db.session.commit()
+        id1, id2 = item1.id, item2.id
+
+    with client.application.app_context():
+        doc_code, movements = record_issue_batch(
+            target='consumable',
+            lines=[
+                {'item_id': id1, 'quantity': 2},
+                {'item_id': id2, 'quantity': 3},
+            ],
+        )
+        db.session.commit()
+        assert doc_code.startswith('IS-')
+        assert len(movements) == 2
+        refs = {(m.reference or '') for m in movements}
+        assert all(r.startswith(f'issue:{doc_code}:item:') for r in refs)
+        item1 = db.session.get(InventoryItem, id1)
+        item2 = db.session.get(InventoryItem, id2)
+        assert float(item1.current_qty or 0) == 8
+        assert float(item2.current_qty or 0) == 5
+
+
+def test_issue_post_batch(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        item1 = _item(code='#WH-IP1', qty=6)
+        item2 = _item(code='#WH-IP2', qty=4)
+        db.session.commit()
+        id1, id2 = item1.id, item2.id
+
+    r = client.post('/inventory/issue', data={
+        'batch': '1',
+        'movement_date': date.today().isoformat(),
+        'target': 'consumable',
+        'notes': 'صرف مجمّع',
+        'item_id': [str(id1), str(id2)],
+        'quantity': ['2', '1'],
+    }, follow_redirects=True)
+    assert r.status_code == 200
+    assert 'IS-' in r.get_data(as_text=True)
+    with client.application.app_context():
+        item1 = db.session.get(InventoryItem, id1)
+        item2 = db.session.get(InventoryItem, id2)
+        assert float(item1.current_qty or 0) == 4
+        assert float(item2.current_qty or 0) == 3
+
+
 def test_inventory_item_card_page(client):
     from tests.conftest import login_as
 
@@ -195,7 +249,7 @@ def test_warehouse_department_pages(client):
     login_as(client, 'admin')
     for path, needle in (
         ('/warehouse/opening', 'ابحث بالكود أو اسم الصنف'),
-        ('/warehouse/issue', 'إذن صرف'),
+        ('/warehouse/issue', 'إذن صرف بضاعة'),
         ('/warehouse/purchases', 'إدخال فاتورة شراء'),
         ('/inventory', 'الأصناف'),
     ):
