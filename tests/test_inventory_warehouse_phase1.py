@@ -130,6 +130,46 @@ def test_purchase_invoice_batch_single_document(client):
         assert float(item2.current_qty or 0) == 2
 
 
+def test_purchase_invoice_applies_approx_discount(client):
+    with client.application.app_context():
+        item1 = _item(code='#WH-D1', qty=0)
+        item2 = _item(code='#WH-D2', qty=0)
+        db.session.commit()
+        id1, id2 = item1.id, item2.id
+
+    with client.application.app_context():
+        doc_code, movements = record_purchase_invoice_batch(
+            invoice_no='DISC-100',
+            discount_approx=10,
+            lines=[
+                {'item_id': id1, 'quantity': 2, 'unit_price': 10},
+                {'item_id': id2, 'quantity': 1, 'unit_price': 20},
+            ],
+        )
+        db.session.commit()
+        assert doc_code.startswith('PI-')
+        total_value = round(sum(float(m.total_value or 0) for m in movements), 2)
+        assert total_value == 30.0
+        assert 'خصم: 10.00' in (movements[0].reason or '')
+        item1 = db.session.get(InventoryItem, id1)
+        assert float(item1.buy_price or 0) == 7.5
+
+
+def test_purchase_invoice_rejects_discount_over_gross(client):
+    with client.application.app_context():
+        item = _item(code='#WH-D3', qty=0)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        with __import__('pytest').raises(ValueError, match='أكبر'):
+            record_purchase_invoice_batch(
+                invoice_no='DISC-BAD',
+                discount_approx=100,
+                lines=[{'item_id': item_id, 'quantity': 1, 'unit_price': 10}],
+            )
+
+
 def test_purchase_invoice_rejects_duplicate_invoice_no(client):
     with client.application.app_context():
         item = _item(code='#WH-PUR3', qty=0)

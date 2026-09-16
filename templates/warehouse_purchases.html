@@ -29,9 +29,12 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .purchase-item-cell .lc-client-select-input{width:100%;font-size:12px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1)}
 .purchase-item-cell .lc-client-select-list{z-index:400;max-height:220px;overflow-y:auto}
 .line-total{font-family:var(--font-en);color:var(--text1);font-weight:600;white-space:nowrap;text-align:left;direction:ltr}
-.doc-total-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:13px}
+.doc-total-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:8px;font-size:13px;flex-wrap:wrap}
+.doc-total-row.doc-total-main{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
 .doc-total-label{color:var(--text2)}
 .doc-total-value{font-family:var(--font-en);font-size:16px;font-weight:700;color:var(--accent);direction:ltr}
+.doc-total-value.sub{font-size:14px;font-weight:600;color:var(--text1)}
+.doc-total-value.discount{color:#f87171;font-size:14px;font-weight:600}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:var(--font-ar);font-size:13px;text-decoration:none}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
@@ -94,6 +97,10 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
               {% endfor %}
             </datalist>
           </div>
+          <div class="field">
+            <label>خصم تقريبي</label>
+            <input type="number" name="discount_approx" id="discount-approx" min="0" step="0.01" value="0" placeholder="0.00" style="direction:ltr;font-family:var(--font-en)">
+          </div>
           <div class="field form-full">
             <label>ملاحظات</label>
             <textarea name="notes" rows="2" placeholder="اختياري"></textarea>
@@ -116,7 +123,17 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
         </table>
 
         <div class="doc-total-row">
-          <span class="doc-total-label">إجمالي قيمة الفاتورة</span>
+          <span class="doc-total-label">إجمالي قبل الخصم</span>
+          <span class="doc-total-value sub" id="doc-gross">0.00</span>
+          <span class="lc-sar" role="img" aria-label="ريال"></span>
+        </div>
+        <div class="doc-total-row">
+          <span class="doc-total-label">خصم تقريبي</span>
+          <span class="doc-total-value discount" id="doc-discount">0.00</span>
+          <span class="lc-sar" role="img" aria-label="ريال"></span>
+        </div>
+        <div class="doc-total-row doc-total-main">
+          <span class="doc-total-label">صافي الفاتورة</span>
           <span class="doc-total-value" id="doc-total">0.00</span>
           <span class="lc-sar" role="img" aria-label="ريال"></span>
         </div>
@@ -126,7 +143,7 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
           <button type="submit" class="btn btn-primary">حفظ الفاتورة</button>
         </div>
       </form>
-      <p class="hint">كل فاتورة شراء تُسجَّل مستقلة برقم مستند <strong>PI-xxxx</strong> ورقم فاتورة المورد. أضف كل أصناف الفاتورة في جدول واحد ثم احفظ.</p>
+      <p class="hint">كل فاتورة شراء تُسجَّل مستقلة برقم مستند <strong>PI-xxxx</strong>. الخصم التقريبي يُوزَّع على الأسطر ويُخفّض تكلفة الشراء في المخزون.</p>
     </div>
 
     <div class="panel">
@@ -134,7 +151,7 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
       {% if purchase_documents %}
       <table class="doc-list">
         <thead>
-          <tr><th>المستند</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>إجمالي القيمة</th><th>ملاحظات</th></tr>
+          <tr><th>المستند</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>قبل الخصم</th><th>خصم</th><th>صافي</th><th>ملاحظات</th></tr>
         </thead>
         <tbody>
           {% for d in purchase_documents %}
@@ -145,6 +162,8 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
             <td>{{ d.movement_date }}</td>
             <td style="font-family:var(--font-en)">{{ d.line_count }}</td>
             <td style="font-family:var(--font-en)">{{ d.total_qty|inv_qty }}</td>
+            <td style="font-family:var(--font-en)">{{ d.gross_total }}</td>
+            <td style="font-family:var(--font-en);color:#f87171">{{ d.discount_approx or '—' }}</td>
             <td style="font-family:var(--font-en)">{{ d.total_value }}</td>
             <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
           </tr>
@@ -278,8 +297,18 @@ function updateDocTotal() {
     var priceEl = row.querySelector('input[name="unit_price"]');
     sum += (parseFloat(qtyEl && qtyEl.value || '0') || 0) * (parseFloat(priceEl && priceEl.value || '0') || 0);
   });
-  var el = document.getElementById('doc-total');
-  if (el) el.textContent = fmtLineMoney(sum);
+  var gross = sum;
+  var discountEl = document.getElementById('discount-approx');
+  var discount = parseFloat(discountEl && discountEl.value || '0') || 0;
+  if (discount < 0) discount = 0;
+  if (discount > gross) discount = gross;
+  var net = Math.max(0, gross - discount);
+  var grossEl = document.getElementById('doc-gross');
+  var discEl = document.getElementById('doc-discount');
+  var totalEl = document.getElementById('doc-total');
+  if (grossEl) grossEl.textContent = fmtLineMoney(gross);
+  if (discEl) discEl.textContent = fmtLineMoney(discount);
+  if (totalEl) totalEl.textContent = fmtLineMoney(net);
 }
 function bindLine(row) {
   mountPurchaseItemSelect(row, '');
@@ -313,6 +342,10 @@ function removeLine(btn) {
 }
 document.querySelectorAll('.line-row').forEach(bindLine);
 updateDocTotal();
+var discountInput = document.getElementById('discount-approx');
+if (discountInput) {
+  discountInput.addEventListener('input', updateDocTotal);
+}
 
 document.getElementById('purchase-form').addEventListener('submit', function (e) {
   var inv = (document.querySelector('input[name="invoice_no"]') || {}).value || '';

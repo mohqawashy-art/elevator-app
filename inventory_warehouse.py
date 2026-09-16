@@ -58,13 +58,67 @@ def purchase_doc_reference(doc_code: str, item_id: int, invoice_no: str) -> str:
     return ref[:100]
 
 
-def purchase_reason(doc_code: str, invoice_no: str, supplier: str = '') -> str:
+def purchase_reason(doc_code: str, invoice_no: str, supplier: str = '', discount_approx: float = 0) -> str:
     inv = (invoice_no or '').strip()
     reason = f'فاتورة شراء — {doc_code} | فاتورة: {inv[:80]}'
     sup = (supplier or '').strip()
     if sup:
         reason = f'{reason} | مورد: {sup[:60]}'
+    disc = round(float(discount_approx or 0), 2)
+    if disc > 0:
+        reason = f'{reason} | خصم: {disc:.2f}'
     return reason[:300]
+
+
+def parse_purchase_discount(reason: str | None) -> float:
+    text = (reason or '').strip()
+    marker = '| خصم:'
+    if marker not in text:
+        return 0.0
+    raw = text.split(marker, 1)[1].split('|', 1)[0].strip()
+    try:
+        return max(0.0, round(float(raw), 2))
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def distribute_purchase_discount(
+    lines: list[dict],
+    discount_approx: float,
+) -> tuple[float, float, list[dict]]:
+    """توزيع الخصم التقريبي على أسطر الفاتورة — (إجمالي قبل، خصم، أسطر بسعر صافٍ)."""
+    prepared: list[dict] = []
+    gross_total = 0.0
+    for raw in lines:
+        qty = float(raw['quantity'])
+        price = float(raw['unit_price'])
+        line_gross = round(qty * price, 2)
+        gross_total += line_gross
+        prepared.append({**raw, 'line_gross': line_gross})
+
+    gross_total = round(gross_total, 2)
+    discount = round(max(0.0, float(discount_approx or 0)), 2)
+    if discount > gross_total + 1e-9:
+        raise ValueError('الخصم أكبر من إجمالي الفاتورة')
+    if discount <= 0 or gross_total <= 0:
+        for row in prepared:
+            row['net_unit_price'] = float(row['unit_price'])
+            row['net_total'] = row['line_gross']
+        return gross_total, 0.0, prepared
+
+    allocated = 0.0
+    for idx, row in enumerate(prepared):
+        if idx == len(prepared) - 1:
+            line_discount = round(discount - allocated, 2)
+        else:
+            share = row['line_gross'] / gross_total if gross_total else 0.0
+            line_discount = round(discount * share, 2)
+            allocated += line_discount
+        net_total = round(max(0.0, row['line_gross'] - line_discount), 2)
+        qty = float(row['quantity'])
+        row['net_total'] = net_total
+        row['net_unit_price'] = round(net_total / qty, 4) if qty else 0.0
+    return gross_total, discount, prepared
 
 
 def next_purchase_doc_code() -> str:
@@ -301,6 +355,7 @@ def record_purchase_invoice_batch(
     movement_date: date | None = None,
     supplier: str = '',
     notes: str = '',
+    discount_approx: float = 0,
 ) -> tuple[str, list[StockMovement]]:
     """تسجيل فاتورة شراء — عدة أصniaف برقم مستند PI-xxxx وفاتورة واحدة."""
     inv = (invoice_no or '').strip()
@@ -317,6 +372,7 @@ def record_purchase_invoice_batch(
     doc_code = next_purchase_doc_code()
     movements: list[StockMovement] = []
     seen_items: set[int] = set()
+    parsed_lines: list[dict] = []
 
     for raw in lines:
         try:
@@ -341,25 +397,45 @@ def record_purchase_invoice_batch(
 
         item = tenant_get_or_404(InventoryItem, item_id)
         price = float(unit_price if unit_price is not None else (item.buy_price or 0))
+        parsed_lines.append({
+            'item_id': item_id,
+            'item': item,
+            'quantity': quantity,
+            'unit_price': price,
+        })
+
+    if not parsed_lines:
+        raise ValueError('أضف صنفاً واحداً على الأقل بكمية أكبر من صفر')
+
+    gross_total, discount, priced_lines = distribute_purchase_discount(
+        parsed_lines,
+        discount_approx,
+    )
+    doc_reason = purchase_reason(doc_code, inv, sup, discount)
+    if discount > 0:
+        extra = f'إجمالي قبل الخصم: {gross_total:.2f} | خصم تقريبي: {discount:.2f} | صافي: {round(gross_total - discount, 2):.2f}'
+        doc_notes = f'{doc_notes} | {extra}'.strip(' |') if doc_notes else extra
+
+    for row in priced_lines:
+        item = row['item']
+        quantity = float(row['quantity'])
+        net_price = float(row['net_unit_price'])
         movement = create_stock_movement(
             item=item,
             movement_date=mv_date,
             direction='وارد',
             movement_type=MOVEMENT_PURCHASE,
             quantity=quantity,
-            unit_price=price,
-            reason=purchase_reason(doc_code, inv, sup),
-            reference=purchase_doc_reference(doc_code, item_id, inv),
+            unit_price=net_price,
+            reason=doc_reason,
+            reference=purchase_doc_reference(doc_code, item.id, inv),
             notes=doc_notes or None,
         )
-        if price > 0:
-            item.buy_price = price
+        if net_price > 0:
+            item.buy_price = net_price
             if sup:
                 item.supplier = sup
         movements.append(movement)
-
-    if not movements:
-        raise ValueError('أضف صنفاً واحداً على الأقل بكمية أكبر من صفر')
 
     return doc_code, movements
 
@@ -871,6 +947,8 @@ def purchase_invoice_documents(limit: int = 40) -> list[dict]:
                 'movement_date': str(m.movement_date or ''),
                 'invoice_no': parse_movement_invoice(ref, reason),
                 'supplier': supplier or '—',
+                'discount_approx': parse_purchase_discount(reason),
+                'gross_total': 0.0,
                 'line_count': 0,
                 'total_qty': 0.0,
                 'total_value': 0.0,
@@ -880,7 +958,14 @@ def purchase_invoice_documents(limit: int = 40) -> list[dict]:
         entry['line_count'] += 1
         entry['total_qty'] = round(entry['total_qty'] + float(m.quantity or 0), 4)
         entry['total_value'] = round(entry['total_value'] + float(m.total_value or 0), 2)
-    return list(docs.values())[:limit]
+    out = []
+    for doc in docs.values():
+        disc = float(doc.pop('discount_approx', 0) or 0)
+        net = float(doc['total_value'] or 0)
+        doc['gross_total'] = round(net + disc, 2)
+        doc['discount_approx'] = disc
+        out.append(doc)
+    return out[:limit]
 
 
 def purchase_movements(limit: int = 300) -> list[dict]:

@@ -12041,6 +12041,10 @@ def inventory_purchase_invoice():
     invoice_no = (request.form.get('invoice_no') or '').strip()
     supplier = (request.form.get('supplier') or '').strip()
     notes = (request.form.get('notes') or '').strip()
+    try:
+        discount_approx = float(request.form.get('discount_approx') or 0)
+    except (TypeError, ValueError):
+        discount_approx = 0.0
     item_ids = request.form.getlist('item_id')
     quantities = request.form.getlist('quantity')
     unit_prices = request.form.getlist('unit_price')
@@ -12068,6 +12072,7 @@ def inventory_purchase_invoice():
             movement_date=movement_date,
             supplier=supplier,
             notes=notes,
+            discount_approx=discount_approx,
         )
         db.session.commit()
         flash(
