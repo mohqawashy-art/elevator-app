@@ -32,7 +32,7 @@
         <td>{{ doc.label or doc.file_name or 'مرفق' }}</td>
         <td style="font-family:var(--font-en);direction:ltr">{{ doc.uploaded_at.strftime('%Y-%m-%d') if doc.uploaded_at else '—' }}</td>
         <td style="white-space:nowrap">
-          <a href="{{ upload_url(doc.file_path) }}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">عرض</a>
+          <a href="{{ upload_url(doc.file_path) }}" class="btn btn-secondary btn-sm">عرض</a>
           <form method="post" action="/installation/contracts/{{ contract.id }}/documents/{{ doc.id }}/delete" style="display:inline" onsubmit="return confirm('حذف هذا المرفق؟')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-secondary btn-sm">حذف</button>

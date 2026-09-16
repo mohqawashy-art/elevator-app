@@ -184,7 +184,7 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
           {% if edit_document and edit_document.attachment_items %}
           <div id="attachment-existing" class="attach-list">
             {% for att in edit_document.attachment_items %}
-            <div class="attach-item"><a href="{{ att.url }}" target="_blank" rel="noopener">{{ att.name }}</a></div>
+            <div class="attach-item"><a href="{{ att.url }}">{{ att.name }}</a></div>
             {% endfor %}
           </div>
           {% endif %}

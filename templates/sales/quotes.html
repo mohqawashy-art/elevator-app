@@ -78,7 +78,7 @@
               {% elif r.kind == 'maintenance' and r.contract_url %}
               <a href="{{ r.contract_url }}" class="btn btn-secondary btn-sm">العقد</a>
               {% endif %}
-              <a href="{{ r.print_url }}" class="btn btn-secondary btn-sm" target="_blank">طباعة</a>
+              <a href="{{ r.print_url }}" class="btn btn-secondary btn-sm lc-open-tab">طباعة</a>
               {% if r.kind == 'install' and r.status not in ('مقبول', 'مرفوض') %}
               <a href="{{ r.deliver_wa }}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">واتساب</a>
               <a href="{{ r.deliver_email }}" class="btn btn-secondary btn-sm">إيميل</a>

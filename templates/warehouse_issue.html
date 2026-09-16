@@ -163,7 +163,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
             <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
             <td>
               <div class="doc-actions">
-                <a href="/warehouse/issue/print/{{ d.code }}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">طباعة</a>
+                <a href="/warehouse/issue/print/{{ d.code }}" class="btn btn-secondary btn-sm lc-open-tab">طباعة</a>
                 {% if auth_user and auth_user.role == 'admin' %}
                 <a href="/warehouse/issue?edit={{ d.code }}" class="btn btn-secondary btn-sm">تعديل</a>
                 {% endif %}

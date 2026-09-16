@@ -72,7 +72,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
       <div class="panel-head">
         <div class="panel-title">عرض مستند {{ view_document.code }}</div>
         <div class="doc-actions">
-          <a href="/warehouse/opening/print/{{ view_document.code }}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">طباعة</a>
+          <a href="/warehouse/opening/print/{{ view_document.code }}" class="btn btn-primary btn-sm lc-open-tab">طباعة</a>
           {% if auth_user and auth_user.role == 'admin' %}
           <a href="/warehouse/opening?edit={{ view_document.code }}" class="btn btn-secondary btn-sm">تعديل</a>
           <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="deleteOpeningDoc('{{ view_document.code }}')">حذف</button>
@@ -185,7 +185,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
             <td>
               <div class="doc-actions">
                 <a href="/warehouse/opening?view={{ d.code }}" class="btn btn-secondary btn-sm">عرض</a>
-                <a href="/warehouse/opening/print/{{ d.code }}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">طباعة</a>
+                <a href="/warehouse/opening/print/{{ d.code }}" class="btn btn-secondary btn-sm lc-open-tab">طباعة</a>
                 {% if auth_user and auth_user.role == 'admin' %}
                 <a href="/warehouse/opening?edit={{ d.code }}" class="btn btn-secondary btn-sm">تعديل</a>
                 <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="deleteOpeningDoc('{{ d.code }}')">حذف</button>

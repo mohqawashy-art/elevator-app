@@ -868,7 +868,7 @@ function contractAttachmentCell(c) {
   var files = (c.files && c.files.length) ? c.files : (c.file_url ? [{ url: c.file_url, name: c.file_name || 'PDF' }] : []);
   if (!files.length) return '<span class="contract-attach-empty">—</span>';
   if (files.length === 1) {
-    return '<a class="contract-attach-link" href="' + esc(files[0].url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()" title="' + esc(files[0].name || 'PDF') + '">📄 ' + esc(files[0].name || 'PDF') + '</a>';
+    return '<a class="contract-attach-link" href="' + esc(files[0].url) + '" onclick="event.stopPropagation()" title="' + esc(files[0].name || 'PDF') + '">📄 ' + esc(files[0].name || 'PDF') + '</a>';
   }
   return '<span class="contract-attach-link" title="' + files.length + ' ملف">📄 ' + files.length + ' ملف</span>';
 }
@@ -882,7 +882,7 @@ function contractAttachmentBlock(c) {
   var listHtml = window.LiftCoreMultiAttach
     ? LiftCoreMultiAttach.proofsHtml(files, { recordId: c.id, removeFn: 'removeContractAttachmentAt', empty: '—' })
     : files.map(function (f) {
-      return '<a class="contract-attach-link" href="' + esc(f.url) + '" target="_blank" rel="noopener">📄 ' + esc(f.name || 'PDF') + '</a>';
+      return '<a class="contract-attach-link" href="' + esc(f.url) + '">📄 ' + esc(f.name || 'PDF') + '</a>';
     }).join('<br>');
   return '<div class="view-section">المرفقات</div>' +
     '<div class="view-item view-full"><div class="view-label">ملفات العقد (PDF)</div><div class="view-val" style="line-height:1.6">' +
@@ -2435,7 +2435,7 @@ function printContractForm(id) {
   var cid = id || currentViewId;
   if (!cid) return;
   if (window.LiftCoreNav) LiftCoreNav.openTab('/contracts/' + cid + '/print');
-  else window.open('/contracts/' + cid + '/print?popup=1', '_blank');
+  else window.location.href = '/contracts/' + cid + '/print?popup=1';
 }
 
 // ===== حذف =====
@@ -2572,7 +2572,7 @@ function getAllowedContractElevatorId() {
 
 function elevatorAddLinkHtml(customerId) {
   var href = '/elevators?action=add' + (customerId ? ('&customer_id=' + encodeURIComponent(customerId)) : '');
-  return '<a class="btn btn-primary btn-sm" href="' + href + '" target="_blank" rel="noopener">' +
+  return '<a class="btn btn-primary btn-sm" href="' + href + '">' +
       '<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-left:4px"><path d="M7 2v10M2 7h10"/></svg>' +
       'إضافة مصعد' +
     '</a>' +
@@ -3057,6 +3057,13 @@ function getContractPosition(c) {
 
   var fromContract = coordsFromLatLng(c.lat, c.lng);
   if (fromContract) return fromContract;
+
+  if (cust) {
+    var fromCust = window.LiftCoreLocation && LiftCoreLocation.coordsForCustomer
+      ? LiftCoreLocation.coordsForCustomer(cust)
+      : coordsFromLatLng(cust.lat, cust.lng);
+    if (fromCust) return fromCust;
+  }
 
   var city = ((c.city || '') + '').trim() || (cust && (cust.city || '').trim()) || '';
   if (city && window.LiftCoreLocation && LiftCoreLocation.resolveCityCoords) {

@@ -72,7 +72,7 @@
               {% else %}
               <a class="btn btn-secondary btn-sm" href="{{ url_for('sales.maintenance_quote_edit', quote_id=q.id) }}">فتح</a>
               {% endif %}
-              <a class="btn btn-secondary btn-sm" href="{{ url_for('sales.maintenance_quote_print', quote_id=q.id) }}" target="_blank">طباعة</a>
+              <a class="btn btn-secondary btn-sm lc-open-tab" href="{{ url_for('sales.maintenance_quote_print', quote_id=q.id) }}">طباعة</a>
               {% if q.status not in ('مقبول','مرفوض') %}
               <a class="btn btn-secondary btn-sm" href="{{ url_for('sales.maintenance_quote_deliver', quote_id=q.id, channel='whatsapp') }}" target="_blank" rel="noopener">واتساب</a>
               <form method="post" action="{{ url_for('sales.maintenance_quote_approve', quote_id=q.id) }}" style="display:inline" onsubmit="return confirm('موافقة العميل وإنشاء عقد صيانة؟')">

@@ -48,7 +48,7 @@
           'onclick="' + escHtml(opts.onRemove) + '(' + Number(opts.recordId) + ',' + idx + ')" title="حذف">×</button>';
       }
       return '<div class="lc-attach-existing-item" style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">' +
-        '<a href="' + escHtml(url) + '" target="_blank" rel="noopener" style="font-size:12px">📎 ' + escHtml(name) + '</a>' +
+        '<a href="' + escHtml(url) + '" style="font-size:12px">📎 ' + escHtml(name) + '</a>' +
         delBtn +
         '</div>';
     }).join('');
@@ -80,7 +80,7 @@
         adminDel = ' <button type="button" class="btn btn-danger btn-sm lc-admin-delete" onclick="' +
           opts.removeFn + '(' + Number(opts.recordId) + ',' + idx + ')">حذف</button>';
       }
-      return '<a href="' + escHtml(url) + '" target="_blank" rel="noopener">' + escHtml(name) + '</a>' + adminDel;
+      return '<a href="' + escHtml(url) + '">' + escHtml(name) + '</a>' + adminDel;
     }).join('<br>');
   }
 

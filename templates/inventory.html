@@ -525,7 +525,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               {% endfor %}
             </select>
             <input id="m-supplier" placeholder="أو اكتب اسم مورد" style="flex:1;min-width:160px">
-            <a href="/suppliers" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">+ مورد</a>
+            <a href="/suppliers" class="btn btn-secondary btn-sm">+ مورد</a>
           </div>
         </div>
         <div class="field form-full">
@@ -760,6 +760,11 @@ function renderCustodyTable() {
   }).join('');
 }
 
+function openInternalPrint(url) {
+  if (window.LiftCoreNav && LiftCoreNav.openTab) LiftCoreNav.openTab(url);
+  else window.location.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'popup=1';
+}
+
 function printCustodyReport() {
   var params = new URLSearchParams();
   var s = (document.getElementById('cust-f-search').value || '').trim();
@@ -767,7 +772,7 @@ function printCustodyReport() {
   if (techId) params.set('technician_id', techId);
   if (s) params.set('q', s);
   var qs = params.toString();
-  window.open('/inventory/custody/print' + (qs ? ('?' + qs) : ''), '_blank', 'noopener');
+  openInternalPrint('/inventory/custody/print' + (qs ? ('?' + qs) : ''));
 }
 
 function buildCustodySettlePayload(validateContracts) {
@@ -821,7 +826,7 @@ function printCustodyTransferPermit(isDraft) {
   if (payload.contract_id) params.set('contract_id', payload.contract_id);
   if (payload.install_contract_id) params.set('install_contract_id', payload.install_contract_id);
   if (isDraft) params.set('draft', '1');
-  window.open('/inventory/custody/transfer/print?' + params.toString(), '_blank', 'noopener');
+  openInternalPrint('/inventory/custody/transfer/print?' + params.toString());
 }
 
 function openCustodyModal() {
@@ -913,7 +918,10 @@ function submitCustodySettle() {
     .then(function (res) {
       if (!res.ok || !res.j.ok) throw new Error((res.j && res.j.error) || 'fail');
       if (res.j.movement_id) {
-        window.open('/inventory/custody/transfer/print?movement_id=' + res.j.movement_id, '_blank', 'noopener');
+        closeModal('modal-custody-settle');
+        closeModal('modal-custody');
+        openInternalPrint('/inventory/custody/transfer/print?movement_id=' + res.j.movement_id);
+        return;
       }
       closeModal('modal-custody-settle');
       closeModal('modal-custody');

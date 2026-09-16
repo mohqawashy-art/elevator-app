@@ -822,7 +822,7 @@ function viewInvoice(id) {
 
 function printInvoice(id) {
   if (window.LiftCoreNav) LiftCoreNav.openTab('/invoices/' + id + '/print?print=1');
-  else window.open('/invoices/' + id + '/print?print=1&popup=1', '_blank');
+  else window.location.href = '/invoices/' + id + '/print?print=1&popup=1';
 }
 
 function deleteInvoice(id) { currentDeleteId = id; document.getElementById('modal-delete').classList.add('open'); }

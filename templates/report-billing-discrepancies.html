@@ -140,7 +140,7 @@ function renderTable(rows) {
   }
   tb.innerHTML = reportRows.map(function (r) {
     var dc = (r.delta || 0) >= 0 ? 'delta-pos' : 'delta-neg';
-    var link = r.link ? '<a class="link-btn" href="' + r.link + '" target="_blank">فتح</a>' : '';
+    var link = r.link ? '<a class="link-btn" href="' + r.link + '">فتح</a>' : '';
     return '<tr data-search="' + (r.code + ' ' + r.customer + ' ' + r.entity_label).toLowerCase() + '">' +
       '<td><span class="badge">' + r.entity_label + '</span></td>' +
       '<td class="td-code">' + (r.code || '—') + '</td>' +

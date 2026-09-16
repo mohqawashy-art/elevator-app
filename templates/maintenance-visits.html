@@ -1941,7 +1941,7 @@ function renderPlanMissingCoverage(coverage) {
   rows.forEach(function (row) {
     var custCell = escHtml(row.customer_name || '—');
     if (row.customer_id) {
-      custCell = '<a href="/clients?open=' + row.customer_id + '" style="color:var(--accent)" target="_blank" rel="noopener">' + escHtml(row.customer_name || '—') + '</a>';
+      custCell = '<a href="/clients?open=' + row.customer_id + '" style="color:var(--accent)">' + escHtml(row.customer_name || '—') + '</a>';
     }
     html += '<tr style="border-top:1px solid var(--border)">' +
       '<td style="padding:5px 8px">' + custCell + '</td>' +
