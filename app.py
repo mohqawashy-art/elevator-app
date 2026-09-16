@@ -12031,7 +12031,7 @@ def inventory_item_card(item_id):
 
 @app.route('/inventory/opening-stock', methods=['POST'])
 def inventory_opening_stock():
-    from inventory_warehouse import record_opening_stock_batch
+    from inventory_warehouse import record_opening_stock_batch, update_opening_batch
 
     movement_date = date.today()
     raw_date = (request.form.get('movement_date') or '').strip()
@@ -12042,6 +12042,7 @@ def inventory_opening_stock():
             flash('تاريخ غير صالح', 'error')
             return redirect(url_for('warehouse_opening'))
 
+    edit_doc_code = (request.form.get('edit_doc_code') or '').strip()
     notes = (request.form.get('notes') or '').strip()
     return_to = (request.form.get('return_to') or '').strip()
     item_ids = request.form.getlist('item_id')
@@ -12065,17 +12066,25 @@ def inventory_opening_stock():
         })
     if not lines_data:
         flash('أضف صنفاً واحداً على الأقل', 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_opening', edit=edit_doc_code))
         return redirect(url_for('warehouse_opening'))
 
+    batch_kwargs = dict(
+        lines=lines_data,
+        movement_date=movement_date,
+        notes=notes,
+    )
     try:
-        doc_code, movements = record_opening_stock_batch(
-            lines=lines_data,
-            movement_date=movement_date,
-            notes=notes,
-        )
+        if edit_doc_code:
+            doc_code, movements = update_opening_batch(edit_doc_code, **batch_kwargs)
+            action = 'تحديث'
+        else:
+            doc_code, movements = record_opening_stock_batch(**batch_kwargs)
+            action = 'حفظ'
         db.session.commit()
         flash(
-            f'تم حفظ مستند رصيد أول المدة {doc_code} — {len(movements)} صنف',
+            f'تم {action} مستند رصيد أول المدة {doc_code} — {len(movements)} صنف',
             'success',
         )
         if return_to == 'item' and len(movements) == 1:
@@ -12083,10 +12092,14 @@ def inventory_opening_stock():
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_opening', edit=edit_doc_code))
     except Exception:
         db.session.rollback()
         app.logger.exception('inventory_opening_stock failed')
         flash('تعذّر تسجيل رصيد أول المدة', 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_opening', edit=edit_doc_code))
     return redirect(url_for('warehouse_opening'))
 
 
@@ -12325,9 +12338,44 @@ def inventory_issue():
 
 @app.route('/warehouse/opening')
 def warehouse_opening():
-    from inventory_warehouse import warehouse_page_context
+    from inventory_warehouse import opening_document_for_edit, warehouse_page_context
 
-    return render_template('warehouse_opening.html', **warehouse_page_context())
+    ctx = warehouse_page_context()
+    edit_code = (request.args.get('edit') or '').strip()
+    view_code = (request.args.get('view') or '').strip()
+    edit_document = None
+    view_document = None
+    if edit_code:
+        edit_document = opening_document_for_edit(edit_code)
+        if edit_document is None:
+            flash(f'مستند رصيد أول المدة «{edit_code}» غير موجود', 'error')
+    elif view_code:
+        view_document = opening_document_for_edit(view_code)
+        if view_document is None:
+            flash(f'مستند رصيد أول المدة «{view_code}» غير موجود', 'error')
+    return render_template(
+        'warehouse_opening.html',
+        edit_document=edit_document,
+        view_document=view_document,
+        **ctx,
+    )
+
+
+@app.route('/warehouse/opening/print/<doc_code>')
+def warehouse_opening_print(doc_code):
+    from inventory_warehouse import opening_print_payload
+
+    payload = opening_print_payload((doc_code or '').strip())
+    if not payload:
+        flash('مستند رصيد أول المدة غير موجود', 'error')
+        return redirect(url_for('warehouse_opening'))
+    settings = get_app_settings()
+    return render_template(
+        'warehouse_opening_print.html',
+        brand_logo_url=brand_logo_url(settings),
+        company_settings=settings,
+        **payload,
+    )
 
 
 @app.route('/warehouse/issue')

@@ -509,11 +509,40 @@ def record_opening_stock(
     return movements[0]
 
 
+def opening_document_movements(doc_code: str) -> list[StockMovement]:
+    code = (doc_code or '').strip()
+    if not code.startswith(OPENING_DOC_PREFIX):
+        return []
+    prefix = f'{OPENING_DOC_REF_PREFIX}{code}:item:'
+    return (
+        tenant_query(StockMovement)
+        .filter(
+            StockMovement.movement_type == MOVEMENT_OPENING,
+            StockMovement.reference.like(f'{prefix}%'),
+        )
+        .order_by(StockMovement.id)
+        .all()
+    )
+
+
+def reverse_opening_document(doc_code: str) -> int:
+    movements = opening_document_movements(doc_code)
+    if not movements:
+        raise ValueError(f'مستند رصيد أول المدة «{doc_code}» غير موجود')
+    for movement in movements:
+        item = db.session.get(InventoryItem, movement.item_id)
+        if item:
+            adjust_inventory_qty(item, movement.direction, movement.quantity, reverse=True)
+        db.session.delete(movement)
+    return len(movements)
+
+
 def record_opening_stock_batch(
     *,
     lines: list[dict],
     movement_date: date | None = None,
     notes: str = '',
+    doc_code: str | None = None,
 ) -> tuple[str, list[StockMovement]]:
     """تسجيل مستند رصيد أول المدة — عدة أصناف برقم مستند واحد OS-xxxx."""
     if not lines:
@@ -521,7 +550,13 @@ def record_opening_stock_batch(
 
     mv_date = movement_date or date.today()
     doc_notes = (notes or '').strip()
-    doc_code = next_opening_doc_code()
+    resolved_doc = (doc_code or '').strip()
+    if resolved_doc:
+        if not resolved_doc.startswith(OPENING_DOC_PREFIX):
+            raise ValueError('رقم المستند غير صالح')
+        doc_code = resolved_doc
+    else:
+        doc_code = next_opening_doc_code()
     movements: list[StockMovement] = []
     seen_items: set[int] = set()
 
@@ -568,6 +603,26 @@ def record_opening_stock_batch(
         raise ValueError('أضف صنفاً واحداً على الأقل بكمية أكبر من صفر')
 
     return doc_code, movements
+
+
+def update_opening_batch(
+    doc_code: str,
+    *,
+    lines: list[dict],
+    movement_date: date | None = None,
+    notes: str = '',
+) -> tuple[str, list[StockMovement]]:
+    """تعديل مستند رصيد أول المدة — عكس المخزون القديم ثم إعادة التسجيل بنفس OS."""
+    code = (doc_code or '').strip()
+    if not code.startswith(OPENING_DOC_PREFIX):
+        raise ValueError('رقم المستند غير صالح')
+    reverse_opening_document(code)
+    return record_opening_stock_batch(
+        lines=lines,
+        movement_date=movement_date,
+        notes=notes,
+        doc_code=code,
+    )
 
 
 def record_purchase_invoice_batch(
@@ -1367,6 +1422,73 @@ def opening_stock_documents(limit: int = 40) -> list[dict]:
         doc['invoice_summary'] = '، '.join(doc.pop('invoice_numbers', [])) or '—'
         out.append(doc)
     return out[:limit]
+
+
+def opening_document_for_edit(doc_code: str) -> dict | None:
+    movements = opening_document_movements(doc_code)
+    if not movements:
+        return None
+    first = movements[0]
+    lines: list[dict] = []
+    for movement in movements:
+        item = movement.item
+        lines.append({
+            'item_id': movement.item_id,
+            'item_code': item.code if item else '',
+            'item_name': item.name if item else '',
+            'quantity': float(movement.quantity or 0),
+            'unit_price': float(movement.unit_price or 0),
+            'invoice_no': parse_opening_invoice(movement.reference),
+        })
+    return {
+        'code': doc_code,
+        'movement_date': str(first.movement_date or ''),
+        'notes': parse_stock_movement_user_notes(first.notes, first.reference),
+        'lines': lines,
+        'line_count': len(lines),
+        'total_qty': round(sum(float(m.quantity or 0) for m in movements), 4),
+        'total_value': round(sum(float(m.total_value or 0) for m in movements), 2),
+    }
+
+
+def opening_print_payload(doc_code: str) -> dict | None:
+    movements = opening_document_movements(doc_code)
+    if not movements:
+        return None
+    first = movements[0]
+    lines = []
+    total_qty = 0.0
+    total_value = 0.0
+    invoice_numbers: list[str] = []
+    for movement in movements:
+        item = movement.item
+        qty = float(movement.quantity or 0)
+        unit_price = float(movement.unit_price or 0)
+        line_total = float(movement.total_value or 0)
+        total_qty += qty
+        total_value += line_total
+        inv = parse_opening_invoice(movement.reference)
+        if inv and inv not in invoice_numbers:
+            invoice_numbers.append(inv)
+        lines.append({
+            'code': item.code if item else '—',
+            'name': item.name if item else '—',
+            'unit': (item.unit if item else '') or 'قطعة',
+            'quantity': qty,
+            'unit_price': unit_price,
+            'total_value': line_total,
+            'invoice_no': inv or '—',
+        })
+    return {
+        'doc_code': doc_code,
+        'movement_date': str(first.movement_date or ''),
+        'notes': parse_stock_movement_user_notes(first.notes, first.reference) or '—',
+        'lines': lines,
+        'line_count': len(lines),
+        'total_qty': round(total_qty, 4),
+        'total_value': round(total_value, 2),
+        'invoice_summary': '، '.join(invoice_numbers) or '—',
+    }
 
 
 def warehouse_page_context() -> dict:

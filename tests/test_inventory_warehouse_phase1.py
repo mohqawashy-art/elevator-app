@@ -13,10 +13,13 @@ from inventory_warehouse import (
     purchase_invoice_for_edit,
     record_issue_authorization,
     record_issue_batch,
+    opening_document_for_edit,
+    opening_print_payload,
     record_opening_stock,
     record_opening_stock_batch,
     record_purchase_invoice_batch,
     update_issue_batch,
+    update_opening_batch,
     update_purchase_invoice_batch,
     validate_outbound_stock,
 )
@@ -333,6 +336,135 @@ def test_opening_stock_post_batch(client):
         assert float(item1.current_qty or 0) == 2
         assert float(item2.current_qty or 0) == 4
         assert StockMovement.query.filter_by(item_id=id1).count() == 1
+
+
+def test_opening_stock_update(client):
+    with client.application.app_context():
+        item1 = _item(code='#WH-OSU1', qty=0)
+        item2 = _item(code='#WH-OSU2', qty=0)
+        db.session.commit()
+        id1, id2 = item1.id, item2.id
+
+    with client.application.app_context():
+        doc_code, _ = record_opening_stock_batch(
+            notes='افتتاحي',
+            lines=[
+                {'item_id': id1, 'quantity': 2, 'unit_price': 10, 'invoice_no': 'INV-A'},
+            ],
+        )
+        db.session.commit()
+
+    with client.application.app_context():
+        update_opening_batch(
+            doc_code,
+            notes='محدّث',
+            lines=[
+                {'item_id': id1, 'quantity': 5, 'unit_price': 12, 'invoice_no': 'INV-A'},
+                {'item_id': id2, 'quantity': 1, 'unit_price': 8, 'invoice_no': 'INV-B'},
+            ],
+        )
+        db.session.commit()
+        item1 = db.session.get(InventoryItem, id1)
+        item2 = db.session.get(InventoryItem, id2)
+        assert float(item1.current_qty or 0) == 5
+        assert float(item2.current_qty or 0) == 1
+        edit = opening_document_for_edit(doc_code)
+        assert edit is not None
+        assert edit['notes'] == 'محدّث'
+        assert len(edit['lines']) == 2
+
+
+def test_opening_stock_edit_post(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        item = _item(code='#WH-OSEDIT', qty=0)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, _ = record_opening_stock_batch(
+            lines=[{'item_id': item_id, 'quantity': 1, 'unit_price': 5}],
+        )
+        db.session.commit()
+
+    r = client.post('/inventory/opening-stock', data={
+        'edit_doc_code': doc_code,
+        'movement_date': date.today().isoformat(),
+        'notes': 'بعد التعديل',
+        'item_id': [str(item_id)],
+        'quantity': ['4'],
+        'unit_price': ['7.25'],
+        'invoice_no': ['FAT-99'],
+    }, follow_redirects=True)
+    assert r.status_code == 200
+    assert 'تحديث' in r.get_data(as_text=True)
+    with client.application.app_context():
+        item = db.session.get(InventoryItem, item_id)
+        assert float(item.current_qty or 0) == 4
+
+
+def test_opening_print_payload(client):
+    with client.application.app_context():
+        item = _item(code='#WH-OSPR', qty=0)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, _ = record_opening_stock_batch(
+            lines=[{'item_id': item_id, 'quantity': 3, 'unit_price': 10, 'invoice_no': 'OS-INV'}],
+        )
+        db.session.commit()
+        payload = opening_print_payload(doc_code)
+        assert payload is not None
+        assert payload['doc_code'] == doc_code
+        assert payload['line_count'] == 1
+        assert payload['invoice_summary'] == 'OS-INV'
+
+
+def test_opening_print_route(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        item = _item(code='#WH-OSPRT', qty=0)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, _ = record_opening_stock_batch(
+            lines=[{'item_id': item_id, 'quantity': 2, 'unit_price': 5}],
+        )
+        db.session.commit()
+
+    r = client.get(f'/warehouse/opening/print/{doc_code}')
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert doc_code in html
+    assert 'مستند رصيد أول المدة' in html
+
+
+def test_opening_view_route(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        item = _item(code='#WH-OSVIEW', qty=0)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, _ = record_opening_stock_batch(
+            lines=[{'item_id': item_id, 'quantity': 2, 'unit_price': 5, 'invoice_no': 'V-1'}],
+        )
+        db.session.commit()
+
+    r = client.get(f'/warehouse/opening?view={doc_code}')
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert f'عرض مستند {doc_code}' in html
+    assert 'V-1' in html
 
 
 def test_purchase_invoice_post(client):

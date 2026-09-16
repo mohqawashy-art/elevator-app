@@ -38,6 +38,16 @@ table.doc-list{width:100%;border-collapse:collapse;font-size:13px}
 table.doc-list th{padding:10px 12px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px}
 table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
 .td-code{font-family:var(--font-en);color:var(--accent);font-weight:600}
+.doc-actions{display:flex;gap:6px;flex-wrap:wrap}
+.doc-actions .btn{padding:4px 10px;font-size:11px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.panel-head .panel-title{margin-bottom:0}
+.view-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:14px;font-size:13px}
+.view-meta dt{color:var(--text3);font-size:11px;margin-bottom:4px}
+.view-meta dd{color:var(--text1);font-family:var(--font-en);direction:ltr}
+.view-lines{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.view-lines th,.view-lines td{padding:8px 10px;border-bottom:1px solid rgba(100,160,255,.06);text-align:right}
+.view-lines th{background:var(--bg3);color:var(--text3);font-size:11px}
 .empty-msg{color:var(--text3);font-size:13px;padding:12px 0}
 </style>
 {% include 'partials/liftcore_head.html' %}
@@ -56,21 +66,67 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
   <div class="content">
     {% include 'partials/flash_messages.html' %}
 
+    {% if view_document %}
     <div class="panel">
-      <div class="panel-title">مستند رصيد أول المدة</div>
+      <div class="panel-head">
+        <div class="panel-title">عرض مستند {{ view_document.code }}</div>
+        <div class="doc-actions">
+          <a href="/warehouse/opening/print/{{ view_document.code }}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">طباعة</a>
+          <a href="/warehouse/opening?edit={{ view_document.code }}" class="btn btn-secondary btn-sm">تعديل</a>
+          <a href="/warehouse/opening" class="btn btn-secondary btn-sm">إغلاق</a>
+        </div>
+      </div>
+      <dl class="view-meta">
+        <div><dt>رقم المستند</dt><dd>{{ view_document.code }}</dd></div>
+        <div><dt>التاريخ</dt><dd>{{ view_document.movement_date }}</dd></div>
+        <div><dt>عدد الأصناف</dt><dd>{{ view_document.line_count }}</dd></div>
+        <div><dt>إجمالي الكمية</dt><dd>{{ view_document.total_qty|inv_qty }}</dd></div>
+        <div><dt>إجمالي القيمة</dt><dd>{{ view_document.total_value }}</dd></div>
+      </dl>
+      {% if view_document.notes %}
+      <p class="hint" style="margin-bottom:12px">ملاحظات: {{ view_document.notes }}</p>
+      {% endif %}
+      <table class="view-lines">
+        <thead>
+          <tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th>رقم الفاتورة</th></tr>
+        </thead>
+        <tbody>
+          {% for line in view_document.lines %}
+          <tr>
+            <td>{{ line.item_name }} <span style="color:var(--text3);font-size:11px">({{ line.item_code }})</span></td>
+            <td style="font-family:var(--font-en)">{{ line.quantity|inv_qty }}</td>
+            <td style="font-family:var(--font-en)">{{ line.unit_price }}</td>
+            <td style="font-family:var(--font-en)">{{ (line.quantity * line.unit_price)|round(2) }}</td>
+            <td style="font-family:var(--font-en);direction:ltr">{{ line.invoice_no or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">{% if edit_document %}تعديل مستند {{ edit_document.code }}{% else %}مستند رصيد أول المدة{% endif %}</div>
+        {% if edit_document %}
+        <a href="/warehouse/opening" class="btn btn-secondary btn-sm">إلغاء التعديل</a>
+        {% endif %}
+      </div>
       <form method="post" action="/inventory/opening-stock" id="opening-form">
+        {% if edit_document %}
+        <input type="hidden" name="edit_doc_code" value="{{ edit_document.code }}">
+        {% endif %}
         <div class="form-grid">
           <div class="field">
-            <label>رقم المستند (تلقائي)</label>
-            <div class="doc-no">{{ next_opening_doc }}</div>
+            <label>رقم المستند{% if not edit_document %} (تلقائي){% endif %}</label>
+            <div class="doc-no">{% if edit_document %}{{ edit_document.code }}{% else %}{{ next_opening_doc }}{% endif %}</div>
           </div>
           <div class="field">
             <label>التاريخ</label>
-            <input type="date" name="movement_date" lang="en-GB" value="{{ today }}">
+            <input type="date" name="movement_date" id="movement-date" lang="en-GB" value="{{ edit_document.movement_date if edit_document else today }}">
           </div>
           <div class="field form-full">
             <label>ملاحظات المستند</label>
-            <textarea name="notes" rows="2" placeholder="رصيد افتتاحي — اختياري"></textarea>
+            <textarea name="notes" id="notes" rows="2" placeholder="رصيد افتتاحي — اختياري">{{ edit_document.notes if edit_document else '' }}</textarea>
           </div>
         </div>
 
@@ -98,18 +154,19 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
 
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
           <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ إضافة صنف</button>
-          <button type="submit" class="btn btn-primary">حفظ المستند</button>
+          <button type="submit" class="btn btn-primary">{% if edit_document %}حفظ التعديلات{% else %}حفظ المستند{% endif %}</button>
         </div>
       </form>
       <p class="hint">أضف كل الأصناف في جدول واحد ثم احفظ مرة واحدة. يُولَّد رقم مستند <strong>OS-xxxx</strong> ويُسجَّل لكل صنف حركة مخزنية مرتبطة به.</p>
     </div>
+    {% endif %}
 
     <div class="panel">
       <div class="panel-title">مستندات رصيد أول المدة ({{ opening_documents|length }})</div>
       {% if opening_documents %}
       <table class="doc-list">
         <thead>
-          <tr><th>رقم المستند</th><th>التاريخ</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>إجمالي القيمة</th><th>أرقام الفواتير</th><th>ملاحظات</th></tr>
+          <tr><th>رقم المستند</th><th>التاريخ</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>إجمالي القيمة</th><th>أرقام الفواتير</th><th>ملاحظات</th><th>إجراءات</th></tr>
         </thead>
         <tbody>
           {% for d in opening_documents %}
@@ -121,6 +178,13 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
             <td style="font-family:var(--font-en)">{{ d.total_value }}</td>
             <td style="font-size:11px;direction:ltr">{{ d.invoice_summary }}</td>
             <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
+            <td>
+              <div class="doc-actions">
+                <a href="/warehouse/opening?view={{ d.code }}" class="btn btn-secondary btn-sm">عرض</a>
+                <a href="/warehouse/opening?edit={{ d.code }}" class="btn btn-secondary btn-sm">تعديل</a>
+                <a href="/warehouse/opening/print/{{ d.code }}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">طباعة</a>
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -145,6 +209,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
 
 <script>
 var OPENING_ITEMS = {{ items_js | tojson }};
+var EDIT_DOCUMENT = {{ edit_document | tojson }};
 var openingItemRowSeq = 0;
 
 function inventorySelectOptions() {
@@ -231,11 +296,16 @@ function updateDocTotal() {
   var el = document.getElementById('doc-total');
   if (el) el.textContent = fmtLineMoney(sum);
 }
-function bindLine(row) {
-  mountOpeningItemSelect(row, '');
+function bindLine(row, selectedId, qtyValue, priceValue, invoiceValue) {
+  mountOpeningItemSelect(row, selectedId || '');
   var qty = row.querySelector('input[name="quantity"]');
   var price = row.querySelector('input[name="unit_price"]');
-  if (qty && window.LcInventoryQty) LcInventoryQty.applyInput(qty, 'قطعة');
+  var invoice = row.querySelector('input[name="invoice_no"]');
+  if (qty && qtyValue !== undefined && qtyValue !== null) qty.value = qtyValue;
+  if (price && priceValue !== undefined && priceValue !== null) price.value = priceValue;
+  if (invoice && invoiceValue !== undefined && invoiceValue !== null) invoice.value = invoiceValue;
+  var item = OPENING_ITEMS.find(function (x) { return String(x.id) === String(selectedId || (row.querySelector('input[name="item_id"]') || {}).value); });
+  if (qty && window.LcInventoryQty) LcInventoryQty.applyInput(qty, item ? item.unit : 'قطعة');
   [qty, price].forEach(function (el) {
     if (!el || el.dataset.bound) return;
     el.dataset.bound = '1';
@@ -245,6 +315,20 @@ function bindLine(row) {
     });
   });
   updateLineTotal(row);
+}
+function loadEditDocument() {
+  if (!EDIT_DOCUMENT || !EDIT_DOCUMENT.lines || !EDIT_DOCUMENT.lines.length) return;
+  var body = document.getElementById('lines-body');
+  if (!body) return;
+  body.innerHTML = '';
+  EDIT_DOCUMENT.lines.forEach(function (line) {
+    var tpl = document.getElementById('line-tpl');
+    if (!tpl) return;
+    var row = tpl.content.firstElementChild.cloneNode(true);
+    body.appendChild(row);
+    bindLine(row, line.item_id, line.quantity, line.unit_price, line.invoice_no);
+  });
+  updateDocTotal();
 }
 function addLine() {
   var tpl = document.getElementById('line-tpl');
@@ -261,10 +345,14 @@ function removeLine(btn) {
   btn.closest('.line-row').remove();
   updateDocTotal();
 }
-document.querySelectorAll('.line-row').forEach(bindLine);
-updateDocTotal();
+document.querySelectorAll('.line-row').forEach(function (row) {
+  if (!EDIT_DOCUMENT) bindLine(row);
+});
+if (EDIT_DOCUMENT) loadEditDocument();
+else updateDocTotal();
 
-document.getElementById('opening-form').addEventListener('submit', function (e) {
+var openingForm = document.getElementById('opening-form');
+if (openingForm) openingForm.addEventListener('submit', function (e) {
   var hasItem = false;
   document.querySelectorAll('#lines-body input[name="item_id"]').forEach(function (el) {
     if (el.value) hasItem = true;
