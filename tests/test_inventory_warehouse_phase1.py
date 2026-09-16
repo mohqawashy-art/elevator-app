@@ -9,6 +9,7 @@ from inventory_warehouse import (
     issue_documents,
     issue_print_payload,
     parse_issue_user_notes,
+    parse_stock_movement_user_notes,
     purchase_invoice_for_edit,
     record_issue_authorization,
     record_issue_batch,
@@ -575,3 +576,10 @@ def test_issue_notes_hide_internal_meta(client):
     legacy = '---LC-IS-META---\n{"target": "custody", "technician_id": 15}'
     assert parse_issue_user_notes(legacy) == ''
     assert parse_issue_user_notes(f'ملاحظة{legacy}') == 'ملاحظة'
+
+
+def test_stock_movement_notes_hide_internal_meta():
+    legacy = '---LC-IS-META---\n{"target": "custody", "technician_id": 16}'
+    assert parse_stock_movement_user_notes(legacy, 'issue:IS-0015:item:42') == ''
+    assert parse_stock_movement_user_notes(legacy) == ''
+    assert parse_stock_movement_user_notes('ملاحظة عامة') == 'ملاحظة عامة'

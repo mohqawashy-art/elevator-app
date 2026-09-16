@@ -801,6 +801,19 @@ def parse_issue_user_notes(notes: str | None) -> str:
     return user
 
 
+def parse_stock_movement_user_notes(notes: str | None, reference: str | None = None) -> str:
+    """ملاحظات ظاهرة للمستخدم — بدون بيانات IS/PI الداخلية."""
+    ref = (reference or '').strip()
+    if ref.startswith(ISSUE_DOC_REF_PREFIX) or ISSUE_META_SEP in (notes or ''):
+        return parse_issue_user_notes(notes)
+    if ref.startswith(PURCHASE_DOC_REF_PREFIX):
+        return parse_purchase_user_notes(notes)
+    text = notes or ''
+    if PURCHASE_ATTACH_MARKER in text or PURCHASE_NOTES_DISCOUNT_MARKER in text:
+        return parse_purchase_user_notes(notes)
+    return text.strip()
+
+
 def parse_issue_meta(notes: str | None) -> dict:
     import json
 
@@ -1270,7 +1283,7 @@ def item_card_payload(item_id: int) -> dict:
             'total_value': float(m.total_value or 0),
             'technician': tech_names.get(m.technician_id, '—') if m.technician_id else '—',
             'reason': m.reason or '',
-            'notes': m.notes or '',
+            'notes': parse_stock_movement_user_notes(m.notes, m.reference),
             'reference': m.reference or '',
             'invoice_no': parse_movement_invoice(m.reference, m.reason),
         })
@@ -1339,7 +1352,7 @@ def opening_stock_documents(limit: int = 40) -> list[dict]:
                 'line_count': 0,
                 'total_qty': 0.0,
                 'total_value': 0.0,
-                'notes': m.notes or '',
+                'notes': parse_stock_movement_user_notes(m.notes, m.reference),
                 'invoice_numbers': [],
             }
         entry = docs[doc_code]

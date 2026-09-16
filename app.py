@@ -1483,6 +1483,8 @@ def invoice_to_js_dict(i):
 
 
 def stock_movement_to_js_dict(m, tech_names=None):
+    from inventory_warehouse import parse_stock_movement_user_notes
+
     tech_names = tech_names or {}
     return {
         'id': m.id,
@@ -1500,7 +1502,8 @@ def stock_movement_to_js_dict(m, tech_names=None):
         'technician': tech_names.get(m.technician_id, '—') if m.technician_id else '—',
         'tech_id': m.technician_id,
         'reason': m.reason or '',
-        'notes': m.notes or '',
+        'reference': m.reference or '',
+        'notes': parse_stock_movement_user_notes(m.notes, m.reference) or '',
     }
 
 
