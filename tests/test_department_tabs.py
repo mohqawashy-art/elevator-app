@@ -98,6 +98,24 @@ def test_resolve_department_faults_is_maintenance():
     assert slug == 'maintenance'
 
 
+def test_inventory_portal_home_preview_labels():
+    from department_portals import visible_department_portals
+
+    portals = visible_department_portals(
+        permission_ok=lambda _perm: True,
+        install_enabled=True,
+        feature_ok=lambda _key: True,
+    )
+    inventory = next(p for p in portals if p['slug'] == 'inventory')
+    preview = [item['label'] for item in inventory['links'][:4]]
+    assert preview == [
+        'الأصناف',
+        'رصيد أول المدة',
+        'فواتير الشراء',
+        'أذون صرف',
+    ]
+
+
 def test_department_href_active_on_maintenance_quote_edit():
     assert department_href_is_active(
         '/sales/maintenance-quotes?department=marketing',
