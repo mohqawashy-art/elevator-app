@@ -467,6 +467,58 @@ def test_opening_view_route(client):
     assert 'V-1' in html
 
 
+def test_opening_edit_requires_admin(client):
+    from tests.conftest import login_as
+
+    with client.application.app_context():
+        item = _item(code='#WH-OSADM', qty=0)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, _ = record_opening_stock_batch(
+            lines=[{'item_id': item_id, 'quantity': 1, 'unit_price': 5}],
+        )
+        db.session.commit()
+
+    login_as(client, 'viewer')
+    r = client.get(f'/warehouse/opening?edit={doc_code}', follow_redirects=True)
+    assert r.status_code == 200
+    assert 'مدير النظام' in r.get_data(as_text=True)
+
+    login_as(client, 'admin')
+    r = client.get(f'/warehouse/opening?edit={doc_code}')
+    assert r.status_code == 200
+    assert 'تعديل مستند' in r.get_data(as_text=True)
+
+
+def test_opening_delete_requires_admin(client):
+    from tests.conftest import login_as
+
+    with client.application.app_context():
+        item = _item(code='#WH-OSDEL', qty=0)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, _ = record_opening_stock_batch(
+            lines=[{'item_id': item_id, 'quantity': 2, 'unit_price': 5}],
+        )
+        db.session.commit()
+
+    login_as(client, 'viewer')
+    r = client.post(
+        f'/inventory/opening-stock/delete/{doc_code}',
+        json={'admin_password': 'wrong'},
+        headers={'X-LC-Admin-Delete': '1'},
+    )
+    assert r.status_code in (403, 401)
+
+    with client.application.app_context():
+        item = db.session.get(InventoryItem, item_id)
+        assert float(item.current_qty or 0) == 2
+
+
 def test_purchase_invoice_post(client):
     from tests.conftest import login_as
 

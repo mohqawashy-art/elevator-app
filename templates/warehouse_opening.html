@@ -33,6 +33,7 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .btn-sm{padding:6px 12px;font-size:12px}
+.admin-badge{font-size:10px;color:#fbbf24;margin-right:6px}
 .hint{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
 table.doc-list{width:100%;border-collapse:collapse;font-size:13px}
 table.doc-list th{padding:10px 12px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px}
@@ -72,7 +73,10 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
         <div class="panel-title">عرض مستند {{ view_document.code }}</div>
         <div class="doc-actions">
           <a href="/warehouse/opening/print/{{ view_document.code }}" class="btn btn-primary btn-sm" target="_blank" rel="noopener">طباعة</a>
+          {% if auth_user and auth_user.role == 'admin' %}
           <a href="/warehouse/opening?edit={{ view_document.code }}" class="btn btn-secondary btn-sm">تعديل</a>
+          <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="deleteOpeningDoc('{{ view_document.code }}')">حذف</button>
+          {% endif %}
           <a href="/warehouse/opening" class="btn btn-secondary btn-sm">إغلاق</a>
         </div>
       </div>
@@ -106,7 +110,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
     {% else %}
     <div class="panel">
       <div class="panel-head">
-        <div class="panel-title">{% if edit_document %}تعديل مستند {{ edit_document.code }}{% else %}مستند رصيد أول المدة{% endif %}</div>
+        <div class="panel-title">{% if edit_document %}<span class="admin-badge">مدير</span>تعديل مستند {{ edit_document.code }}{% else %}مستند رصيد أول المدة{% endif %}</div>
         {% if edit_document %}
         <a href="/warehouse/opening" class="btn btn-secondary btn-sm">إلغاء التعديل</a>
         {% endif %}
@@ -157,7 +161,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
           <button type="submit" class="btn btn-primary">{% if edit_document %}حفظ التعديلات{% else %}حفظ المستند{% endif %}</button>
         </div>
       </form>
-      <p class="hint">أضف كل الأصناف في جدول واحد ثم احفظ مرة واحدة. يُولَّد رقم مستند <strong>OS-xxxx</strong> ويُسجَّل لكل صنف حركة مخزنية مرتبطة به.</p>
+      <p class="hint">أضف كل الأصناف في جدول واحد ثم احفظ مرة واحدة. يُولَّد رقم مستند <strong>OS-xxxx</strong> ويُسجَّل لكل صنف حركة مخزنية مرتبطة به. {% if auth_user and auth_user.role == 'admin' %}التعديل والحذف متاحان لمدير النظام فقط.{% endif %}</p>
     </div>
     {% endif %}
 
@@ -181,8 +185,11 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
             <td>
               <div class="doc-actions">
                 <a href="/warehouse/opening?view={{ d.code }}" class="btn btn-secondary btn-sm">عرض</a>
-                <a href="/warehouse/opening?edit={{ d.code }}" class="btn btn-secondary btn-sm">تعديل</a>
                 <a href="/warehouse/opening/print/{{ d.code }}" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">طباعة</a>
+                {% if auth_user and auth_user.role == 'admin' %}
+                <a href="/warehouse/opening?edit={{ d.code }}" class="btn btn-secondary btn-sm">تعديل</a>
+                <button type="button" class="btn btn-secondary btn-sm lc-admin-delete" onclick="deleteOpeningDoc('{{ d.code }}')">حذف</button>
+                {% endif %}
               </div>
             </td>
           </tr>
@@ -211,6 +218,13 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
 var OPENING_ITEMS = {{ items_js | tojson }};
 var EDIT_DOCUMENT = {{ edit_document | tojson }};
 var openingItemRowSeq = 0;
+
+function deleteOpeningDoc(code) {
+  if (!window.LiftCoreAdminDelete) return;
+  LiftCoreAdminDelete.post('/inventory/opening-stock/delete/' + encodeURIComponent(code), {
+    message: 'حذف مستند رصيد أول المدة ' + code + '؟ سيتم عكس كميات المخزون المرتبطة به.'
+  });
+}
 
 function inventorySelectOptions() {
   return OPENING_ITEMS.map(function (i) {

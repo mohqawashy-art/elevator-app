@@ -12070,6 +12070,10 @@ def inventory_opening_stock():
             return redirect(url_for('warehouse_opening', edit=edit_doc_code))
         return redirect(url_for('warehouse_opening'))
 
+    if edit_doc_code and not require_admin():
+        flash('تعديل مستند رصيد أول المدة متاح لمدير النظام فقط', 'error')
+        return redirect(url_for('warehouse_opening'))
+
     batch_kwargs = dict(
         lines=lines_data,
         movement_date=movement_date,
@@ -12100,6 +12104,42 @@ def inventory_opening_stock():
         flash('تعذّر تسجيل رصيد أول المدة', 'error')
         if edit_doc_code:
             return redirect(url_for('warehouse_opening', edit=edit_doc_code))
+    return redirect(url_for('warehouse_opening'))
+
+
+@app.route('/inventory/opening-stock/delete/<doc_code>', methods=['POST'])
+def inventory_opening_stock_delete(doc_code):
+    from inventory_warehouse import reverse_opening_document
+
+    err = enforce_admin_delete()
+    if err:
+        return err
+    code = (doc_code or '').strip()
+    as_json = _admin_delete_wants_json()
+    try:
+        count = reverse_opening_document(code)
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        msg = str(exc)
+        if as_json:
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('not_found', 404, message_ar=msg)
+        flash(msg, 'error')
+        return redirect(url_for('warehouse_opening'))
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('inventory_opening_stock_delete failed')
+        msg = 'تعذّر حذف مستند رصيد أول المدة'
+        if as_json:
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('delete_failed', 500, message_ar=msg)
+        flash(msg, 'error')
+        return redirect(url_for('warehouse_opening'))
+    msg = f'تم حذف مستند رصيد أول المدة {code} — {count} حركة'
+    if as_json:
+        return jsonify({'ok': True, 'message': msg, 'doc_code': code, 'deleted': count})
+    flash(msg, 'success')
     return redirect(url_for('warehouse_opening'))
 
 
@@ -12346,9 +12386,12 @@ def warehouse_opening():
     edit_document = None
     view_document = None
     if edit_code:
-        edit_document = opening_document_for_edit(edit_code)
-        if edit_document is None:
-            flash(f'مستند رصيد أول المدة «{edit_code}» غير موجود', 'error')
+        if not require_admin():
+            flash('تعديل مستند رصيد أول المدة متاح لمدير النظام فقط', 'error')
+        else:
+            edit_document = opening_document_for_edit(edit_code)
+            if edit_document is None:
+                flash(f'مستند رصيد أول المدة «{edit_code}» غير موجود', 'error')
     elif view_code:
         view_document = opening_document_for_edit(view_code)
         if view_document is None:
