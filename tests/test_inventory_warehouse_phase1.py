@@ -4,7 +4,7 @@ from datetime import date
 from inventory_warehouse import (
     MOVEMENT_OPENING,
     MOVEMENT_PURCHASE,
-    build_purchase_invoices_xlsx,
+    DEFAULT_PURCHASE_TAX_PCT,
     purchase_invoice_for_edit,
     record_issue_authorization,
     record_issue_batch,
@@ -410,27 +410,7 @@ def test_purchase_invoice_update(client):
         assert edit is not None
         assert edit['supplier'] == 'مورد 2'
         assert len(edit['lines']) == 2
-
-
-def test_purchase_invoice_export_xlsx(client):
-    with client.application.app_context():
-        item = _item(code='#WH-XLS', qty=0)
-        db.session.commit()
-        item_id = item.id
-
-    with client.application.app_context():
-        doc_code, _ = record_purchase_invoice_batch(
-            invoice_no='XLS-100',
-            lines=[{'item_id': item_id, 'quantity': 2, 'unit_price': 9.5}],
-        )
-        db.session.commit()
-
-    with client.application.app_context():
-        data = build_purchase_invoices_xlsx()
-        assert data[:2] == b'PK'
-        single = build_purchase_invoices_xlsx(doc_code=doc_code)
-        assert single[:2] == b'PK'
-        assert len(single) > 100
+        assert edit['tax_pct'] == DEFAULT_PURCHASE_TAX_PCT
 
 
 def test_purchase_invoice_edit_post(client):
@@ -463,13 +443,3 @@ def test_purchase_invoice_edit_post(client):
     with client.application.app_context():
         item = db.session.get(InventoryItem, item_id)
         assert float(item.current_qty or 0) == 4
-
-
-def test_purchase_invoice_export_route(client):
-    from tests.conftest import login_as
-
-    login_as(client, 'admin')
-    r = client.get('/warehouse/purchases/export')
-    assert r.status_code == 200
-    assert 'spreadsheetml' in (r.headers.get('Content-Type') or '')
-    assert r.data[:2] == b'PK'

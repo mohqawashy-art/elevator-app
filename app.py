@@ -7178,6 +7178,68 @@ def _fin_proof_upload_dir(kind, row_id):
     return path
 
 
+def _purchase_invoice_upload_dir(doc_code: str) -> str:
+    from tenant_scope import current_organization_id
+
+    org_id = current_organization_id() or 0
+    path = os.path.join(
+        app.root_path,
+        'static',
+        'uploads',
+        'purchase_invoices',
+        str(org_id),
+        str(doc_code),
+    )
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _purchase_invoice_js_attachments(doc_code: str) -> list[dict]:
+    from attachment_paths import attachment_items, serialize_attachment_paths
+    from inventory_warehouse import purchase_invoice_attachment_paths
+
+    paths = purchase_invoice_attachment_paths(doc_code)
+    if not paths:
+        return []
+    return attachment_items(
+        serialize_attachment_paths(paths),
+        _upload_url_fast,
+        name_fn=contract_file_display_name,
+    )
+
+
+def _add_purchase_invoice_files(doc_code: str, file_storages, existing_paths=None) -> list[str]:
+    from inventory_warehouse import purchase_invoice_attachment_paths
+
+    paths = list(existing_paths if existing_paths is not None else purchase_invoice_attachment_paths(doc_code))
+    files = [f for f in (file_storages or []) if f and getattr(f, 'filename', None)]
+    if not files:
+        return paths
+    if len(paths) + len(files) > MAX_ATTACHMENT_FILES:
+        raise ValueError(f'يمكن إرفاق حتى {MAX_ATTACHMENT_FILES} مستندات')
+    upload_dir = _purchase_invoice_upload_dir(doc_code)
+    from tenant_scope import current_organization_id
+
+    org_id = current_organization_id() or 0
+    for file_storage in files:
+        ok, err = _upload_ok(file_storage, ALLOWED_FIN_PROOF_EXT)
+        if not ok:
+            raise ValueError('مرفق الفاتورة: ' + (err or 'نوع الملف غير مسموح'))
+        file_storage.seek(0, os.SEEK_END)
+        size = file_storage.tell()
+        file_storage.seek(0)
+        if size > MAX_FIN_PROOF_BYTES:
+            raise ValueError('مرفق الفاتورة أكبر من الحد المسموح (10 ميجا)')
+        stored = _safe_stored_upload_name(
+            file_storage.filename,
+            allowed=ALLOWED_FIN_PROOF_EXT,
+            default_stem='invoice',
+        )
+        file_storage.save(os.path.join(upload_dir, stored))
+        paths.append(f'uploads/purchase_invoices/{org_id}/{doc_code}/{stored}')
+    return paths
+
+
 def _remove_fin_proof(row):
     from attachment_paths import parse_attachment_paths, delete_attachment_file
     for path in parse_attachment_paths(getattr(row, 'proof_path', None)):
@@ -12027,7 +12089,13 @@ def inventory_opening_stock():
 
 @app.route('/inventory/purchase-invoice', methods=['POST'])
 def inventory_purchase_invoice():
-    from inventory_warehouse import record_purchase_invoice_batch, update_purchase_invoice_batch
+    from inventory_warehouse import (
+        DEFAULT_PURCHASE_TAX_PCT,
+        purchase_invoice_attachment_paths,
+        record_purchase_invoice_batch,
+        refresh_purchase_invoice_notes,
+        update_purchase_invoice_batch,
+    )
 
     movement_date = date.today()
     raw_date = (request.form.get('movement_date') or '').strip()
@@ -12046,6 +12114,10 @@ def inventory_purchase_invoice():
         discount_approx = float(request.form.get('discount_approx') or 0)
     except (TypeError, ValueError):
         discount_approx = 0.0
+    try:
+        tax_pct = float(request.form.get('tax_pct') or DEFAULT_PURCHASE_TAX_PCT)
+    except (TypeError, ValueError):
+        tax_pct = DEFAULT_PURCHASE_TAX_PCT
     item_ids = request.form.getlist('item_id')
     quantities = request.form.getlist('quantity')
     unit_prices = request.form.getlist('unit_price')
@@ -12075,6 +12147,7 @@ def inventory_purchase_invoice():
         supplier=supplier,
         notes=notes,
         discount_approx=discount_approx,
+        tax_pct=tax_pct,
     )
     try:
         if edit_doc_code:
@@ -12083,6 +12156,22 @@ def inventory_purchase_invoice():
         else:
             doc_code, movements = record_purchase_invoice_batch(**batch_kwargs)
             action = 'حفظ'
+        uploaded = [
+            f for f in request.files.getlist('attachments')
+            if f and getattr(f, 'filename', None)
+        ]
+        attachment_paths = _add_purchase_invoice_files(
+            doc_code,
+            uploaded,
+            purchase_invoice_attachment_paths(doc_code),
+        )
+        if uploaded or attachment_paths:
+            refresh_purchase_invoice_notes(
+                doc_code,
+                user_notes=notes,
+                discount_approx=discount_approx,
+                attachment_paths=attachment_paths,
+            )
         db.session.commit()
         flash(
             f'تم {action} فاتورة الشراء {doc_code} — {len(movements)} صنف — فاتورة {invoice_no}',
@@ -12239,6 +12328,8 @@ def warehouse_purchases():
     total_val = round(sum(r['total_value'] for r in rows), 2)
     edit_code = (request.args.get('edit') or '').strip()
     edit_document = purchase_invoice_for_edit(edit_code) if edit_code else None
+    if edit_document:
+        edit_document['attachment_items'] = _purchase_invoice_js_attachments(edit_document['code'])
     if edit_code and edit_document is None:
         flash(f'فاتورة الشراء «{edit_code}» غير موجودة', 'error')
     return render_template(
@@ -12249,35 +12340,6 @@ def warehouse_purchases():
         purchase_total_value=total_val,
         edit_document=edit_document,
         **ctx,
-    )
-
-
-@app.route('/warehouse/purchases/export')
-def warehouse_purchases_export():
-    from io import BytesIO
-
-    from inventory_warehouse import build_purchase_invoices_xlsx
-
-    doc = (request.args.get('doc') or '').strip()
-    try:
-        data = build_purchase_invoices_xlsx(doc_code=doc or None)
-    except ValueError as exc:
-        flash(str(exc), 'error')
-        return redirect(url_for('warehouse_purchases'))
-    except ImportError:
-        flash('مكتبة openpyxl غير مثبتة على السيرفر', 'error')
-        return redirect(url_for('warehouse_purchases'))
-    except Exception:
-        app.logger.exception('warehouse_purchases_export failed')
-        flash('تعذّر تصدير فواتير الشراء', 'error')
-        return redirect(url_for('warehouse_purchases'))
-
-    name = f'purchase-{doc}.xlsx' if doc else 'purchase-invoices.xlsx'
-    return send_file(
-        BytesIO(data),
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        as_attachment=True,
-        download_name=name,
     )
 
 

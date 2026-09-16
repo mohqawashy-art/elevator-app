@@ -29,17 +29,27 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .purchase-item-cell .lc-client-select-input{width:100%;font-size:12px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1)}
 .purchase-item-cell .lc-client-select-list{z-index:400;max-height:220px;overflow-y:auto}
 .line-total{font-family:var(--font-en);color:var(--text1);font-weight:600;white-space:nowrap;text-align:left;direction:ltr}
-.doc-total-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:8px;font-size:13px;flex-wrap:wrap}
-.doc-total-row.doc-total-main{margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+.invoice-summary{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
+.invoice-summary-box{min-width:min(100%,360px);display:flex;flex-direction:column;gap:8px}
+.doc-total-row{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;flex-wrap:wrap}
+.doc-total-row.doc-total-main{margin-top:6px;padding-top:10px;border-top:1px dashed var(--border)}
 .doc-total-label{color:var(--text2)}
-.doc-total-value{font-family:var(--font-en);font-size:16px;font-weight:700;color:var(--accent);direction:ltr}
-.doc-total-value.sub{font-size:14px;font-weight:600;color:var(--text1)}
-.doc-total-value.discount{color:#f87171;font-size:14px;font-weight:600}
+.doc-total-value{font-family:var(--font-en);font-size:15px;font-weight:700;color:var(--text1);direction:ltr;white-space:nowrap}
+.doc-total-value.accent{color:var(--accent);font-size:17px}
+.doc-total-value.discount{color:#f87171}
+.doc-discount-input{width:110px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-en);direction:ltr;text-align:left}
+.doc-tax-input{width:56px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-en);direction:ltr;text-align:center;margin:0 4px}
+.attach-block{margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
+.attach-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.attach-item,.attach-pending{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.attach-item a{color:var(--accent);text-decoration:none}
+.attach-pending{color:var(--text3)}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:var(--font-ar);font-size:13px;text-decoration:none}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .btn-sm{padding:6px 12px;font-size:12px}
 .hint{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
+.empty-msg{color:var(--text3);font-size:13px;padding:12px 0}
 table.doc-list{width:100%;border-collapse:collapse;font-size:13px}
 table.doc-list th{padding:10px 12px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px}
 table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
@@ -82,7 +92,7 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
         <a href="/warehouse/purchases" class="btn btn-secondary btn-sm">إلغاء التعديل</a>
         {% endif %}
       </div>
-      <form method="post" action="/inventory/purchase-invoice" id="purchase-form">
+      <form method="post" action="/inventory/purchase-invoice" id="purchase-form" enctype="multipart/form-data">
         {% if edit_document %}
         <input type="hidden" name="edit_doc_code" value="{{ edit_document.code }}">
         {% endif %}
@@ -108,10 +118,6 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
               {% endfor %}
             </datalist>
           </div>
-          <div class="field">
-            <label>خصم تقريبي</label>
-            <input type="number" name="discount_approx" id="discount-approx" min="0" step="0.01" value="{{ edit_document.discount_approx if edit_document else 0 }}" placeholder="0.00" style="direction:ltr;font-family:var(--font-en)">
-          </div>
           <div class="field form-full">
             <label>ملاحظات</label>
             <textarea name="notes" id="notes" rows="2" placeholder="اختياري">{{ edit_document.notes if edit_document else '' }}</textarea>
@@ -133,41 +139,62 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
           </tbody>
         </table>
 
-        <div class="doc-total-row">
-          <span class="doc-total-label">إجمالي قبل الخصم</span>
-          <span class="doc-total-value sub" id="doc-gross">0.00</span>
-          <span class="lc-sar" role="img" aria-label="ريال"></span>
-        </div>
-        <div class="doc-total-row">
-          <span class="doc-total-label">خصم تقريبي</span>
-          <span class="doc-total-value discount" id="doc-discount">0.00</span>
-          <span class="lc-sar" role="img" aria-label="ريال"></span>
-        </div>
-        <div class="doc-total-row doc-total-main">
-          <span class="doc-total-label">صافي الفاتورة</span>
-          <span class="doc-total-value" id="doc-total">0.00</span>
-          <span class="lc-sar" role="img" aria-label="ريال"></span>
+        <div class="invoice-summary">
+          <div class="invoice-summary-box">
+            <div class="doc-total-row">
+              <span class="doc-total-label">إجمالي قبل الخصم</span>
+              <span class="doc-total-value" id="doc-gross">0.00</span>
+            </div>
+            <div class="doc-total-row">
+              <span class="doc-total-label">خصم تقريبي</span>
+              <input type="number" name="discount_approx" id="discount-approx" class="doc-discount-input" min="0" step="0.01" value="{{ edit_document.discount_approx if edit_document else 0 }}" placeholder="0.00">
+            </div>
+            <div class="doc-total-row">
+              <span class="doc-total-label">الصافي قبل الضريبة</span>
+              <span class="doc-total-value" id="doc-net">0.00</span>
+            </div>
+            <div class="doc-total-row">
+              <span class="doc-total-label">ضريبة القيمة المضافة (<input type="number" name="tax_pct" id="tax-pct" class="doc-tax-input" min="0" max="100" step="0.01" value="{{ edit_document.tax_pct if edit_document else 15 }}">%)</span>
+              <span class="doc-total-value" id="doc-tax">0.00</span>
+            </div>
+            <div class="doc-total-row doc-total-main">
+              <span class="doc-total-label">الإجمالي شامل الضريبة</span>
+              <span class="doc-total-value accent" id="doc-grand">0.00</span>
+            </div>
+          </div>
         </div>
 
-        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+        <div class="attach-block">
+          <label style="display:block;font-size:12px;color:var(--text2);margin-bottom:8px">مرفقات الفاتورة</label>
+          <input type="file" id="purchase-attachments" name="attachments" multiple accept=".pdf,image/png,image/jpeg,image/webp" hidden>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('purchase-attachments').click()">+ إضافة مرفقات</button>
+          <span class="hint" style="margin-top:0;margin-right:8px;display:inline">PDF أو صورة — حتى 10 ميجا للملف</span>
+          <div id="attachment-pending" class="attach-list"></div>
+          {% if edit_document and edit_document.attachment_items %}
+          <div id="attachment-existing" class="attach-list">
+            {% for att in edit_document.attachment_items %}
+            <div class="attach-item"><a href="{{ att.url }}" target="_blank" rel="noopener">{{ att.name }}</a></div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
           <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ إضافة صنف</button>
           <button type="submit" class="btn btn-primary">{% if edit_document %}حفظ التعديلات{% else %}حفظ الفاتورة{% endif %}</button>
         </div>
       </form>
-      <p class="hint">كل فاتورة شراء تُسجَّل مستقلة برقم مستند <strong>PI-xxxx</strong>. يمكن تعديل الفاتورة من القائمة أدناه. السعر يقبل حتى 6 خانات عشرية. الخصم التقريبي يُوزَّع على الأسطر ويُخفّض تكلفة الشراء في المخزون.</p>
+      <p class="hint">كل فاتورة شراء تُسجَّل مستقلة برقم مستند <strong>PI-xxxx</strong>. الضريبة للعرض والمرجع — تكلفة المخزون تُسجَّل صافية بعد الخصم. يمكن إرفاق صورة/PDF لفاتورة المورد.</p>
     </div>
 
     <div class="panel">
       <div class="panel-head">
         <div class="panel-title">فواتير الشراء المسجّلة ({{ purchase_documents|length }})</div>
-        {% if purchase_documents %}
-        <a href="/warehouse/purchases/export" class="btn btn-secondary btn-sm">تصدير Excel — الكل</a>
-        {% endif %}
       </div>
       {% if purchase_documents %}
       <table class="doc-list">
         <thead>
-          <tr><th>المستند</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>قبل الخصم</th><th>خصم</th><th>صافي</th><th>ملاحظات</th><th>إجراءات</th></tr>
+          <tr><th>المستند</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>عدد الأصناف</th><th>صافي</th><th>ضريبة</th><th>شامل الضريبة</th><th>مرفقات</th><th>ملاحظات</th><th>إجراءات</th></tr>
         </thead>
         <tbody>
           {% for d in purchase_documents %}
@@ -177,15 +204,14 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
             <td>{{ d.supplier }}</td>
             <td>{{ d.movement_date }}</td>
             <td style="font-family:var(--font-en)">{{ d.line_count }}</td>
-            <td style="font-family:var(--font-en)">{{ d.total_qty|inv_qty }}</td>
-            <td style="font-family:var(--font-en)">{{ d.gross_total }}</td>
-            <td style="font-family:var(--font-en);color:#f87171">{{ d.discount_approx or '—' }}</td>
-            <td style="font-family:var(--font-en)">{{ d.total_value }}</td>
+            <td style="font-family:var(--font-en)">{{ d.net_total }}</td>
+            <td style="font-family:var(--font-en)">{{ d.tax_amount }} <span style="color:var(--text3);font-size:10px">({{ d.tax_pct|int }}%)</span></td>
+            <td style="font-family:var(--font-en);color:var(--accent)">{{ d.grand_total }}</td>
+            <td style="font-family:var(--font-en)">{{ d.attachment_count or 0 }}</td>
             <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
             <td>
               <div class="doc-actions">
                 <a href="/warehouse/purchases?edit={{ d.code }}" class="btn btn-secondary btn-sm">تعديل</a>
-                <a href="/warehouse/purchases/export?doc={{ d.code }}" class="btn btn-secondary btn-sm">Excel</a>
               </div>
             </td>
           </tr>
@@ -302,8 +328,9 @@ function onPurchaseItemPicked(row) {
 
 function fmtLineMoney(v) {
   var n = Number(v) || 0;
-  return (window.fmtNum ? fmtNum(n, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) : n.toFixed(6).replace(/\.?0+$/, ''));
+  return (window.fmtNum ? fmtNum(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n.toFixed(2));
 }
+
 function updateLineTotal(row) {
   if (!row) return;
   var qtyEl = row.querySelector('input[name="quantity"]');
@@ -313,6 +340,7 @@ function updateLineTotal(row) {
   var total = (parseFloat(qtyEl.value || '0') || 0) * (parseFloat(priceEl.value || '0') || 0);
   totalEl.textContent = fmtLineMoney(total);
 }
+
 function updateDocTotal() {
   var sum = 0;
   document.querySelectorAll('#lines-body .line-row').forEach(function (row) {
@@ -326,13 +354,21 @@ function updateDocTotal() {
   if (discount < 0) discount = 0;
   if (discount > gross) discount = gross;
   var net = Math.max(0, gross - discount);
+  var taxEl = document.getElementById('tax-pct');
+  var taxPct = parseFloat(taxEl && taxEl.value || '15') || 0;
+  if (taxPct < 0) taxPct = 0;
+  var tax = net * taxPct / 100;
+  var grand = net + tax;
   var grossEl = document.getElementById('doc-gross');
-  var discEl = document.getElementById('doc-discount');
-  var totalEl = document.getElementById('doc-total');
+  var netEl = document.getElementById('doc-net');
+  var taxOutEl = document.getElementById('doc-tax');
+  var grandEl = document.getElementById('doc-grand');
   if (grossEl) grossEl.textContent = fmtLineMoney(gross);
-  if (discEl) discEl.textContent = fmtLineMoney(discount);
-  if (totalEl) totalEl.textContent = fmtLineMoney(net);
+  if (netEl) netEl.textContent = fmtLineMoney(net);
+  if (taxOutEl) taxOutEl.textContent = fmtLineMoney(tax);
+  if (grandEl) grandEl.textContent = fmtLineMoney(grand);
 }
+
 function bindLine(row, selectedId, qtyValue, priceValue) {
   mountPurchaseItemSelect(row, selectedId || '');
   var qty = row.querySelector('input[name="quantity"]');
@@ -351,12 +387,13 @@ function bindLine(row, selectedId, qtyValue, priceValue) {
   });
   updateLineTotal(row);
 }
+
 function loadEditDocument() {
   if (!EDIT_DOCUMENT || !EDIT_DOCUMENT.lines || !EDIT_DOCUMENT.lines.length) return;
   var body = document.getElementById('lines-body');
   if (!body) return;
   body.innerHTML = '';
-  EDIT_DOCUMENT.lines.forEach(function (line, idx) {
+  EDIT_DOCUMENT.lines.forEach(function (line) {
     var tpl = document.getElementById('line-tpl');
     if (!tpl) return;
     var row = tpl.content.firstElementChild.cloneNode(true);
@@ -365,6 +402,7 @@ function loadEditDocument() {
   });
   updateDocTotal();
 }
+
 function addLine() {
   var tpl = document.getElementById('line-tpl');
   var body = document.getElementById('lines-body');
@@ -374,21 +412,39 @@ function addLine() {
   bindLine(row);
   updateDocTotal();
 }
+
 function removeLine(btn) {
   var body = document.getElementById('lines-body');
   if (!body || body.querySelectorAll('.line-row').length <= 1) return;
   btn.closest('.line-row').remove();
   updateDocTotal();
 }
+
+function renderPendingAttachments() {
+  var input = document.getElementById('purchase-attachments');
+  var box = document.getElementById('attachment-pending');
+  if (!input || !box) return;
+  if (!input.files || !input.files.length) {
+    box.innerHTML = '';
+    return;
+  }
+  box.innerHTML = Array.prototype.map.call(input.files, function (f) {
+    return '<div class="attach-pending">• ' + (f.name || 'ملف') + '</div>';
+  }).join('');
+}
+
 document.querySelectorAll('.line-row').forEach(function (row) {
   if (!EDIT_DOCUMENT) bindLine(row);
 });
 if (EDIT_DOCUMENT) loadEditDocument();
 else updateDocTotal();
+
 var discountInput = document.getElementById('discount-approx');
-if (discountInput) {
-  discountInput.addEventListener('input', updateDocTotal);
-}
+if (discountInput) discountInput.addEventListener('input', updateDocTotal);
+var taxInput = document.getElementById('tax-pct');
+if (taxInput) taxInput.addEventListener('input', updateDocTotal);
+var attachInput = document.getElementById('purchase-attachments');
+if (attachInput) attachInput.addEventListener('change', renderPendingAttachments);
 
 document.getElementById('purchase-form').addEventListener('submit', function (e) {
   var inv = (document.querySelector('input[name="invoice_no"]') || {}).value || '';

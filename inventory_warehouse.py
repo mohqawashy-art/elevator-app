@@ -24,6 +24,8 @@ PURCHASE_DOC_REF_PREFIX = 'purchase:'
 INVENTORY_PRICE_DECIMALS = 6
 INVENTORY_MONEY_DECIMALS = 4
 PURCHASE_NOTES_DISCOUNT_MARKER = '| إجمالي قبل الخصم:'
+PURCHASE_ATTACH_MARKER = '\n---LC-PI-ATTACH---\n'
+DEFAULT_PURCHASE_TAX_PCT = 15.0
 
 
 def round_inventory_price(value: float) -> float:
@@ -70,7 +72,13 @@ def purchase_doc_reference(doc_code: str, item_id: int, invoice_no: str) -> str:
     return ref[:100]
 
 
-def purchase_reason(doc_code: str, invoice_no: str, supplier: str = '', discount_approx: float = 0) -> str:
+def purchase_reason(
+    doc_code: str,
+    invoice_no: str,
+    supplier: str = '',
+    discount_approx: float = 0,
+    tax_pct: float = DEFAULT_PURCHASE_TAX_PCT,
+) -> str:
     inv = (invoice_no or '').strip()
     reason = f'فاتورة شراء — {doc_code} | فاتورة: {inv[:80]}'
     sup = (supplier or '').strip()
@@ -79,14 +87,115 @@ def purchase_reason(doc_code: str, invoice_no: str, supplier: str = '', discount
     disc = round(float(discount_approx or 0), 2)
     if disc > 0:
         reason = f'{reason} | خصم: {disc:.2f}'
+    pct = round(float(tax_pct if tax_pct is not None else DEFAULT_PURCHASE_TAX_PCT), 2)
+    if pct > 0:
+        reason = f'{reason} | ضريبة: {pct:.0f}%'
     return reason[:300]
 
 
 def parse_purchase_user_notes(notes: str | None) -> str:
     text = (notes or '').strip()
+    if PURCHASE_ATTACH_MARKER in text:
+        text = text.split(PURCHASE_ATTACH_MARKER, 1)[0].strip()
     if PURCHASE_NOTES_DISCOUNT_MARKER in text:
         return text.split(PURCHASE_NOTES_DISCOUNT_MARKER, 1)[0].strip(' |')
     return text
+
+
+def parse_purchase_attachment_paths(notes: str | None) -> list[str]:
+    from attachment_paths import parse_attachment_paths
+
+    text = notes or ''
+    if PURCHASE_ATTACH_MARKER not in text:
+        return []
+    blob = text.split(PURCHASE_ATTACH_MARKER, 1)[1].strip()
+    return parse_attachment_paths(blob)
+
+
+def build_purchase_document_notes(
+    user_notes: str,
+    discount_extra: str | None,
+    attachment_paths: list[str] | None,
+) -> str | None:
+    from attachment_paths import serialize_attachment_paths
+
+    base = (user_notes or '').strip()
+    extra = (discount_extra or '').strip()
+    if extra:
+        base = f'{base} | {extra}'.strip(' |') if base else extra
+    paths = [p for p in (attachment_paths or []) if (p or '').strip()]
+    if paths:
+        serialized = serialize_attachment_paths(paths)
+        if serialized:
+            base = (base or '') + PURCHASE_ATTACH_MARKER + serialized
+    return base or None
+
+
+def purchase_invoice_attachment_paths(doc_code: str) -> list[str]:
+    movements = purchase_invoice_movements(doc_code)
+    if not movements:
+        return []
+    return parse_purchase_attachment_paths(movements[0].notes)
+
+
+def refresh_purchase_invoice_notes(
+    doc_code: str,
+    *,
+    user_notes: str = '',
+    discount_approx: float = 0,
+    attachment_paths: list[str] | None = None,
+) -> None:
+    movements = purchase_invoice_movements(doc_code)
+    if not movements:
+        return
+    paths = (
+        list(attachment_paths)
+        if attachment_paths is not None
+        else purchase_invoice_attachment_paths(doc_code)
+    )
+    discount = round(max(0.0, float(discount_approx or 0)), 2)
+    net = round_inventory_money(sum(float(m.total_value or 0) for m in movements))
+    gross = round_inventory_money(net + discount)
+    discount_extra = None
+    if discount > 0:
+        discount_extra = (
+            f'إجمالي قبل الخصم: {gross:.2f} | '
+            f'خصم تقريبي: {discount:.2f} | '
+            f'صافي: {net:.2f}'
+        )
+    final_notes = build_purchase_document_notes(user_notes, discount_extra, paths)
+    for movement in movements:
+        movement.notes = final_notes
+
+
+def parse_purchase_tax_pct(reason: str | None) -> float:
+    text = (reason or '').strip()
+    marker = '| ضريبة:'
+    if marker not in text:
+        return DEFAULT_PURCHASE_TAX_PCT
+    raw = text.split(marker, 1)[1].split('|', 1)[0].strip().replace('%', '')
+    try:
+        return max(0.0, round(float(raw), 2))
+    except (TypeError, ValueError):
+        return DEFAULT_PURCHASE_TAX_PCT
+
+
+def purchase_invoice_totals(doc: dict) -> dict:
+    """ملخص فاتورة — إجمالي، خصم، صافي، ضريبة، شامل."""
+    gross = round_inventory_money(float(doc.get('gross_total') or 0))
+    discount = round_inventory_money(float(doc.get('discount_approx') or 0))
+    net = round_inventory_money(float(doc.get('total_value') or 0))
+    tax_pct = round(float(doc.get('tax_pct') or DEFAULT_PURCHASE_TAX_PCT), 2)
+    tax_amount = round_inventory_money(net * tax_pct / 100.0) if tax_pct > 0 else 0.0
+    grand_total = round_inventory_money(net + tax_amount)
+    return {
+        'gross_total': gross,
+        'discount_approx': discount,
+        'net_total': net,
+        'tax_pct': tax_pct,
+        'tax_amount': tax_amount,
+        'grand_total': grand_total,
+    }
 
 
 def parse_purchase_supplier(reason: str | None) -> str:
@@ -250,7 +359,9 @@ def purchase_invoice_for_edit(doc_code: str) -> dict | None:
         'supplier': parse_purchase_supplier(reason),
         'movement_date': str(first.movement_date or ''),
         'discount_approx': discount,
+        'tax_pct': parse_purchase_tax_pct(reason),
         'notes': parse_purchase_user_notes(first.notes),
+        'attachments': purchase_invoice_attachment_paths(doc_code),
         'lines': lines,
     }
 
@@ -461,6 +572,8 @@ def record_purchase_invoice_batch(
     discount_approx: float = 0,
     doc_code: str | None = None,
     exclude_doc_code: str | None = None,
+    tax_pct: float = DEFAULT_PURCHASE_TAX_PCT,
+    attachment_paths: list[str] | None = None,
 ) -> tuple[str, list[StockMovement]]:
     """تسجيل فاتورة شراء — عدة أصniaف برقم مستند PI-xxxx وفاتورة واحدة."""
     inv = (invoice_no or '').strip()
@@ -525,10 +638,16 @@ def record_purchase_invoice_batch(
         parsed_lines,
         discount_approx,
     )
-    doc_reason = purchase_reason(doc_code, inv, sup, discount)
+    pct = round(float(tax_pct if tax_pct is not None else DEFAULT_PURCHASE_TAX_PCT), 2)
+    doc_reason = purchase_reason(doc_code, inv, sup, discount, tax_pct=pct)
+    discount_extra = None
     if discount > 0:
-        extra = f'إجمالي قبل الخصم: {gross_total:.2f} | خصم تقريبي: {discount:.2f} | صافي: {round(gross_total - discount, 2):.2f}'
-        doc_notes = f'{doc_notes} | {extra}'.strip(' |') if doc_notes else extra
+        discount_extra = (
+            f'إجمالي قبل الخصم: {gross_total:.2f} | '
+            f'خصم تقريبي: {discount:.2f} | '
+            f'صافي: {round(gross_total - discount, 2):.2f}'
+        )
+    doc_notes = build_purchase_document_notes(doc_notes, discount_extra, attachment_paths)
 
     for row in priced_lines:
         item = row['item']
@@ -563,11 +682,18 @@ def update_purchase_invoice_batch(
     supplier: str = '',
     notes: str = '',
     discount_approx: float = 0,
+    tax_pct: float = DEFAULT_PURCHASE_TAX_PCT,
+    attachment_paths: list[str] | None = None,
 ) -> tuple[str, list[StockMovement]]:
     """تعديل فاتورة شراء — عكس المخزون القديم ثم إعادة التسجيل بنفس PI."""
     code = (doc_code or '').strip()
     if not code.startswith(PURCHASE_DOC_PREFIX):
         raise ValueError('رقم المستند غير صالح')
+    preserved_attachments = (
+        list(attachment_paths)
+        if attachment_paths is not None
+        else purchase_invoice_attachment_paths(code)
+    )
     reverse_purchase_invoice_document(code)
     return record_purchase_invoice_batch(
         lines=lines,
@@ -578,100 +704,9 @@ def update_purchase_invoice_batch(
         discount_approx=discount_approx,
         doc_code=code,
         exclude_doc_code=code,
+        tax_pct=tax_pct,
+        attachment_paths=preserved_attachments,
     )
-
-
-def build_purchase_invoices_xlsx(doc_code: str | None = None) -> bytes:
-    """تصدير فواتير الشراء إلى Excel — مستند واحد أو الكل."""
-    from io import BytesIO
-
-    try:
-        from openpyxl import Workbook
-        from openpyxl.styles import Font
-    except ImportError as exc:
-        raise ImportError('مكتبة openpyxl غير مثبتة') from exc
-
-    from sqlalchemy.orm import joinedload
-
-    if doc_code:
-        movements = (
-            tenant_query(StockMovement)
-            .options(joinedload(StockMovement.item))
-            .filter(
-                StockMovement.movement_type == MOVEMENT_PURCHASE,
-                StockMovement.reference.like(f'{PURCHASE_DOC_REF_PREFIX}{doc_code}:inv:%'),
-            )
-            .order_by(StockMovement.id)
-            .all()
-        )
-        if not movements:
-            raise ValueError(f'فاتورة الشراء «{doc_code}» غير موجودة')
-    else:
-        movements = (
-            tenant_query(StockMovement)
-            .options(joinedload(StockMovement.item))
-            .filter(
-                StockMovement.movement_type == MOVEMENT_PURCHASE,
-                StockMovement.reference.isnot(None),
-            )
-            .order_by(StockMovement.movement_date.desc(), StockMovement.id.desc())
-            .all()
-        )
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = 'فواتير الشراء'
-    ws.sheet_view.rightToLeft = True
-    headers = [
-        'المستند',
-        'رقم الفاتورة',
-        'المورد',
-        'التاريخ',
-        'كود الصنف',
-        'اسم الصنف',
-        'الوحدة',
-        'الكمية',
-        'سعر الوحدة',
-        'إجمالي السطر',
-        'خصم تقريبي',
-        'ملاحظات',
-    ]
-    ws.append(headers)
-    for cell in ws[1]:
-        cell.font = Font(bold=True)
-
-    for movement in movements:
-        ref = (movement.reference or '').strip()
-        doc = purchase_doc_code_from_reference(ref)
-        if doc_code and doc != doc_code:
-            continue
-        if not doc.startswith(PURCHASE_DOC_PREFIX):
-            continue
-        reason = movement.reason or ''
-        item = movement.item
-        ws.append([
-            doc,
-            parse_movement_invoice(ref, reason),
-            parse_purchase_supplier(reason) or '—',
-            str(movement.movement_date or ''),
-            item.code if item else '',
-            item.name if item else '—',
-            (item.unit if item else '') or 'قطعة',
-            float(movement.quantity or 0),
-            float(movement.unit_price or 0),
-            float(movement.total_value or 0),
-            parse_purchase_discount(reason),
-            parse_purchase_user_notes(movement.notes),
-        ])
-
-    for col in ('H', 'I', 'J', 'K'):
-        for row in ws.iter_rows(min_row=2, min_col=ord(col) - 64, max_col=ord(col) - 64):
-            for cell in row:
-                cell.number_format = '0.000000' if col == 'I' else '0.00'
-
-    bio = BytesIO()
-    wb.save(bio)
-    return bio.getvalue()
 
 
 def record_purchase_receipt_movements(order) -> bool:
@@ -1179,6 +1214,8 @@ def purchase_invoice_documents(limit: int = 40) -> list[dict]:
                 'invoice_no': parse_movement_invoice(ref, reason),
                 'supplier': parse_purchase_supplier(reason) or '—',
                 'discount_approx': parse_purchase_discount(reason),
+                'tax_pct': parse_purchase_tax_pct(reason),
+                'attachment_count': len(parse_purchase_attachment_paths(m.notes)),
                 'gross_total': 0.0,
                 'line_count': 0,
                 'total_qty': 0.0,
@@ -1195,6 +1232,8 @@ def purchase_invoice_documents(limit: int = 40) -> list[dict]:
         net = float(doc['total_value'] or 0)
         doc['gross_total'] = round(net + disc, 2)
         doc['discount_approx'] = disc
+        totals = purchase_invoice_totals(doc)
+        doc.update(totals)
         out.append(doc)
     return out[:limit]
 
