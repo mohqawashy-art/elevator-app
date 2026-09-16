@@ -21,6 +21,18 @@ OPENING_DOC_REF_PREFIX = 'opening:'
 PURCHASE_DOC_PREFIX = 'PI-'
 PURCHASE_DOC_REF_PREFIX = 'purchase:'
 
+INVENTORY_PRICE_DECIMALS = 6
+INVENTORY_MONEY_DECIMALS = 4
+PURCHASE_NOTES_DISCOUNT_MARKER = '| إجمالي قبل الخصم:'
+
+
+def round_inventory_price(value: float) -> float:
+    return round(float(value or 0), INVENTORY_PRICE_DECIMALS)
+
+
+def round_inventory_money(value: float) -> float:
+    return round(float(value or 0), INVENTORY_MONEY_DECIMALS)
+
 ISSUE_DOC_PREFIX = 'IS-'
 ISSUE_DOC_REF_PREFIX = 'issue:'
 
@@ -70,6 +82,29 @@ def purchase_reason(doc_code: str, invoice_no: str, supplier: str = '', discount
     return reason[:300]
 
 
+def parse_purchase_user_notes(notes: str | None) -> str:
+    text = (notes or '').strip()
+    if PURCHASE_NOTES_DISCOUNT_MARKER in text:
+        return text.split(PURCHASE_NOTES_DISCOUNT_MARKER, 1)[0].strip(' |')
+    return text
+
+
+def parse_purchase_supplier(reason: str | None) -> str:
+    text = (reason or '').strip()
+    marker = '| مورد:'
+    if marker not in text:
+        return ''
+    return text.split(marker, 1)[1].split('|', 1)[0].strip()
+
+
+def purchase_doc_code_from_reference(reference: str | None) -> str:
+    ref = (reference or '').strip()
+    if not ref.startswith(PURCHASE_DOC_REF_PREFIX):
+        return ''
+    parts = ref.split(':')
+    return parts[1] if len(parts) >= 2 else ''
+
+
 def parse_purchase_discount(reason: str | None) -> float:
     text = (reason or '').strip()
     marker = '| خصم:'
@@ -92,11 +127,11 @@ def distribute_purchase_discount(
     for raw in lines:
         qty = float(raw['quantity'])
         price = float(raw['unit_price'])
-        line_gross = round(qty * price, 2)
+        line_gross = round_inventory_money(qty * price)
         gross_total += line_gross
         prepared.append({**raw, 'line_gross': line_gross})
 
-    gross_total = round(gross_total, 2)
+    gross_total = round_inventory_money(gross_total)
     discount = round(max(0.0, float(discount_approx or 0)), 2)
     if discount > gross_total + 1e-9:
         raise ValueError('الخصم أكبر من إجمالي الفاتورة')
@@ -117,7 +152,7 @@ def distribute_purchase_discount(
         net_total = round(max(0.0, row['line_gross'] - line_discount), 2)
         qty = float(row['quantity'])
         row['net_total'] = net_total
-        row['net_unit_price'] = round(net_total / qty, 4) if qty else 0.0
+        row['net_unit_price'] = round_inventory_price(net_total / qty) if qty else 0.0
     return gross_total, discount, prepared
 
 
@@ -136,20 +171,88 @@ def next_purchase_doc_code() -> str:
     return f'{PURCHASE_DOC_PREFIX}{str(max_num + 1).zfill(4)}'
 
 
-def purchase_invoice_no_taken(invoice_no: str) -> bool:
+def purchase_invoice_no_taken(invoice_no: str, exclude_doc_code: str | None = None) -> bool:
     inv = (invoice_no or '').strip()
     if not inv:
         return False
     needle = f':inv:{inv[:40]}:item:'
-    return (
+    rows = (
         tenant_query(StockMovement)
         .filter(
             StockMovement.movement_type == MOVEMENT_PURCHASE,
             StockMovement.reference.like(f'{PURCHASE_DOC_REF_PREFIX}%{needle}%'),
         )
-        .first()
-        is not None
+        .all()
     )
+    exclude = (exclude_doc_code or '').strip()
+    for row in rows:
+        doc = purchase_doc_code_from_reference(row.reference)
+        if exclude and doc == exclude:
+            continue
+        return True
+    return False
+
+
+def purchase_invoice_movements(doc_code: str) -> list[StockMovement]:
+    code = (doc_code or '').strip()
+    if not code.startswith(PURCHASE_DOC_PREFIX):
+        return []
+    prefix = f'{PURCHASE_DOC_REF_PREFIX}{code}:inv:'
+    return (
+        tenant_query(StockMovement)
+        .filter(
+            StockMovement.movement_type == MOVEMENT_PURCHASE,
+            StockMovement.reference.like(f'{prefix}%'),
+        )
+        .order_by(StockMovement.id)
+        .all()
+    )
+
+
+def reverse_purchase_invoice_document(doc_code: str) -> int:
+    movements = purchase_invoice_movements(doc_code)
+    if not movements:
+        raise ValueError(f'فاتورة الشراء «{doc_code}» غير موجودة')
+    for movement in movements:
+        item = db.session.get(InventoryItem, movement.item_id)
+        if item:
+            adjust_inventory_qty(item, movement.direction, movement.quantity, reverse=True)
+        db.session.delete(movement)
+    return len(movements)
+
+
+def purchase_invoice_for_edit(doc_code: str) -> dict | None:
+    movements = purchase_invoice_movements(doc_code)
+    if not movements:
+        return None
+    first = movements[0]
+    reason = first.reason or ''
+    discount = parse_purchase_discount(reason)
+    net_doc = round_inventory_money(sum(float(m.total_value or 0) for m in movements))
+    gross_doc = round_inventory_money(net_doc + discount)
+    lines: list[dict] = []
+    for movement in movements:
+        qty = float(movement.quantity or 0)
+        line_net = float(movement.total_value or 0)
+        if discount > 0 and net_doc > 0:
+            line_gross = round_inventory_money(line_net * gross_doc / net_doc)
+        else:
+            line_gross = round_inventory_money(line_net)
+        gross_unit = round_inventory_price(line_gross / qty) if qty else 0.0
+        lines.append({
+            'item_id': movement.item_id,
+            'quantity': qty,
+            'unit_price': gross_unit,
+        })
+    return {
+        'code': doc_code,
+        'invoice_no': parse_movement_invoice(first.reference, reason),
+        'supplier': parse_purchase_supplier(reason),
+        'movement_date': str(first.movement_date or ''),
+        'discount_approx': discount,
+        'notes': parse_purchase_user_notes(first.notes),
+        'lines': lines,
+    }
 
 
 def opening_reason(doc_code: str, invoice_no: str = '') -> str:
@@ -243,7 +346,7 @@ def create_stock_movement(
     if direction not in ('وارد', 'صادر'):
         raise ValueError('اتجاه الحركة غير صالح')
 
-    price = float(unit_price if unit_price is not None else (item.buy_price or 0))
+    price = round_inventory_price(unit_price if unit_price is not None else (item.buy_price or 0))
     movement = StockMovement(
         code=next_code(StockMovement, 'MV-', digits=3),
         item_id=int(item.id),
@@ -252,7 +355,7 @@ def create_stock_movement(
         movement_type=(movement_type or '').strip() or '—',
         quantity=qty,
         unit_price=price,
-        total_value=qty * price,
+        total_value=round_inventory_money(qty * price),
         technician_id=int(technician_id) if technician_id else None,
         elevator_id=int(elevator_id) if elevator_id else None,
         reason=(reason or '')[:300],
@@ -356,6 +459,8 @@ def record_purchase_invoice_batch(
     supplier: str = '',
     notes: str = '',
     discount_approx: float = 0,
+    doc_code: str | None = None,
+    exclude_doc_code: str | None = None,
 ) -> tuple[str, list[StockMovement]]:
     """تسجيل فاتورة شراء — عدة أصniaف برقم مستند PI-xxxx وفاتورة واحدة."""
     inv = (invoice_no or '').strip()
@@ -363,13 +468,22 @@ def record_purchase_invoice_batch(
         raise ValueError('أدخل رقم فاتورة الشراء')
     if not lines:
         raise ValueError('أضف صنفاً واحداً على الأقل')
-    if purchase_invoice_no_taken(inv):
+
+    resolved_doc = (doc_code or '').strip()
+    skip_doc = exclude_doc_code or resolved_doc or None
+    if purchase_invoice_no_taken(inv, exclude_doc_code=skip_doc):
         raise ValueError(f'فاتورة الشراء «{inv}» مسجّلة مسبقاً')
+
+    if resolved_doc:
+        if not resolved_doc.startswith(PURCHASE_DOC_PREFIX):
+            raise ValueError('رقم المستند غير صالح')
+        doc_code = resolved_doc
+    else:
+        doc_code = next_purchase_doc_code()
 
     sup = (supplier or '').strip()
     mv_date = movement_date or date.today()
     doc_notes = (notes or '').strip()
-    doc_code = next_purchase_doc_code()
     movements: list[StockMovement] = []
     seen_items: set[int] = set()
     parsed_lines: list[dict] = []
@@ -438,6 +552,126 @@ def record_purchase_invoice_batch(
         movements.append(movement)
 
     return doc_code, movements
+
+
+def update_purchase_invoice_batch(
+    doc_code: str,
+    *,
+    lines: list[dict],
+    invoice_no: str,
+    movement_date: date | None = None,
+    supplier: str = '',
+    notes: str = '',
+    discount_approx: float = 0,
+) -> tuple[str, list[StockMovement]]:
+    """تعديل فاتورة شراء — عكس المخزون القديم ثم إعادة التسجيل بنفس PI."""
+    code = (doc_code or '').strip()
+    if not code.startswith(PURCHASE_DOC_PREFIX):
+        raise ValueError('رقم المستند غير صالح')
+    reverse_purchase_invoice_document(code)
+    return record_purchase_invoice_batch(
+        lines=lines,
+        invoice_no=invoice_no,
+        movement_date=movement_date,
+        supplier=supplier,
+        notes=notes,
+        discount_approx=discount_approx,
+        doc_code=code,
+        exclude_doc_code=code,
+    )
+
+
+def build_purchase_invoices_xlsx(doc_code: str | None = None) -> bytes:
+    """تصدير فواتير الشراء إلى Excel — مستند واحد أو الكل."""
+    from io import BytesIO
+
+    try:
+        from openpyxl import Workbook
+        from openpyxl.styles import Font
+    except ImportError as exc:
+        raise ImportError('مكتبة openpyxl غير مثبتة') from exc
+
+    from sqlalchemy.orm import joinedload
+
+    if doc_code:
+        movements = (
+            tenant_query(StockMovement)
+            .options(joinedload(StockMovement.item))
+            .filter(
+                StockMovement.movement_type == MOVEMENT_PURCHASE,
+                StockMovement.reference.like(f'{PURCHASE_DOC_REF_PREFIX}{doc_code}:inv:%'),
+            )
+            .order_by(StockMovement.id)
+            .all()
+        )
+        if not movements:
+            raise ValueError(f'فاتورة الشراء «{doc_code}» غير موجودة')
+    else:
+        movements = (
+            tenant_query(StockMovement)
+            .options(joinedload(StockMovement.item))
+            .filter(
+                StockMovement.movement_type == MOVEMENT_PURCHASE,
+                StockMovement.reference.isnot(None),
+            )
+            .order_by(StockMovement.movement_date.desc(), StockMovement.id.desc())
+            .all()
+        )
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'فواتير الشراء'
+    ws.sheet_view.rightToLeft = True
+    headers = [
+        'المستند',
+        'رقم الفاتورة',
+        'المورد',
+        'التاريخ',
+        'كود الصنف',
+        'اسم الصنف',
+        'الوحدة',
+        'الكمية',
+        'سعر الوحدة',
+        'إجمالي السطر',
+        'خصم تقريبي',
+        'ملاحظات',
+    ]
+    ws.append(headers)
+    for cell in ws[1]:
+        cell.font = Font(bold=True)
+
+    for movement in movements:
+        ref = (movement.reference or '').strip()
+        doc = purchase_doc_code_from_reference(ref)
+        if doc_code and doc != doc_code:
+            continue
+        if not doc.startswith(PURCHASE_DOC_PREFIX):
+            continue
+        reason = movement.reason or ''
+        item = movement.item
+        ws.append([
+            doc,
+            parse_movement_invoice(ref, reason),
+            parse_purchase_supplier(reason) or '—',
+            str(movement.movement_date or ''),
+            item.code if item else '',
+            item.name if item else '—',
+            (item.unit if item else '') or 'قطعة',
+            float(movement.quantity or 0),
+            float(movement.unit_price or 0),
+            float(movement.total_value or 0),
+            parse_purchase_discount(reason),
+            parse_purchase_user_notes(movement.notes),
+        ])
+
+    for col in ('H', 'I', 'J', 'K'):
+        for row in ws.iter_rows(min_row=2, min_col=ord(col) - 64, max_col=ord(col) - 64):
+            for cell in row:
+                cell.number_format = '0.000000' if col == 'I' else '0.00'
+
+    bio = BytesIO()
+    wb.save(bio)
+    return bio.getvalue()
 
 
 def record_purchase_receipt_movements(order) -> bool:
@@ -939,20 +1173,17 @@ def purchase_invoice_documents(limit: int = 40) -> list[dict]:
         doc_code = ref.split(':')[1]
         if doc_code not in docs:
             reason = m.reason or ''
-            supplier = ''
-            if '| مورد:' in reason:
-                supplier = reason.split('| مورد:', 1)[1].strip()
             docs[doc_code] = {
                 'code': doc_code,
                 'movement_date': str(m.movement_date or ''),
                 'invoice_no': parse_movement_invoice(ref, reason),
-                'supplier': supplier or '—',
+                'supplier': parse_purchase_supplier(reason) or '—',
                 'discount_approx': parse_purchase_discount(reason),
                 'gross_total': 0.0,
                 'line_count': 0,
                 'total_qty': 0.0,
                 'total_value': 0.0,
-                'notes': m.notes or '',
+                'notes': parse_purchase_user_notes(m.notes),
             }
         entry = docs[doc_code]
         entry['line_count'] += 1

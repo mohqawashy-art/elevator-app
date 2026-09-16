@@ -44,7 +44,10 @@ table.doc-list{width:100%;border-collapse:collapse;font-size:13px}
 table.doc-list th{padding:10px 12px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px}
 table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
 .td-code{font-family:var(--font-en);color:var(--accent);font-weight:600}
-.empty-msg{color:var(--text3);font-size:13px;padding:12px 0}
+.doc-actions{display:flex;gap:6px;flex-wrap:wrap}
+.doc-actions .btn{padding:4px 10px;font-size:11px}
+.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.panel-head .panel-title{margin-bottom:0}
 .table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:0}
 table.data-table{width:100%;border-collapse:collapse;font-size:13px}
 table.data-table thead th{padding:10px 12px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px}
@@ -73,24 +76,32 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
     </div>
 
     <div class="panel">
-      <div class="panel-title">إدخال فاتورة شراء</div>
+      <div class="panel-head">
+        <div class="panel-title">{% if edit_document %}تعديل فاتورة شراء {{ edit_document.code }}{% else %}إدخال فاتورة شراء{% endif %}</div>
+        {% if edit_document %}
+        <a href="/warehouse/purchases" class="btn btn-secondary btn-sm">إلغاء التعديل</a>
+        {% endif %}
+      </div>
       <form method="post" action="/inventory/purchase-invoice" id="purchase-form">
+        {% if edit_document %}
+        <input type="hidden" name="edit_doc_code" value="{{ edit_document.code }}">
+        {% endif %}
         <div class="form-grid">
           <div class="field">
-            <label>رقم المستند (تلقائي)</label>
-            <div class="doc-no">{{ next_purchase_doc }}</div>
+            <label>رقم المستند</label>
+            <div class="doc-no">{% if edit_document %}{{ edit_document.code }}{% else %}{{ next_purchase_doc }}{% endif %}</div>
           </div>
           <div class="field">
             <label>تاريخ الفاتورة</label>
-            <input type="date" name="movement_date" lang="en-GB" value="{{ today }}">
+            <input type="date" name="movement_date" id="movement-date" lang="en-GB" value="{{ edit_document.movement_date if edit_document else today }}">
           </div>
           <div class="field">
             <label>رقم فاتورة الشراء <span style="color:#f87171">*</span></label>
-            <input type="text" name="invoice_no" required placeholder="رقم فاتورة المورد" style="direction:ltr;font-family:var(--font-en)">
+            <input type="text" name="invoice_no" id="invoice-no" required placeholder="رقم فاتورة المورد" style="direction:ltr;font-family:var(--font-en)" value="{{ edit_document.invoice_no if edit_document else '' }}">
           </div>
           <div class="field">
             <label>المورد</label>
-            <input type="text" name="supplier" list="supplier-list" placeholder="اسم المورد">
+            <input type="text" name="supplier" id="supplier" list="supplier-list" placeholder="اسم المورد" value="{{ edit_document.supplier if edit_document else '' }}">
             <datalist id="supplier-list">
               {% for s in suppliers %}
               <option value="{{ s.name }}">
@@ -99,11 +110,11 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
           </div>
           <div class="field">
             <label>خصم تقريبي</label>
-            <input type="number" name="discount_approx" id="discount-approx" min="0" step="0.01" value="0" placeholder="0.00" style="direction:ltr;font-family:var(--font-en)">
+            <input type="number" name="discount_approx" id="discount-approx" min="0" step="0.01" value="{{ edit_document.discount_approx if edit_document else 0 }}" placeholder="0.00" style="direction:ltr;font-family:var(--font-en)">
           </div>
           <div class="field form-full">
             <label>ملاحظات</label>
-            <textarea name="notes" rows="2" placeholder="اختياري"></textarea>
+            <textarea name="notes" id="notes" rows="2" placeholder="اختياري">{{ edit_document.notes if edit_document else '' }}</textarea>
           </div>
         </div>
 
@@ -115,7 +126,7 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
             <tr class="line-row">
               <td class="purchase-item-cell"></td>
               <td><input type="number" name="quantity" min="0.01" step="0.01" value="1" required></td>
-              <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
+              <td><input type="number" name="unit_price" min="0" step="any" value="0"></td>
               <td class="line-total">0.00</td>
               <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
             </tr>
@@ -140,18 +151,23 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
 
         <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
           <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ إضافة صنف</button>
-          <button type="submit" class="btn btn-primary">حفظ الفاتورة</button>
+          <button type="submit" class="btn btn-primary">{% if edit_document %}حفظ التعديلات{% else %}حفظ الفاتورة{% endif %}</button>
         </div>
       </form>
-      <p class="hint">كل فاتورة شراء تُسجَّل مستقلة برقم مستند <strong>PI-xxxx</strong>. الخصم التقريبي يُوزَّع على الأسطر ويُخفّض تكلفة الشراء في المخزون.</p>
+      <p class="hint">كل فاتورة شراء تُسجَّل مستقلة برقم مستند <strong>PI-xxxx</strong>. يمكن تعديل الفاتورة من القائمة أدناه. السعر يقبل حتى 6 خانات عشرية. الخصم التقريبي يُوزَّع على الأسطر ويُخفّض تكلفة الشراء في المخزون.</p>
     </div>
 
     <div class="panel">
-      <div class="panel-title">فواتير الشراء المسجّلة ({{ purchase_documents|length }})</div>
+      <div class="panel-head">
+        <div class="panel-title">فواتير الشراء المسجّلة ({{ purchase_documents|length }})</div>
+        {% if purchase_documents %}
+        <a href="/warehouse/purchases/export" class="btn btn-secondary btn-sm">تصدير Excel — الكل</a>
+        {% endif %}
+      </div>
       {% if purchase_documents %}
       <table class="doc-list">
         <thead>
-          <tr><th>المستند</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>قبل الخصم</th><th>خصم</th><th>صافي</th><th>ملاحظات</th></tr>
+          <tr><th>المستند</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>قبل الخصم</th><th>خصم</th><th>صافي</th><th>ملاحظات</th><th>إجراءات</th></tr>
         </thead>
         <tbody>
           {% for d in purchase_documents %}
@@ -166,6 +182,12 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
             <td style="font-family:var(--font-en);color:#f87171">{{ d.discount_approx or '—' }}</td>
             <td style="font-family:var(--font-en)">{{ d.total_value }}</td>
             <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
+            <td>
+              <div class="doc-actions">
+                <a href="/warehouse/purchases?edit={{ d.code }}" class="btn btn-secondary btn-sm">تعديل</a>
+                <a href="/warehouse/purchases/export?doc={{ d.code }}" class="btn btn-secondary btn-sm">Excel</a>
+              </div>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
@@ -206,7 +228,7 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
   <tr class="line-row">
     <td class="purchase-item-cell"></td>
     <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
-    <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
+    <td><input type="number" name="unit_price" min="0" step="any" value="0"></td>
     <td class="line-total">0.00</td>
     <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
   </tr>
@@ -214,6 +236,7 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
 
 <script>
 var PURCHASE_ITEMS = {{ items_js | tojson }};
+var EDIT_DOCUMENT = {{ edit_document | tojson }};
 var purchaseItemRowSeq = 0;
 
 function inventorySelectOptions() {
@@ -279,7 +302,7 @@ function onPurchaseItemPicked(row) {
 
 function fmtLineMoney(v) {
   var n = Number(v) || 0;
-  return (window.fmtNum ? fmtNum(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n.toFixed(2));
+  return (window.fmtNum ? fmtNum(n, { minimumFractionDigits: 2, maximumFractionDigits: 6 }) : n.toFixed(6).replace(/\.?0+$/, ''));
 }
 function updateLineTotal(row) {
   if (!row) return;
@@ -310,11 +333,14 @@ function updateDocTotal() {
   if (discEl) discEl.textContent = fmtLineMoney(discount);
   if (totalEl) totalEl.textContent = fmtLineMoney(net);
 }
-function bindLine(row) {
-  mountPurchaseItemSelect(row, '');
+function bindLine(row, selectedId, qtyValue, priceValue) {
+  mountPurchaseItemSelect(row, selectedId || '');
   var qty = row.querySelector('input[name="quantity"]');
   var price = row.querySelector('input[name="unit_price"]');
-  if (qty && window.LcInventoryQty) LcInventoryQty.applyInput(qty, 'قطعة');
+  if (qty && qtyValue !== undefined && qtyValue !== null) qty.value = qtyValue;
+  if (price && priceValue !== undefined && priceValue !== null) price.value = priceValue;
+  var item = PURCHASE_ITEMS.find(function (x) { return String(x.id) === String(selectedId || (row.querySelector('input[name="item_id"]') || {}).value); });
+  if (qty && window.LcInventoryQty) LcInventoryQty.applyInput(qty, item ? item.unit : 'قطعة');
   [qty, price].forEach(function (el) {
     if (!el || el.dataset.bound) return;
     el.dataset.bound = '1';
@@ -324,6 +350,20 @@ function bindLine(row) {
     });
   });
   updateLineTotal(row);
+}
+function loadEditDocument() {
+  if (!EDIT_DOCUMENT || !EDIT_DOCUMENT.lines || !EDIT_DOCUMENT.lines.length) return;
+  var body = document.getElementById('lines-body');
+  if (!body) return;
+  body.innerHTML = '';
+  EDIT_DOCUMENT.lines.forEach(function (line, idx) {
+    var tpl = document.getElementById('line-tpl');
+    if (!tpl) return;
+    var row = tpl.content.firstElementChild.cloneNode(true);
+    body.appendChild(row);
+    bindLine(row, line.item_id, line.quantity, line.unit_price);
+  });
+  updateDocTotal();
 }
 function addLine() {
   var tpl = document.getElementById('line-tpl');
@@ -340,8 +380,11 @@ function removeLine(btn) {
   btn.closest('.line-row').remove();
   updateDocTotal();
 }
-document.querySelectorAll('.line-row').forEach(bindLine);
-updateDocTotal();
+document.querySelectorAll('.line-row').forEach(function (row) {
+  if (!EDIT_DOCUMENT) bindLine(row);
+});
+if (EDIT_DOCUMENT) loadEditDocument();
+else updateDocTotal();
 var discountInput = document.getElementById('discount-approx');
 if (discountInput) {
   discountInput.addEventListener('input', updateDocTotal);

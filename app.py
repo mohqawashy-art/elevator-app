@@ -3,7 +3,7 @@ LiftCore — Flask Application
 app.py
 """
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort, make_response, has_app_context
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, send_file, abort, make_response, has_app_context
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice, Account
 from models import JournalEntry, JournalLine
@@ -12027,7 +12027,7 @@ def inventory_opening_stock():
 
 @app.route('/inventory/purchase-invoice', methods=['POST'])
 def inventory_purchase_invoice():
-    from inventory_warehouse import record_purchase_invoice_batch
+    from inventory_warehouse import record_purchase_invoice_batch, update_purchase_invoice_batch
 
     movement_date = date.today()
     raw_date = (request.form.get('movement_date') or '').strip()
@@ -12038,6 +12038,7 @@ def inventory_purchase_invoice():
             flash('تاريخ غير صالح', 'error')
             return redirect(url_for('warehouse_purchases'))
 
+    edit_doc_code = (request.form.get('edit_doc_code') or '').strip()
     invoice_no = (request.form.get('invoice_no') or '').strip()
     supplier = (request.form.get('supplier') or '').strip()
     notes = (request.form.get('notes') or '').strip()
@@ -12063,29 +12064,41 @@ def inventory_purchase_invoice():
         })
     if not lines_data:
         flash('أضف صنفاً واحداً على الأقل', 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_purchases', edit=edit_doc_code))
         return redirect(url_for('warehouse_purchases'))
 
+    batch_kwargs = dict(
+        lines=lines_data,
+        invoice_no=invoice_no,
+        movement_date=movement_date,
+        supplier=supplier,
+        notes=notes,
+        discount_approx=discount_approx,
+    )
     try:
-        doc_code, movements = record_purchase_invoice_batch(
-            lines=lines_data,
-            invoice_no=invoice_no,
-            movement_date=movement_date,
-            supplier=supplier,
-            notes=notes,
-            discount_approx=discount_approx,
-        )
+        if edit_doc_code:
+            doc_code, movements = update_purchase_invoice_batch(edit_doc_code, **batch_kwargs)
+            action = 'تحديث'
+        else:
+            doc_code, movements = record_purchase_invoice_batch(**batch_kwargs)
+            action = 'حفظ'
         db.session.commit()
         flash(
-            f'تم حفظ فاتورة الشراء {doc_code} — {len(movements)} صنف — فاتورة {invoice_no}',
+            f'تم {action} فاتورة الشراء {doc_code} — {len(movements)} صنف — فاتورة {invoice_no}',
             'success',
         )
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_purchases', edit=edit_doc_code))
     except Exception:
         db.session.rollback()
         app.logger.exception('inventory_purchase_invoice failed')
         flash('تعذّر تسجيل فاتورة الشراء', 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_purchases', edit=edit_doc_code))
     return redirect(url_for('warehouse_purchases'))
 
 
@@ -12218,19 +12231,53 @@ def warehouse_issue_page():
 
 @app.route('/warehouse/purchases')
 def warehouse_purchases():
-    from inventory_warehouse import purchase_movements, warehouse_page_context
+    from inventory_warehouse import purchase_invoice_for_edit, purchase_movements, warehouse_page_context
 
     ctx = warehouse_page_context()
     rows = purchase_movements()
     total_qty = round(sum(r['quantity'] for r in rows), 4)
     total_val = round(sum(r['total_value'] for r in rows), 2)
+    edit_code = (request.args.get('edit') or '').strip()
+    edit_document = purchase_invoice_for_edit(edit_code) if edit_code else None
+    if edit_code and edit_document is None:
+        flash(f'فاتورة الشراء «{edit_code}» غير موجودة', 'error')
     return render_template(
         'warehouse_purchases.html',
         movements=rows,
         purchase_count=len(rows),
         purchase_total_qty=total_qty,
         purchase_total_value=total_val,
+        edit_document=edit_document,
         **ctx,
+    )
+
+
+@app.route('/warehouse/purchases/export')
+def warehouse_purchases_export():
+    from io import BytesIO
+
+    from inventory_warehouse import build_purchase_invoices_xlsx
+
+    doc = (request.args.get('doc') or '').strip()
+    try:
+        data = build_purchase_invoices_xlsx(doc_code=doc or None)
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('warehouse_purchases'))
+    except ImportError:
+        flash('مكتبة openpyxl غير مثبتة على السيرفر', 'error')
+        return redirect(url_for('warehouse_purchases'))
+    except Exception:
+        app.logger.exception('warehouse_purchases_export failed')
+        flash('تعذّر تصدير فواتير الشراء', 'error')
+        return redirect(url_for('warehouse_purchases'))
+
+    name = f'purchase-{doc}.xlsx' if doc else 'purchase-invoices.xlsx'
+    return send_file(
+        BytesIO(data),
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=name,
     )
 
 

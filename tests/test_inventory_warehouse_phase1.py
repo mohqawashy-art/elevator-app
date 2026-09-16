@@ -4,11 +4,14 @@ from datetime import date
 from inventory_warehouse import (
     MOVEMENT_OPENING,
     MOVEMENT_PURCHASE,
+    build_purchase_invoices_xlsx,
+    purchase_invoice_for_edit,
     record_issue_authorization,
     record_issue_batch,
     record_opening_stock,
     record_opening_stock_batch,
     record_purchase_invoice_batch,
+    update_purchase_invoice_batch,
     validate_outbound_stock,
 )
 from models import InventoryItem, StockMovement, db
@@ -353,3 +356,120 @@ def test_purchase_invoice_post(client):
         item2 = db.session.get(InventoryItem, id2)
         assert float(item1.current_qty or 0) == 3
         assert float(item2.current_qty or 0) == 1
+
+
+def test_purchase_invoice_high_precision_price(client):
+    with client.application.app_context():
+        item = _item(code='#WH-PREC', qty=0)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, movements = record_purchase_invoice_batch(
+            invoice_no='PREC-1',
+            lines=[{'item_id': item_id, 'quantity': 3, 'unit_price': 10.123456}],
+        )
+        db.session.commit()
+        assert len(movements) == 1
+        assert float(movements[0].unit_price or 0) == 10.123456
+        item = db.session.get(InventoryItem, item_id)
+        assert float(item.buy_price or 0) == 10.123456
+
+
+def test_purchase_invoice_update(client):
+    with client.application.app_context():
+        item1 = _item(code='#WH-ED1', qty=0)
+        item2 = _item(code='#WH-ED2', qty=0)
+        db.session.commit()
+        id1, id2 = item1.id, item2.id
+
+    with client.application.app_context():
+        doc_code, _ = record_purchase_invoice_batch(
+            invoice_no='EDIT-INV',
+            supplier='مورد 1',
+            lines=[{'item_id': id1, 'quantity': 2, 'unit_price': 10}],
+        )
+        db.session.commit()
+
+    with client.application.app_context():
+        update_purchase_invoice_batch(
+            doc_code,
+            invoice_no='EDIT-INV',
+            supplier='مورد 2',
+            lines=[
+                {'item_id': id1, 'quantity': 5, 'unit_price': 12},
+                {'item_id': id2, 'quantity': 1, 'unit_price': 8},
+            ],
+        )
+        db.session.commit()
+        item1 = db.session.get(InventoryItem, id1)
+        item2 = db.session.get(InventoryItem, id2)
+        assert float(item1.current_qty or 0) == 5
+        assert float(item2.current_qty or 0) == 1
+        edit = purchase_invoice_for_edit(doc_code)
+        assert edit is not None
+        assert edit['supplier'] == 'مورد 2'
+        assert len(edit['lines']) == 2
+
+
+def test_purchase_invoice_export_xlsx(client):
+    with client.application.app_context():
+        item = _item(code='#WH-XLS', qty=0)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, _ = record_purchase_invoice_batch(
+            invoice_no='XLS-100',
+            lines=[{'item_id': item_id, 'quantity': 2, 'unit_price': 9.5}],
+        )
+        db.session.commit()
+
+    with client.application.app_context():
+        data = build_purchase_invoices_xlsx()
+        assert data[:2] == b'PK'
+        single = build_purchase_invoices_xlsx(doc_code=doc_code)
+        assert single[:2] == b'PK'
+        assert len(single) > 100
+
+
+def test_purchase_invoice_edit_post(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        item = _item(code='#WH-EDITPOST', qty=0)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, _ = record_purchase_invoice_batch(
+            invoice_no='POST-EDIT',
+            lines=[{'item_id': item_id, 'quantity': 1, 'unit_price': 5}],
+        )
+        db.session.commit()
+
+    r = client.post('/inventory/purchase-invoice', data={
+        'edit_doc_code': doc_code,
+        'movement_date': date.today().isoformat(),
+        'invoice_no': 'POST-EDIT',
+        'supplier': 'مورد',
+        'item_id': [str(item_id)],
+        'quantity': ['4'],
+        'unit_price': ['7.25'],
+    }, follow_redirects=True)
+    assert r.status_code == 200
+    assert 'تحديث' in r.get_data(as_text=True)
+    with client.application.app_context():
+        item = db.session.get(InventoryItem, item_id)
+        assert float(item.current_qty or 0) == 4
+
+
+def test_purchase_invoice_export_route(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    r = client.get('/warehouse/purchases/export')
+    assert r.status_code == 200
+    assert 'spreadsheetml' in (r.headers.get('Content-Type') or '')
+    assert r.data[:2] == b'PK'
