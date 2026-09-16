@@ -37,7 +37,7 @@ def round_inventory_money(value: float) -> float:
 
 ISSUE_DOC_PREFIX = 'IS-'
 ISSUE_DOC_REF_PREFIX = 'issue:'
-ISSUE_META_MARKER = '\n---LC-IS-META---\n'
+ISSUE_META_SEP = '---LC-IS-META---'
 
 
 def opening_doc_reference(doc_code: str, item_id: int, invoice_no: str = '') -> str:
@@ -788,20 +788,25 @@ def issue_doc_code_from_reference(reference: str | None) -> str:
     return parts[1] if len(parts) >= 2 else ''
 
 
+def _split_issue_notes(notes: str | None) -> tuple[str, str]:
+    text = notes or ''
+    idx = text.find(ISSUE_META_SEP)
+    if idx < 0:
+        return text.strip(), ''
+    return text[:idx].strip(), text[idx + len(ISSUE_META_SEP):].strip()
+
+
 def parse_issue_user_notes(notes: str | None) -> str:
-    text = (notes or '').strip()
-    if ISSUE_META_MARKER in text:
-        return text.split(ISSUE_META_MARKER, 1)[0].strip()
-    return text
+    user, _ = _split_issue_notes(notes)
+    return user
 
 
 def parse_issue_meta(notes: str | None) -> dict:
     import json
 
-    text = notes or ''
-    if ISSUE_META_MARKER not in text:
+    _, raw = _split_issue_notes(notes)
+    if not raw:
         return {}
-    raw = text.split(ISSUE_META_MARKER, 1)[1].strip()
     try:
         data = json.loads(raw)
         return data if isinstance(data, dict) else {}
@@ -820,7 +825,8 @@ def build_issue_document_notes(user_notes: str, meta: dict | None) -> str | None
             if key in meta and meta[key] not in (None, '')
         }
         if clean_meta:
-            base = (base + ISSUE_META_MARKER + json.dumps(clean_meta, ensure_ascii=False)).strip()
+            meta_blob = json.dumps(clean_meta, ensure_ascii=False)
+            base = f'{base}{ISSUE_META_SEP}{meta_blob}' if base else f'{ISSUE_META_SEP}{meta_blob}'
     return base or None
 
 

@@ -6,7 +6,9 @@ from inventory_warehouse import (
     MOVEMENT_PURCHASE,
     DEFAULT_PURCHASE_TAX_PCT,
     issue_document_for_edit,
+    issue_documents,
     issue_print_payload,
+    parse_issue_user_notes,
     purchase_invoice_for_edit,
     record_issue_authorization,
     record_issue_batch,
@@ -546,3 +548,30 @@ def test_issue_print_route(client):
     html = r.get_data(as_text=True)
     assert doc_code in html
     assert 'إذن صرف بضاعة' in html
+
+
+def test_issue_notes_hide_internal_meta(client):
+    with client.application.app_context():
+        item = _item(code='#WH-NMETA', qty=5)
+        db.session.commit()
+        item_id = item.id
+
+    with client.application.app_context():
+        doc_code, movements = record_issue_batch(
+            target='consumable',
+            notes='',
+            lines=[{'item_id': item_id, 'quantity': 1}],
+        )
+        db.session.commit()
+        stored = movements[0].notes or ''
+        assert '---LC-IS-META---' in stored
+        assert parse_issue_user_notes(stored) == ''
+        docs = issue_documents()
+        row = next(d for d in docs if d['code'] == doc_code)
+        assert row['notes'] == ''
+        assert 'LC-IS-META' not in (row['notes'] or '')
+
+    # سجلات قديمة أُفسدت بسبب strip سابق
+    legacy = '---LC-IS-META---\n{"target": "custody", "technician_id": 15}'
+    assert parse_issue_user_notes(legacy) == ''
+    assert parse_issue_user_notes(f'ملاحظة{legacy}') == 'ملاحظة'
