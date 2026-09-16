@@ -13,3 +13,20 @@
 إذا ظهر «موجود مسبقاً» فالعملاء محفوظون — انتقل إلى 02-elevators.xlsx ثم 03-contracts.xlsx.
 الخريطة: العناوين في ملف العملاء؛ GPS يُحدَّد لاحقاً من العنوان إن لزم.
 إعادة توليد الملفات: python scripts/build_demo_makkah_xlsx.py
+
+────────────────────────────────────────
+أمر واحد — كل الصفحات والتقارير (demo فقط)
+────────────────────────────────────────
+على السيرفر (لا يمس jama):
+
+  cd ~/liftcore/elevator-app
+  set -a; source /etc/liftcore/platform.env; set +a
+  bash deploy/seed_demo_full.sh
+
+أو بعد استيراد Excel يدوياً — طبقة التشغيل فقط:
+
+  python3 scripts/seed_demo_full_tenant.py --ops-only
+
+إعادة ضبط demo ثم ملء كامل:
+
+  python3 scripts/seed_demo_full_tenant.py --reset --confirm JAMA_WIPE
