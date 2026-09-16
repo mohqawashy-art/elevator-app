@@ -105,9 +105,7 @@
 
       <section class="mq-card">
         <h2><span class="n">2</span> فحص المصاعد (من الفني)</h2>
-        {% if not quote %}
-        <p class="flow">بعد حفظ العرض يمكنك إرسال <b>طلب فحص مصعد</b> للفني — يُدخل مواصفات المصاعد والرأي الفني قبل تثبيت العرض.</p>
-        {% elif quote.status == 'مقبول' %}
+        {% if quote and quote.status == 'مقبول' %}
         {% if survey_units %}
         <div class="q-panel" style="border:1px solid var(--border);border-radius:var(--r-sm);padding:12px;background:var(--bg2)">
           <div style="font-size:13px;font-weight:600;margin-bottom:8px">نتائج الفحص ({{ survey_units|length }} مصعد)</div>
@@ -138,23 +136,24 @@
         </div>
         <p class="hint">بانتظار تعبئة الفني من بوابة الجوال. بعد الإكمال تظهر المواصفات هنا تلقائياً.</p>
         {% else %}
-        <p class="flow" style="margin-bottom:10px">أرسل طلب فحص للفني لزيارة الموقع وتوثيق مواصفات المصاعد والرأي الفني.</p>
+        <p class="flow" style="margin-bottom:10px">اختر الفني ثم اضغط <b>حفظ وإرسال للفني للمعاينة</b> — يصل الطلب إلى بوابة الفني على الجوال لفحص المصاعد وتوثيق المواصفات.</p>
         <div class="mq-grid">
           <div class="field full">
             <label>الفني *</label>
-            <select name="technician_id" form="survey-request-form" required>
+            <select name="technician_id">
               <option value="">— اختر فنياً —</option>
               {% for t in technicians %}
-              <option value="{{ t.id }}">{{ t.code }} — {{ t.name }}{% if t.phone %} · {{ t.phone }}{% endif %}</option>
+              <option value="{{ t.id }}"{% if maint_survey and maint_survey.technician_id == t.id %} selected{% endif %}>{{ t.code }} — {{ t.name }}{% if t.phone %} · {{ t.phone }}{% endif %}</option>
               {% endfor %}
             </select>
           </div>
           <div class="field full">
             <label>ملاحظات للفني</label>
-            <textarea name="survey_notes" form="survey-request-form" rows="2" placeholder="موعد الزيارة، جهة التواصل، عدد المصاعد المتوقع…"></textarea>
+            <textarea name="survey_notes" rows="2" placeholder="موعد الزيارة، جهة التواصل، عدد المصاعد المتوقع…">{% if maint_survey %}{{ maint_survey.request_notes or '' }}{% endif %}</textarea>
           </div>
           <div class="field full">
-            <button type="submit" form="survey-request-form" class="btn btn-primary btn-sm">إرسال طلب فحص مصعد</button>
+            <button type="submit" name="action" value="save_send_survey" class="btn btn-primary">حفظ وإرسال للفني للمعاينة</button>
+            <div class="hint" style="margin-top:8px">يحفظ بيانات العرض (حتى بدون تسعير نهائي) ويرسل طلب الفحص مباشرة للفني.</div>
           </div>
         </div>
         {% endif %}
@@ -274,10 +273,6 @@
       </div>
       {% endif %}
     </form>
-
-    {% if quote and quote.status != 'مقبول' and (not maint_survey or maint_survey.status not in ['مُرسَل','قيد الفحص','مكتمل']) %}
-    <form id="survey-request-form" method="post" action="{{ url_for('sales.maintenance_quote_request_survey', quote_id=quote.id) }}" hidden aria-hidden="true"></form>
-    {% endif %}
 
     {% if quote and quote.status != 'مقبول' %}
     <div class="actions" style="margin-top:12px">

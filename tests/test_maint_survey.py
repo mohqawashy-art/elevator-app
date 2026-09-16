@@ -337,3 +337,43 @@ def test_field_payload_includes_maint_surveys(client):
         payload = field_technician_payload(tech.id, portal_kind='both')
         assert payload.get('maint_surveys')
         assert any(s['code'] == 'MQS-MQS1' for s in payload['maint_surveys'])
+
+
+def test_save_and_send_survey_new_quote(client):
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        cust = Customer(organization_id=oid, code='C-SV7', name='عميل حفظ وإرسال', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        tech = Technician(organization_id=oid, code='T-SV7', name='فني معاينة', status='متاح')
+        db.session.add(tech)
+        db.session.commit()
+        cid, tid = cust.id, tech.id
+
+    r = client.post(
+        '/sales/maintenance-quotes/new',
+        data={
+            'customer_id': str(cid),
+            'technician_id': str(tid),
+            'survey_notes': 'معاينة غداً',
+            'action': 'save_send_survey',
+            'city': 'مكة المكرمة',
+            'duration_months': '12',
+            'maint_frequency': 'شهري',
+            'visits_per_month': '1',
+            'total_incl_tax': '0',
+            'tax_pct': '15',
+        },
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert 'تم حفظ العرض' in html
+    assert 'إرسال طلب فحص' in html or 'للمعاينة' in html
+
+    with client.application.app_context():
+        survey = MaintenanceQuoteSurvey.query.order_by(MaintenanceQuoteSurvey.id.desc()).first()
+        assert survey is not None
+        assert survey.status == 'مُرسَل'
+        assert survey.technician_id == tid
