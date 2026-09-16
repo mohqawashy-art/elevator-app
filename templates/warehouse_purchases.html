@@ -4,22 +4,48 @@
 <meta charset="UTF-8">
 {% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore — المشتريات</title>
+<title>LiftCore — فواتير الشراء</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--sidebar-w:240px;--font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;--r:10px}
+:root{--bg:#0b0f17;--bg2:#111720;--bg3:#161e2b;--card:#131b27;--border:rgba(100,160,255,.1);--accent:#2a7fff;--text1:#e4eaf5;--text2:#8a9bb8;--text3:#4a5a72;--font-ar:'IBM Plex Sans Arabic',sans-serif;--font-en:'DM Sans',sans-serif;--r:10px;--r-sm:7px}
 body{background:var(--bg);color:var(--text1);min-height:100vh}
 .main{flex:1;display:flex;flex-direction:column;min-width:0}
 .content{flex:1;padding:24px}
 .stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .stat{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px 16px;min-width:140px}
 .stat-l{font-size:11px;color:var(--text3)}.stat-v{font-size:18px;font-weight:600;font-family:var(--font-en)}
-.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-table{width:100%;border-collapse:collapse;font-size:13px}
-thead th{padding:10px 12px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px}
-tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
+.panel{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.panel-title{font-size:16px;font-weight:600;margin-bottom:14px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-full{grid-column:1/-1}
+.field label{display:block;font-size:12px;color:var(--text2);margin-bottom:6px}
+.field input,.field select,.field textarea{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.doc-no{font-family:var(--font-en);color:var(--accent);font-weight:700;font-size:15px}
+.lines-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+.lines-table th{padding:8px 10px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)}
+.lines-table td{padding:8px 10px;border-bottom:1px solid rgba(100,160,255,.06);vertical-align:middle}
+.lines-table input{width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.purchase-item-cell .lc-client-select{position:relative;min-width:200px}
+.purchase-item-cell .lc-client-select-input{width:100%;font-size:12px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1)}
+.purchase-item-cell .lc-client-select-list{z-index:400;max-height:220px;overflow-y:auto}
+.line-total{font-family:var(--font-en);color:var(--text1);font-weight:600;white-space:nowrap;text-align:left;direction:ltr}
+.doc-total-row{display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:13px}
+.doc-total-label{color:var(--text2)}
+.doc-total-value{font-family:var(--font-en);font-size:16px;font-weight:700;color:var(--accent);direction:ltr}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-family:var(--font-ar);font-size:13px;text-decoration:none}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
+.btn-sm{padding:6px 12px;font-size:12px}
+.hint{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
+table.doc-list{width:100%;border-collapse:collapse;font-size:13px}
+table.doc-list th{padding:10px 12px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px}
+table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
 .td-code{font-family:var(--font-en);color:var(--accent);font-weight:600}
-.hint{font-size:11px;color:var(--text3);margin-top:10px}
+.empty-msg{color:var(--text3);font-size:13px;padding:12px 0}
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;margin-top:0}
+table.data-table{width:100%;border-collapse:collapse;font-size:13px}
+table.data-table thead th{padding:10px 12px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px}
+table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,160,255,.05)}
 </style>
 {% include 'partials/liftcore_head.html' %}
 <link rel="stylesheet" href="/static/liftcore-layout.css?v=5">
@@ -32,36 +58,282 @@ tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px solid rgba(100,1
   <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
 </aside>
 <div class="main">
-  {% set page_title = 'المشتريات' %}
+  {% set page_title = 'فواتير الشراء' %}
   {% include 'partials/app_header.html' %}
   <div class="content">
+    {% include 'partials/flash_messages.html' %}
+
     <div class="stats">
       <div class="stat"><div class="stat-l">حركات شراء</div><div class="stat-v">{{ purchase_count }}</div></div>
       <div class="stat"><div class="stat-l">إجمالي الكميات</div><div class="stat-v">{{ purchase_total_qty }}</div></div>
       <div class="stat"><div class="stat-l">إجمالي القيمة</div><div class="stat-v">{{ purchase_total_value }}</div></div>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>الحركة</th><th>التاريخ</th><th>النوع</th><th>الصنف</th><th>الكمية</th><th>القيمة</th><th>السبب / المرجع</th></tr></thead>
+
+    <div class="panel">
+      <div class="panel-title">إدخال فاتورة شراء</div>
+      <form method="post" action="/inventory/purchase-invoice" id="purchase-form">
+        <div class="form-grid">
+          <div class="field">
+            <label>رقم المستند (تلقائي)</label>
+            <div class="doc-no">{{ next_purchase_doc }}</div>
+          </div>
+          <div class="field">
+            <label>تاريخ الفاتورة</label>
+            <input type="date" name="movement_date" lang="en-GB" value="{{ today }}">
+          </div>
+          <div class="field">
+            <label>رقم فاتورة الشراء <span style="color:#f87171">*</span></label>
+            <input type="text" name="invoice_no" required placeholder="رقم فاتورة المورد" style="direction:ltr;font-family:var(--font-en)">
+          </div>
+          <div class="field">
+            <label>المورد</label>
+            <input type="text" name="supplier" list="supplier-list" placeholder="اسم المورد">
+            <datalist id="supplier-list">
+              {% for s in suppliers %}
+              <option value="{{ s.name }}">
+              {% endfor %}
+            </datalist>
+          </div>
+          <div class="field form-full">
+            <label>ملاحظات</label>
+            <textarea name="notes" rows="2" placeholder="اختياري"></textarea>
+          </div>
+        </div>
+
+        <table class="lines-table lc-table-inputs">
+          <thead>
+            <tr><th>الصنف</th><th>الكمية</th><th>سعر الوحدة</th><th>إجمالي قيمة الصنف</th><th></th></tr>
+          </thead>
+          <tbody id="lines-body">
+            <tr class="line-row">
+              <td class="purchase-item-cell"></td>
+              <td><input type="number" name="quantity" min="0.01" step="0.01" value="1" required></td>
+              <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
+              <td class="line-total">0.00</td>
+              <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="doc-total-row">
+          <span class="doc-total-label">إجمالي قيمة الفاتورة</span>
+          <span class="doc-total-value" id="doc-total">0.00</span>
+          <span class="lc-sar" role="img" aria-label="ريال"></span>
+        </div>
+
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ إضافة صنف</button>
+          <button type="submit" class="btn btn-primary">حفظ الفاتورة</button>
+        </div>
+      </form>
+      <p class="hint">كل فاتورة شراء تُسجَّل مستقلة برقم مستند <strong>PI-xxxx</strong> ورقم فاتورة المورد. أضف كل أصناف الفاتورة في جدول واحد ثم احفظ.</p>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">فواتير الشراء المسجّلة ({{ purchase_documents|length }})</div>
+      {% if purchase_documents %}
+      <table class="doc-list">
+        <thead>
+          <tr><th>المستند</th><th>رقم الفاتورة</th><th>المورد</th><th>التاريخ</th><th>عدد الأصناف</th><th>إجمالي الكمية</th><th>إجمالي القيمة</th><th>ملاحظات</th></tr>
+        </thead>
         <tbody>
-        {% for m in movements %}
+          {% for d in purchase_documents %}
           <tr>
-            <td class="td-code">{{ m.code }}</td>
-            <td>{{ m.movement_date }}</td>
-            <td>{{ m.movement_type }}</td>
-            <td>{{ m.item_name }} <span style="color:var(--text3);font-size:11px">({{ m.item_code }})</span></td>
-            <td style="font-family:var(--font-en)">{{ m.quantity }}</td>
-            <td style="font-family:var(--font-en)">{{ m.total_value }}</td>
-            <td style="font-size:11px;color:var(--text3)">{{ m.reason or m.reference or '—' }}</td>
+            <td class="td-code">{{ d.code }}</td>
+            <td style="font-family:var(--font-en);direction:ltr">{{ d.invoice_no }}</td>
+            <td>{{ d.supplier }}</td>
+            <td>{{ d.movement_date }}</td>
+            <td style="font-family:var(--font-en)">{{ d.line_count }}</td>
+            <td style="font-family:var(--font-en)">{{ d.total_qty }}</td>
+            <td style="font-family:var(--font-en)">{{ d.total_value }}</td>
+            <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
           </tr>
-        {% else %}
-          <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text3)">لا مشتريات مسجّلة بعد — استلم PO أو سجّل «اضافة مخزنية (شراء)»</td></tr>
-        {% endfor %}
+          {% endfor %}
         </tbody>
       </table>
+      {% else %}
+      <p class="empty-msg">لا فواتير شراء مسجّلة بعد.</p>
+      {% endif %}
     </div>
-    <p class="hint">تظهر هنا حركات الوارد من الشراء واستلام طلبات الشراء. لإنشاء طلب جديد استخدم تبويب «طلب شراء».</p>
+
+    <div class="panel">
+      <div class="panel-title">تفاصيل حركات الشراء</div>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>الحركة</th><th>التاريخ</th><th>النوع</th><th>الصنف</th><th>الكمية</th><th>القيمة</th><th>رقم الفاتورة</th><th>السبب</th></tr></thead>
+          <tbody>
+          {% for m in movements %}
+            <tr>
+              <td class="td-code">{{ m.code }}</td>
+              <td>{{ m.movement_date }}</td>
+              <td>{{ m.movement_type }}</td>
+              <td>{{ m.item_name }} <span style="color:var(--text3);font-size:11px">({{ m.item_code }})</span></td>
+              <td style="font-family:var(--font-en)">{{ m.quantity }}</td>
+              <td style="font-family:var(--font-en)">{{ m.total_value }}</td>
+              <td style="font-family:var(--font-en);font-size:11px;direction:ltr">{{ m.invoice_no or '—' }}</td>
+              <td style="font-size:11px;color:var(--text3)">{{ m.reason or '—' }}</td>
+            </tr>
+          {% else %}
+            <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--text3)">لا حركات شراء بعد</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 </div>
+
+<template id="line-tpl">
+  <tr class="line-row">
+    <td class="purchase-item-cell"></td>
+    <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
+    <td><input type="number" name="unit_price" min="0" step="0.01" value="0"></td>
+    <td class="line-total">0.00</td>
+    <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
+  </tr>
+</template>
+
+<script>
+var PURCHASE_ITEMS = {{ items_js | tojson }};
+var purchaseItemRowSeq = 0;
+
+function inventorySelectOptions() {
+  return PURCHASE_ITEMS.map(function (i) {
+    return { id: String(i.id), code: i.code || '', name: i.name || '' };
+  });
+}
+
+function mountPurchaseItemSelect(row, selectedId) {
+  var cell = row.querySelector('.purchase-item-cell');
+  if (!cell || cell.dataset.purchaseItemMounted === '1') return;
+  purchaseItemRowSeq += 1;
+  var uid = 'purchase-item-' + purchaseItemRowSeq;
+  var wrapId = uid + '-wrap';
+  var inputId = uid + '-input';
+  var listId = uid + '-list';
+  var hiddenId = uid + '-id';
+  cell.innerHTML =
+    '<div class="lc-client-select" id="' + wrapId + '">' +
+    '<input type="text" class="lc-client-select-input" id="' + inputId + '" placeholder="ابحث بالكود أو اسم الصنف..." autocomplete="off">' +
+    '<input type="hidden" name="item_id" id="' + hiddenId + '" value="' + (selectedId || '') + '">' +
+    '<ul class="lc-client-select-list" id="' + listId + '" hidden role="listbox"></ul>' +
+    '</div>';
+  if (typeof LcClientSelect === 'undefined') {
+    cell.dataset.purchaseNeedMount = '1';
+    return;
+  }
+  cell.dataset.purchaseNeedMount = '';
+  cell.dataset.purchaseItemMounted = '1';
+  LcClientSelect.mount({
+    wrapId: wrapId,
+    hiddenId: hiddenId,
+    inputId: inputId,
+    listId: listId,
+    customers: inventorySelectOptions(),
+    selectedId: selectedId || '',
+    onChange: function () { onPurchaseItemPicked(row); },
+  });
+}
+
+function remountPurchaseItemSelects() {
+  if (typeof LcClientSelect === 'undefined') return;
+  document.querySelectorAll('#lines-body .line-row').forEach(function (row) {
+    var cell = row.querySelector('.purchase-item-cell');
+    if (!cell || cell.dataset.purchaseNeedMount !== '1') return;
+    var hidden = row.querySelector('input[name="item_id"]');
+    mountPurchaseItemSelect(row, hidden ? hidden.value : '');
+  });
+}
+
+function onPurchaseItemPicked(row) {
+  var hidden = row.querySelector('input[name="item_id"]');
+  var item = PURCHASE_ITEMS.find(function (x) { return String(x.id) === String(hidden && hidden.value); });
+  if (item) {
+    var priceEl = row.querySelector('input[name="unit_price"]');
+    if (priceEl) priceEl.value = item.buy_price || 0;
+  }
+  updateLineTotal(row);
+  updateDocTotal();
+}
+
+function fmtLineMoney(v) {
+  var n = Number(v) || 0;
+  return (window.fmtNum ? fmtNum(n, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : n.toFixed(2));
+}
+function updateLineTotal(row) {
+  if (!row) return;
+  var qtyEl = row.querySelector('input[name="quantity"]');
+  var priceEl = row.querySelector('input[name="unit_price"]');
+  var totalEl = row.querySelector('.line-total');
+  if (!qtyEl || !priceEl || !totalEl) return;
+  var total = (parseFloat(qtyEl.value || '0') || 0) * (parseFloat(priceEl.value || '0') || 0);
+  totalEl.textContent = fmtLineMoney(total);
+}
+function updateDocTotal() {
+  var sum = 0;
+  document.querySelectorAll('#lines-body .line-row').forEach(function (row) {
+    var qtyEl = row.querySelector('input[name="quantity"]');
+    var priceEl = row.querySelector('input[name="unit_price"]');
+    sum += (parseFloat(qtyEl && qtyEl.value || '0') || 0) * (parseFloat(priceEl && priceEl.value || '0') || 0);
+  });
+  var el = document.getElementById('doc-total');
+  if (el) el.textContent = fmtLineMoney(sum);
+}
+function bindLine(row) {
+  mountPurchaseItemSelect(row, '');
+  var qty = row.querySelector('input[name="quantity"]');
+  var price = row.querySelector('input[name="unit_price"]');
+  [qty, price].forEach(function (el) {
+    if (!el || el.dataset.bound) return;
+    el.dataset.bound = '1';
+    el.addEventListener('input', function () {
+      updateLineTotal(row);
+      updateDocTotal();
+    });
+  });
+  updateLineTotal(row);
+}
+function addLine() {
+  var tpl = document.getElementById('line-tpl');
+  var body = document.getElementById('lines-body');
+  if (!tpl || !body) return;
+  var row = tpl.content.firstElementChild.cloneNode(true);
+  body.appendChild(row);
+  bindLine(row);
+  updateDocTotal();
+}
+function removeLine(btn) {
+  var body = document.getElementById('lines-body');
+  if (!body || body.querySelectorAll('.line-row').length <= 1) return;
+  btn.closest('.line-row').remove();
+  updateDocTotal();
+}
+document.querySelectorAll('.line-row').forEach(bindLine);
+updateDocTotal();
+
+document.getElementById('purchase-form').addEventListener('submit', function (e) {
+  var inv = (document.querySelector('input[name="invoice_no"]') || {}).value || '';
+  if (!inv.trim()) {
+    e.preventDefault();
+    alert('أدخل رقم فاتورة الشراء');
+    return;
+  }
+  var hasItem = false;
+  document.querySelectorAll('#lines-body input[name="item_id"]').forEach(function (el) {
+    if (el.value) hasItem = true;
+  });
+  if (!hasItem) {
+    e.preventDefault();
+    alert('اختر صنفاً واحداً على الأقل');
+  }
+});
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', remountPurchaseItemSelects);
+} else {
+  remountPurchaseItemSelects();
+}
+window.addEventListener('load', remountPurchaseItemSelects);
+</script>
 </body>
 </html>

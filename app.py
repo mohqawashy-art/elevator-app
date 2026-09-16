@@ -12008,6 +12008,65 @@ def inventory_opening_stock():
     return redirect(url_for('warehouse_opening'))
 
 
+@app.route('/inventory/purchase-invoice', methods=['POST'])
+def inventory_purchase_invoice():
+    from inventory_warehouse import record_purchase_invoice_batch
+
+    movement_date = date.today()
+    raw_date = (request.form.get('movement_date') or '').strip()
+    if raw_date:
+        try:
+            movement_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except ValueError:
+            flash('تاريخ غير صالح', 'error')
+            return redirect(url_for('warehouse_purchases'))
+
+    invoice_no = (request.form.get('invoice_no') or '').strip()
+    supplier = (request.form.get('supplier') or '').strip()
+    notes = (request.form.get('notes') or '').strip()
+    item_ids = request.form.getlist('item_id')
+    quantities = request.form.getlist('quantity')
+    unit_prices = request.form.getlist('unit_price')
+    lines_data = []
+    n = max(len(item_ids), len(quantities), len(unit_prices))
+    for i in range(n):
+        item_id = item_ids[i] if i < len(item_ids) else ''
+        qty = quantities[i] if i < len(quantities) else ''
+        price = unit_prices[i] if i < len(unit_prices) else ''
+        if not item_id:
+            continue
+        lines_data.append({
+            'item_id': item_id,
+            'quantity': qty,
+            'unit_price': price,
+        })
+    if not lines_data:
+        flash('أضف صنفاً واحداً على الأقل', 'error')
+        return redirect(url_for('warehouse_purchases'))
+
+    try:
+        doc_code, movements = record_purchase_invoice_batch(
+            lines=lines_data,
+            invoice_no=invoice_no,
+            movement_date=movement_date,
+            supplier=supplier,
+            notes=notes,
+        )
+        db.session.commit()
+        flash(
+            f'تم حفظ فاتورة الشراء {doc_code} — {len(movements)} صنف — فاتورة {invoice_no}',
+            'success',
+        )
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('inventory_purchase_invoice failed')
+        flash('تعذّر تسجيل فاتورة الشراء', 'error')
+    return redirect(url_for('warehouse_purchases'))
+
+
 @app.route('/inventory/issue', methods=['POST'])
 def inventory_issue():
     from inventory_warehouse import record_issue_authorization
@@ -12095,8 +12154,9 @@ def warehouse_issue_page():
 
 @app.route('/warehouse/purchases')
 def warehouse_purchases():
-    from inventory_warehouse import purchase_movements
+    from inventory_warehouse import purchase_movements, warehouse_page_context
 
+    ctx = warehouse_page_context()
     rows = purchase_movements()
     total_qty = round(sum(r['quantity'] for r in rows), 4)
     total_val = round(sum(r['total_value'] for r in rows), 2)
@@ -12106,6 +12166,7 @@ def warehouse_purchases():
         purchase_count=len(rows),
         purchase_total_qty=total_qty,
         purchase_total_value=total_val,
+        **ctx,
     )
 
 
@@ -12526,7 +12587,6 @@ def _po_status_bilingual(status):
 def _apply_purchase_receipt(order):
     if order.status != 'مستلم' or order.received_at:
         return
-    from inventory_warehouse import record_purchase_receipt_movements
     from supplier_prices import find_or_create_supplier
 
     db.session.flush()
@@ -12537,7 +12597,7 @@ def _apply_purchase_receipt(order):
             order.supplier, order.supplier_phone, order.supplier_email, assign_organization,
         )
         order.supplier_id = supplier_row.id if supplier_row else None
-    record_purchase_receipt_movements(order)
+    # إدخال المخزون يتم عبر فواتير الشراء (/warehouse/purchases) — لا استلام PO تلقائي
     order.received_at = datetime.utcnow()
 
 
@@ -13556,6 +13616,14 @@ def stock_add():
     direction = request.form.get('direction','صادر')
     unit_price= float(request.form.get('unit_price', 0))
     movement_type = (request.form.get('movement_type') or '').strip()
+
+    blocked_inbound = (
+        movement_type in ('اضافة مخزنية (شراء)', 'فاتورة شراء')
+        or (direction == 'وارد' and movement_type == 'رصيد افتتاحي')
+    )
+    if blocked_inbound:
+        flash('إدخال الشراء ورصيد أول المدة من صفحات المخزن المخصصة فقط', 'error')
+        return redirect(url_for('stock_movements'))
 
     item = tenant_query(InventoryItem).filter_by(id=item_id).first()
     if not item:

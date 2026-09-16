@@ -9,13 +9,17 @@ from inventory_stock import adjust_inventory_qty
 from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 
 MOVEMENT_OPENING = 'رصيد افتتاحي'
-MOVEMENT_PURCHASE = 'اضافة مخزنية (شراء)'
+MOVEMENT_PURCHASE = 'فاتورة شراء'
+MOVEMENT_PURCHASE_LEGACY = 'اضافة مخزنية (شراء)'
 MOVEMENT_ISSUE_TECH = 'صرف لفني'
 MOVEMENT_ISSUE_CUSTODY = 'صرف عهدة للفني'
 MOVEMENT_ISSUE_SITE = 'صرف لمشروع / عميل'
 
 OPENING_DOC_PREFIX = 'OS-'
 OPENING_DOC_REF_PREFIX = 'opening:'
+
+PURCHASE_DOC_PREFIX = 'PI-'
+PURCHASE_DOC_REF_PREFIX = 'purchase:'
 
 
 def opening_doc_reference(doc_code: str, item_id: int, invoice_no: str = '') -> str:
@@ -31,6 +35,64 @@ def parse_opening_invoice(reference: str | None) -> str:
     if ':inv:' not in ref:
         return ''
     return ref.split(':inv:', 1)[1].strip()
+
+
+def parse_movement_invoice(reference: str | None, reason: str | None = None) -> str:
+    """رقم فاتورة من مرجع رصيد افتتاحي أو سبب فاتورة شراء."""
+    inv = parse_opening_invoice(reference)
+    if inv:
+        return inv
+    text = (reason or '').strip()
+    marker = '| فاتورة:'
+    if marker in text:
+        return text.split(marker, 1)[1].split('|', 1)[0].strip()
+    return ''
+
+
+def purchase_doc_reference(doc_code: str, item_id: int, invoice_no: str) -> str:
+    inv = (invoice_no or '').strip()
+    ref = f'{PURCHASE_DOC_REF_PREFIX}{doc_code}:inv:{inv[:40]}:item:{int(item_id)}'
+    return ref[:100]
+
+
+def purchase_reason(doc_code: str, invoice_no: str, supplier: str = '') -> str:
+    inv = (invoice_no or '').strip()
+    reason = f'فاتورة شراء — {doc_code} | فاتورة: {inv[:80]}'
+    sup = (supplier or '').strip()
+    if sup:
+        reason = f'{reason} | مورد: {sup[:60]}'
+    return reason[:300]
+
+
+def next_purchase_doc_code() -> str:
+    import re
+
+    max_num = 0
+    pattern = re.compile(
+        r'^' + re.escape(PURCHASE_DOC_REF_PREFIX) + re.escape(PURCHASE_DOC_PREFIX) + r'(\d+):inv:'
+    )
+    for row in tenant_query(StockMovement).with_entities(StockMovement.reference).all():
+        ref = (row[0] or '').strip()
+        match = pattern.match(ref)
+        if match:
+            max_num = max(max_num, int(match.group(1)))
+    return f'{PURCHASE_DOC_PREFIX}{str(max_num + 1).zfill(4)}'
+
+
+def purchase_invoice_no_taken(invoice_no: str) -> bool:
+    inv = (invoice_no or '').strip()
+    if not inv:
+        return False
+    needle = f':inv:{inv[:40]}:item:'
+    return (
+        tenant_query(StockMovement)
+        .filter(
+            StockMovement.movement_type == MOVEMENT_PURCHASE,
+            StockMovement.reference.like(f'{PURCHASE_DOC_REF_PREFIX}%{needle}%'),
+        )
+        .first()
+        is not None
+    )
 
 
 def opening_reason(doc_code: str, invoice_no: str = '') -> str:
@@ -226,6 +288,76 @@ def record_opening_stock_batch(
     return doc_code, movements
 
 
+def record_purchase_invoice_batch(
+    *,
+    lines: list[dict],
+    invoice_no: str,
+    movement_date: date | None = None,
+    supplier: str = '',
+    notes: str = '',
+) -> tuple[str, list[StockMovement]]:
+    """تسجيل فاتورة شراء — عدة أصniaف برقم مستند PI-xxxx وفاتورة واحدة."""
+    inv = (invoice_no or '').strip()
+    if not inv:
+        raise ValueError('أدخل رقم فاتورة الشراء')
+    if not lines:
+        raise ValueError('أضف صنفاً واحداً على الأقل')
+    if purchase_invoice_no_taken(inv):
+        raise ValueError(f'فاتورة الشراء «{inv}» مسجّلة مسبقاً')
+
+    sup = (supplier or '').strip()
+    mv_date = movement_date or date.today()
+    doc_notes = (notes or '').strip()
+    doc_code = next_purchase_doc_code()
+    movements: list[StockMovement] = []
+    seen_items: set[int] = set()
+
+    for raw in lines:
+        try:
+            item_id = int(raw.get('item_id') or 0)
+            quantity = float(raw.get('quantity') or 0)
+        except (TypeError, ValueError):
+            raise ValueError('بيانات السطر غير صالحة') from None
+        if item_id <= 0 or quantity <= 0:
+            continue
+        if item_id in seen_items:
+            item = tenant_get_or_404(InventoryItem, item_id)
+            name = (item.name or item.code or 'الصنف').strip()
+            raise ValueError(f'الصنف «{name}» مكرر في الفاتورة')
+        seen_items.add(item_id)
+
+        unit_price = raw.get('unit_price')
+        if unit_price not in (None, ''):
+            try:
+                unit_price = float(unit_price)
+            except (TypeError, ValueError):
+                unit_price = None
+
+        item = tenant_get_or_404(InventoryItem, item_id)
+        price = float(unit_price if unit_price is not None else (item.buy_price or 0))
+        movement = create_stock_movement(
+            item=item,
+            movement_date=mv_date,
+            direction='وارد',
+            movement_type=MOVEMENT_PURCHASE,
+            quantity=quantity,
+            unit_price=price,
+            reason=purchase_reason(doc_code, inv, sup),
+            reference=purchase_doc_reference(doc_code, item_id, inv),
+            notes=doc_notes or None,
+        )
+        if price > 0:
+            item.buy_price = price
+            if sup:
+                item.supplier = sup
+        movements.append(movement)
+
+    if not movements:
+        raise ValueError('أضف صنفاً واحداً على الأقل بكمية أكبر من صفر')
+
+    return doc_code, movements
+
+
 def record_purchase_receipt_movements(order) -> bool:
     """تسجيل حركات استلام PO — مرة واحدة لكل أمر (reference)."""
     if po_receipt_already_recorded(order.id):
@@ -255,7 +387,7 @@ def record_purchase_receipt_movements(order) -> bool:
             item=item,
             movement_date=mv_date,
             direction='وارد',
-            movement_type=MOVEMENT_PURCHASE,
+            movement_type=MOVEMENT_PURCHASE_LEGACY,
             quantity=qty,
             unit_price=unit_price,
             reason=reason[:300],
@@ -390,7 +522,7 @@ def item_card_payload(item_id: int) -> dict:
             'reason': m.reason or '',
             'notes': m.notes or '',
             'reference': m.reference or '',
-            'invoice_no': parse_opening_invoice(m.reference),
+            'invoice_no': parse_movement_invoice(m.reference, m.reason),
         })
 
     opening_qty = round(
@@ -494,6 +626,9 @@ def warehouse_page_context() -> dict:
         'today': date.today().isoformat(),
         'opening_documents': opening_stock_documents(),
         'next_opening_doc': next_opening_doc_code(),
+        'next_purchase_doc': next_purchase_doc_code(),
+        'purchase_documents': purchase_invoice_documents(),
+        'suppliers': tenant_query(Supplier).filter(Supplier.active.is_(True)).order_by(Supplier.name).all(),
         'items_js': [
             {
                 'id': i.id,
@@ -507,11 +642,57 @@ def warehouse_page_context() -> dict:
     }
 
 
+def purchase_invoice_documents(limit: int = 40) -> list[dict]:
+    """فواتير الشراء المجمّعة برقم PI-xxxx."""
+    import re
+    from collections import OrderedDict
+
+    pattern = re.compile(
+        r'^' + re.escape(PURCHASE_DOC_REF_PREFIX) + r'(PI-\d+):inv:.+:item:\d+$'
+    )
+    rows = (
+        tenant_query(StockMovement)
+        .filter(
+            StockMovement.movement_type == MOVEMENT_PURCHASE,
+            StockMovement.direction == 'وارد',
+            StockMovement.reference.isnot(None),
+        )
+        .order_by(StockMovement.movement_date.desc(), StockMovement.id.desc())
+        .all()
+    )
+    docs: OrderedDict[str, dict] = OrderedDict()
+    for m in rows:
+        ref = (m.reference or '').strip()
+        if not pattern.match(ref):
+            continue
+        doc_code = ref.split(':')[1]
+        if doc_code not in docs:
+            reason = m.reason or ''
+            supplier = ''
+            if '| مورد:' in reason:
+                supplier = reason.split('| مورد:', 1)[1].strip()
+            docs[doc_code] = {
+                'code': doc_code,
+                'movement_date': str(m.movement_date or ''),
+                'invoice_no': parse_movement_invoice(ref, reason),
+                'supplier': supplier or '—',
+                'line_count': 0,
+                'total_qty': 0.0,
+                'total_value': 0.0,
+                'notes': m.notes or '',
+            }
+        entry = docs[doc_code]
+        entry['line_count'] += 1
+        entry['total_qty'] = round(entry['total_qty'] + float(m.quantity or 0), 4)
+        entry['total_value'] = round(entry['total_value'] + float(m.total_value or 0), 2)
+    return list(docs.values())[:limit]
+
+
 def purchase_movements(limit: int = 300) -> list[dict]:
-    """حركات المشتريات الواردة — PO وشراء مخزني."""
+    """حركات المشتريات الواردة — فواتير شراء (ومشتريات قديمة إن وُجدت)."""
     from sqlalchemy.orm import joinedload
 
-    purchase_types = (MOVEMENT_PURCHASE, 'اضافة مخزنية (شراء)')
+    purchase_types = (MOVEMENT_PURCHASE, MOVEMENT_PURCHASE_LEGACY)
     rows = (
         tenant_query(StockMovement)
         .options(joinedload(StockMovement.item))
@@ -536,6 +717,7 @@ def purchase_movements(limit: int = 300) -> list[dict]:
             'total_value': float(m.total_value or 0),
             'reason': m.reason or '',
             'reference': m.reference or '',
+            'invoice_no': parse_movement_invoice(m.reference, m.reason),
             'technician': tech_names.get(m.technician_id, '—') if m.technician_id else '—',
         })
     return out

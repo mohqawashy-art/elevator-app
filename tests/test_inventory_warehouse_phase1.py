@@ -3,13 +3,14 @@ from datetime import date
 
 from inventory_warehouse import (
     MOVEMENT_OPENING,
+    MOVEMENT_PURCHASE,
     record_issue_authorization,
     record_opening_stock,
     record_opening_stock_batch,
-    record_purchase_receipt_movements,
+    record_purchase_invoice_batch,
     validate_outbound_stock,
 )
-from models import Contract, Customer, InventoryItem, PurchaseOrder, PurchaseOrderLine, StockMovement, db
+from models import InventoryItem, StockMovement, db
 
 
 def _item(code='#WH1', qty=10.0, category='قطع غيار'):
@@ -101,37 +102,52 @@ def test_issue_consumable_reduces_stock(client):
         assert m.direction == 'صادر'
 
 
-def test_po_receipt_creates_movement_once(client):
+def test_purchase_invoice_batch_single_document(client):
     with client.application.app_context():
-        item = _item(qty=1)
-        order = PurchaseOrder(
-            code='PO-WH1',
-            supplier='مورد',
-            order_date=date.today(),
-            status='مستلم',
-        )
-        db.session.add(order)
-        db.session.flush()
-        db.session.add(PurchaseOrderLine(
-            order_id=order.id,
-            item_id=item.id,
-            quantity=4,
-            unit_price=6,
-        ))
+        item1 = _item(code='#WH-PUR1', qty=0)
+        item2 = _item(code='#WH-PUR2', qty=0)
         db.session.commit()
-        order_id = order.id
+        id1, id2 = item1.id, item2.id
+
+    with client.application.app_context():
+        doc_code, movements = record_purchase_invoice_batch(
+            invoice_no='SUP-INV-100',
+            supplier='مورد تجريبي',
+            lines=[
+                {'item_id': id1, 'quantity': 3, 'unit_price': 10},
+                {'item_id': id2, 'quantity': 2, 'unit_price': 5},
+            ],
+        )
+        db.session.commit()
+        assert doc_code.startswith('PI-')
+        assert len(movements) == 2
+        assert all(m.movement_type == MOVEMENT_PURCHASE for m in movements)
+        assert all('SUP-INV-100' in (m.reason or '') for m in movements)
+        item1 = db.session.get(InventoryItem, id1)
+        item2 = db.session.get(InventoryItem, id2)
+        assert float(item1.current_qty or 0) == 3
+        assert float(item2.current_qty or 0) == 2
+
+
+def test_purchase_invoice_rejects_duplicate_invoice_no(client):
+    with client.application.app_context():
+        item = _item(code='#WH-PUR3', qty=0)
+        db.session.commit()
         item_id = item.id
 
     with client.application.app_context():
-        order = db.session.get(PurchaseOrder, order_id)
-        item = db.session.get(InventoryItem, item_id)
-        assert record_purchase_receipt_movements(order) is True
+        record_purchase_invoice_batch(
+            invoice_no='DUP-1',
+            lines=[{'item_id': item_id, 'quantity': 1, 'unit_price': 1}],
+        )
         db.session.commit()
-        db.session.refresh(item)
-        assert item.current_qty == 5
-        mv_count = StockMovement.query.filter_by(item_id=item_id).count()
-        assert mv_count == 1
-        assert record_purchase_receipt_movements(order) is False
+
+    with client.application.app_context():
+        with __import__('pytest').raises(ValueError, match='مسجّلة'):
+            record_purchase_invoice_batch(
+                invoice_no='DUP-1',
+                lines=[{'item_id': item_id, 'quantity': 2, 'unit_price': 1}],
+            )
 
 
 def test_inventory_item_card_page(client):
@@ -180,7 +196,7 @@ def test_warehouse_department_pages(client):
     for path, needle in (
         ('/warehouse/opening', 'ابحث بالكود أو اسم الصنف'),
         ('/warehouse/issue', 'إذن صرف'),
-        ('/warehouse/purchases', 'المشتريات'),
+        ('/warehouse/purchases', 'إدخال فاتورة شراء'),
         ('/inventory', 'الأصناف'),
     ):
         r = client.get(path)
@@ -214,3 +230,32 @@ def test_opening_stock_post_batch(client):
         assert float(item1.current_qty or 0) == 2
         assert float(item2.current_qty or 0) == 4
         assert StockMovement.query.filter_by(item_id=id1).count() == 1
+
+
+def test_purchase_invoice_post(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        item1 = _item(code='#WH-PI1', qty=0)
+        item2 = _item(code='#WH-PI2', qty=0)
+        db.session.commit()
+        id1, id2 = item1.id, item2.id
+
+    r = client.post('/inventory/purchase-invoice', data={
+        'movement_date': date.today().isoformat(),
+        'invoice_no': 'VENDOR-555',
+        'supplier': 'مورد أ',
+        'notes': 'فاتورة تجريبية',
+        'item_id': [str(id1), str(id2)],
+        'quantity': ['3', '1'],
+        'unit_price': ['20', '15'],
+    }, follow_redirects=True)
+    assert r.status_code == 200
+    assert 'PI-' in r.get_data(as_text=True)
+    assert 'VENDOR-555' in r.get_data(as_text=True)
+    with client.application.app_context():
+        item1 = db.session.get(InventoryItem, id1)
+        item2 = db.session.get(InventoryItem, id2)
+        assert float(item1.current_qty or 0) == 3
+        assert float(item2.current_qty or 0) == 1
