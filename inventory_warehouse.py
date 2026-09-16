@@ -182,6 +182,9 @@ def create_stock_movement(
     qty = float(quantity or 0)
     if qty <= 0:
         raise ValueError('الكمية يجب أن تكون أكبر من صفر')
+    from inventory_units import normalize_inventory_qty
+
+    qty = normalize_inventory_qty(qty, item.unit)
     direction = (direction or '').strip()
     if direction not in ('وارد', 'صادر'):
         raise ValueError('اتجاه الحركة غير صالح')
@@ -751,6 +754,7 @@ def opening_stock_documents(limit: int = 40) -> list[dict]:
 def warehouse_page_context() -> dict:
     """بيانات مشتركة لصفحات المخزن (رصيد افتتاحي / أذون صرف)."""
     from inventory_custody import installation_contracts_for_custody, maintenance_contracts_for_custody
+    from inventory_units import unit_allows_decimals
 
     items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
     technicians = (
@@ -778,6 +782,8 @@ def warehouse_page_context() -> dict:
                 'id': i.id,
                 'code': i.code or '',
                 'name': i.name or '',
+                'unit': i.unit or 'قطعة',
+                'qty_decimals': unit_allows_decimals(i.unit),
                 'buy_price': float(i.buy_price or 0),
                 'current_qty': float(i.current_qty or 0),
             }
@@ -903,6 +909,7 @@ def purchase_movements(limit: int = 300) -> list[dict]:
             'item_code': m.item.code if m.item else '',
             'item_name': m.item.name if m.item else '—',
             'quantity': float(m.quantity or 0),
+            'item_unit': (m.item.unit if m.item else '') or 'قطعة',
             'total_value': float(m.total_value or 0),
             'reason': m.reason or '',
             'reference': m.reference or '',

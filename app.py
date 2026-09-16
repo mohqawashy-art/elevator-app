@@ -750,6 +750,16 @@ def en_num_filter(value):
         return western_digits(value)
 
 
+@app.template_filter('inv_qty')
+def inv_qty_filter(value, unit=None):
+    from inventory_units import format_inventory_qty
+
+    try:
+        return format_inventory_qty(value, unit)
+    except (TypeError, ValueError):
+        return western_digits(value)
+
+
 @app.template_filter('en_date')
 def en_date_filter(value):
     if not value:
@@ -1483,7 +1493,8 @@ def stock_movement_to_js_dict(m, tech_names=None):
         'movement_date': str(m.movement_date or ''),
         'direction': m.direction or '',
         'movement_type': m.movement_type or '',
-        'quantity': m.quantity or 0,
+        'quantity': float(m.quantity or 0),
+        'item_unit': (m.item.unit if m.item else '') or 'قطعة',
         'unit_price': m.unit_price or 0,
         'total_value': m.total_value or 0,
         'technician': tech_names.get(m.technician_id, '—') if m.technician_id else '—',
@@ -1494,12 +1505,15 @@ def stock_movement_to_js_dict(m, tech_names=None):
 
 
 def inventory_item_js_dict(i):
+    from inventory_units import unit_allows_decimals
+
     return {
         'id': i.id,
         'code': i.code,
         'name': i.name,
         'category': i.category or '',
         'unit': i.unit or 'قطعة',
+        'qty_decimals': unit_allows_decimals(i.unit),
         'buy_price': i.buy_price or 0,
         'sell_price': i.sell_price or 0,
         'current_qty': float(i.current_qty or 0),
@@ -11895,12 +11909,15 @@ def inventory():
     technicians = tenant_query(Technician).filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).order_by(Technician.name).all()
     items_json = []
     for i in items:
+        from inventory_units import unit_allows_decimals
+
         row = {
             'id': i.id,
             'code': i.code or '',
             'name': i.name or '',
             'category': i.category or '',
             'unit': i.unit or 'قطعة',
+            'qty_decimals': unit_allows_decimals(i.unit),
             'current_qty': float(i.current_qty or 0),
             'min_qty': float(i.min_qty or 0),
             'buy_price': float(i.buy_price or 0),
@@ -12296,9 +12313,15 @@ def inventory_edit(id):
         return redirect(url_for('inventory'))
     item.name = name
     item.category = request.form.get('category', '')
-    item.unit = request.form.get('unit', 'قطعة')
-    item.current_qty = float(request.form.get('current_qty', 0) or 0)
-    item.min_qty = float(request.form.get('min_qty', 0) or 0)
+    unit = request.form.get('unit', 'قطعة')
+    item.unit = unit
+    try:
+        from inventory_units import normalize_inventory_qty_field
+        item.current_qty = normalize_inventory_qty_field(request.form.get('current_qty', 0), unit)
+        item.min_qty = normalize_inventory_qty_field(request.form.get('min_qty', 0), unit)
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('inventory'))
     item.buy_price = float(request.form.get('buy_price', 0) or 0)
     item.sell_price = float(request.form.get('sell_price', 0) or 0)
     supplier_name = (request.form.get('supplier') or '').strip()
@@ -12325,13 +12348,21 @@ def inventory_add():
     code = (request.form.get('code') or '').strip() or next_code(InventoryItem, '#', digits=3)
     if tenant_query(InventoryItem).filter_by(code=code).first():
         code = next_code(InventoryItem, '#', digits=3)
+    unit = request.form.get('unit', 'قطعة')
+    try:
+        from inventory_units import normalize_inventory_qty_field
+        current_qty = normalize_inventory_qty_field(request.form.get('current_qty', 0), unit)
+        min_qty = normalize_inventory_qty_field(request.form.get('min_qty', 0), unit)
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('inventory'))
     item = InventoryItem(
         code=code,
         name=name,
         category=request.form.get('category', ''),
-        unit=request.form.get('unit', 'قطعة'),
-        current_qty=float(request.form.get('current_qty', 0) or 0),
-        min_qty=float(request.form.get('min_qty', 0) or 0),
+        unit=unit,
+        current_qty=current_qty,
+        min_qty=min_qty,
         buy_price=float(request.form.get('buy_price', 0) or 0),
         sell_price=float(request.form.get('sell_price', 0) or 0),
         supplier=(request.form.get('supplier') or '').strip(),
@@ -13674,6 +13705,13 @@ def stock_add():
 
     if qty <= 0:
         flash('أدخل كمية أكبر من صفر', 'error')
+        return redirect(url_for('stock_movements'))
+
+    try:
+        from inventory_units import normalize_inventory_qty
+        qty = normalize_inventory_qty(qty, item.unit)
+    except ValueError as exc:
+        flash(str(exc), 'error')
         return redirect(url_for('stock_movements'))
 
     if direction == 'صادر':

@@ -441,7 +441,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         </div>
         <div class="field">
           <label>الوحدة</label>
-          <input id="m-unit" placeholder="قطعة / متر / لتر">
+          <input id="m-unit" placeholder="قطعة / متر / لتر" oninput="syncItemQtyInputs()">
         </div>
         <div class="field">
           <label>الرصيد الحالي</label>
@@ -532,9 +532,17 @@ function updateStats() {
   set('s-ok', ok);
 }
 
-function fmtQty(n) {
+function fmtQty(n, unit) {
+  if (window.LcInventoryQty) return LcInventoryQty.fmt(n, unit);
   var q = Number(n || 0);
   return Math.abs(q - Math.round(q)) < 1e-9 ? String(Math.round(q)) : String(Math.round(q * 100) / 100);
+}
+
+function syncItemQtyInputs() {
+  if (!window.LcInventoryQty) return;
+  var unit = document.getElementById('m-unit')?.value || 'قطعة';
+  LcInventoryQty.applyInput(document.getElementById('m-balance'), unit);
+  LcInventoryQty.applyInput(document.getElementById('m-min'), unit);
 }
 
 function renderTable(data) {
@@ -558,7 +566,7 @@ function renderTable(data) {
   tbody.innerHTML = pg.rows.map(i => {
     var custodyCell = '—';
     if ((i.custody_qty || 0) > 0.01) {
-      custodyCell = '<span class="td-num" style="color:var(--warning);font-weight:600">' + fmtQty(i.custody_qty) + '</span>';
+      custodyCell = '<span class="td-num" style="color:var(--warning);font-weight:600">' + fmtQty(i.custody_qty, i.unit) + '</span>';
       if (i.custody_summary && i.custody_summary !== '—') {
         custodyCell += '<div style="font-size:11px;color:var(--text3);margin-top:2px;max-width:220px;white-space:normal">' + D(i.custody_summary) + '</div>';
       }
@@ -568,8 +576,8 @@ function renderTable(data) {
       <td class="td-code">${i.code}</td>
       <td class="td-name">${D(i.name)}</td>
       <td>${D(i.category || '—')}</td>
-      <td class="td-num">${D(i.current_qty + ' ' + (i.unit || ''))}</td>
-      <td class="td-num">${i.min_qty}</td>
+      <td class="td-num">${fmtQty(i.current_qty, i.unit)} ${D(i.unit || '')}</td>
+      <td class="td-num">${fmtQty(i.min_qty, i.unit)}</td>
       <td class="td-num">${fmt(i.buy_price)}</td>
       <td class="td-num" style="color:var(--accent)">${fmt(i.stock_value)}</td>
       <td>${D(i.supplier || '—')}</td>
@@ -765,6 +773,7 @@ function openModal(editId) {
     document.getElementById('m-supplier-select').value = '';
     document.getElementById('m-notes').value = '';
   }
+  syncItemQtyInputs();
   modal.classList.add('open');
 }
 
@@ -821,6 +830,7 @@ function editItem(id) {
   document.getElementById('m-location').value = i.location || '';
   setInvSupplierField(i.supplier || '');
   document.getElementById('m-notes').value = i.notes || '';
+  syncItemQtyInputs();
 }
 
 function saveRecord() {

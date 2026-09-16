@@ -65,7 +65,7 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
 
     <div class="stats">
       <div class="stat"><div class="stat-l">حركات شراء</div><div class="stat-v">{{ purchase_count }}</div></div>
-      <div class="stat"><div class="stat-l">إجمالي الكميات</div><div class="stat-v">{{ purchase_total_qty }}</div></div>
+      <div class="stat"><div class="stat-l">إجمالي الكميات</div><div class="stat-v">{{ purchase_total_qty|inv_qty }}</div></div>
       <div class="stat"><div class="stat-l">إجمالي القيمة</div><div class="stat-v">{{ purchase_total_value }}</div></div>
     </div>
 
@@ -144,7 +144,7 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
             <td>{{ d.supplier }}</td>
             <td>{{ d.movement_date }}</td>
             <td style="font-family:var(--font-en)">{{ d.line_count }}</td>
-            <td style="font-family:var(--font-en)">{{ d.total_qty }}</td>
+            <td style="font-family:var(--font-en)">{{ d.total_qty|inv_qty }}</td>
             <td style="font-family:var(--font-en)">{{ d.total_value }}</td>
             <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
           </tr>
@@ -168,7 +168,7 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
               <td>{{ m.movement_date }}</td>
               <td>{{ m.movement_type }}</td>
               <td>{{ m.item_name }} <span style="color:var(--text3);font-size:11px">({{ m.item_code }})</span></td>
-              <td style="font-family:var(--font-en)">{{ m.quantity }}</td>
+              <td style="font-family:var(--font-en)">{{ m.quantity|inv_qty(m.item_unit) }}</td>
               <td style="font-family:var(--font-en)">{{ m.total_value }}</td>
               <td style="font-family:var(--font-en);font-size:11px;direction:ltr">{{ m.invoice_no or '—' }}</td>
               <td style="font-size:11px;color:var(--text3)">{{ m.reason or '—' }}</td>
@@ -251,6 +251,8 @@ function onPurchaseItemPicked(row) {
   if (item) {
     var priceEl = row.querySelector('input[name="unit_price"]');
     if (priceEl) priceEl.value = item.buy_price || 0;
+    var qtyEl = row.querySelector('input[name="quantity"]');
+    if (window.LcInventoryQty && qtyEl) LcInventoryQty.applyInput(qtyEl, item.unit);
   }
   updateLineTotal(row);
   updateDocTotal();
@@ -283,6 +285,7 @@ function bindLine(row) {
   mountPurchaseItemSelect(row, '');
   var qty = row.querySelector('input[name="quantity"]');
   var price = row.querySelector('input[name="unit_price"]');
+  if (qty && window.LcInventoryQty) LcInventoryQty.applyInput(qty, 'قطعة');
   [qty, price].forEach(function (el) {
     if (!el || el.dataset.bound) return;
     el.dataset.bound = '1';

@@ -143,7 +143,7 @@ table.doc-list td{padding:10px 12px;color:var(--text2);border-bottom:1px solid r
             <td style="font-size:11px">{{ d.detail }}</td>
             <td>{{ d.technician }}</td>
             <td style="font-family:var(--font-en)">{{ d.line_count }}</td>
-            <td style="font-family:var(--font-en)">{{ d.total_qty }}</td>
+            <td style="font-family:var(--font-en)">{{ d.total_qty|inv_qty }}</td>
             <td style="font-family:var(--font-en)">{{ d.total_value }}</td>
             <td style="font-size:11px;color:var(--text3)">{{ d.notes or '—' }}</td>
           </tr>
@@ -175,7 +175,8 @@ var issueItemRowSeq = 0;
 
 function inventorySelectOptions() {
   return ISSUE_ITEMS.map(function (i) {
-    return { id: String(i.id), code: i.code || '', name: (i.name || '') + ' (متاح ' + (i.current_qty || 0) + ')' };
+    var avail = window.LcInventoryQty ? LcInventoryQty.fmt(i.current_qty || 0, i.unit) : (i.current_qty || 0);
+    return { id: String(i.id), code: i.code || '', name: (i.name || '') + ' (متاح ' + avail + ')' };
   });
 }
 
@@ -240,7 +241,11 @@ function onIssueItemPicked(row) {
   var priceEl = row.querySelector('.line-price');
   if (item) {
     if (priceEl) priceEl.textContent = fmtLineMoney(item.buy_price || 0);
-    if (hint) hint.textContent = 'المتاح: ' + (item.current_qty || 0);
+    if (hint) {
+      hint.textContent = 'المتاح: ' + (window.LcInventoryQty ? LcInventoryQty.fmt(item.current_qty || 0, item.unit) : (item.current_qty || 0));
+    }
+    var qtyEl = row.querySelector('input[name="quantity"]');
+    if (window.LcInventoryQty && qtyEl) LcInventoryQty.applyInput(qtyEl, item.unit);
   } else {
     if (priceEl) priceEl.textContent = '0.00';
     if (hint) hint.textContent = 'المتاح: —';
@@ -279,6 +284,7 @@ function updateDocTotal() {
 function bindLine(row) {
   mountIssueItemSelect(row, '');
   var qty = row.querySelector('input[name="quantity"]');
+  if (qty && window.LcInventoryQty) LcInventoryQty.applyInput(qty, 'قطعة');
   if (qty && !qty.dataset.bound) {
     qty.dataset.bound = '1';
     qty.addEventListener('input', function () {
@@ -325,7 +331,8 @@ function validateIssueForm() {
     var avail = item ? parseFloat(item.current_qty || 0) : 0;
     var need = parseFloat(qtyEl && qtyEl.value || '0');
     if (need > avail + 1e-9) {
-      alert('الكمية أكبر من الرصيد المتاح للصنف «' + (item && item.name || '') + '» (' + avail + ')');
+      var availTxt = window.LcInventoryQty ? LcInventoryQty.fmt(avail, item.unit) : avail;
+      alert('الكمية أكبر من الرصيد المتاح للصنف «' + (item && item.name || '') + '» (' + availTxt + ')');
       return false;
     }
   }
