@@ -12393,6 +12393,45 @@ def warehouse_purchases():
     )
 
 
+@app.route('/inventory/custody/print')
+def inventory_custody_print():
+    from inventory_custody import (
+        build_technician_custody_snapshot,
+        custody_report_summary,
+        filter_custody_rows,
+    )
+
+    snapshot = build_technician_custody_snapshot()
+    tech_id = request.args.get('technician_id') or None
+    if tech_id not in (None, ''):
+        try:
+            tech_id = int(tech_id)
+        except (TypeError, ValueError):
+            tech_id = None
+    else:
+        tech_id = None
+    q = (request.args.get('q') or '').strip()
+    rows = filter_custody_rows(snapshot['rows'], technician_id=tech_id, q=q)
+    summary = custody_report_summary(rows)
+    filter_parts = []
+    if tech_id:
+        tech = tenant_query(Technician).filter_by(id=tech_id).first()
+        if tech:
+            filter_parts.append(f'الفني: {tech.name}')
+    if q:
+        filter_parts.append(f'بحث: {q}')
+    settings = get_app_settings()
+    return render_template(
+        'inventory_custody_print.html',
+        rows=rows,
+        summary=summary,
+        filter_label=' · '.join(filter_parts) if filter_parts else '',
+        printed_at=datetime.now().strftime('%Y-%m-%d %H:%M'),
+        brand_logo_url=brand_logo_url(settings),
+        company_settings=settings,
+    )
+
+
 @app.route('/inventory/custody/settle', methods=['POST'])
 def inventory_custody_settle():
     from inventory_custody import settle_technician_custody

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>بيان عهدة قطع الغيار</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1a3a5c;--line:#d5dee8;--muted:#6b7c93}
+body{
+  font-family:Arial,'IBM Plex Sans Arabic','Traditional Arabic',Tahoma,sans-serif;
+  color:var(--navy);background:#eef2f7;font-size:12px;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
+@page{size:A4 portrait;margin:10mm}
+.toolbar{
+  position:fixed;top:0;left:0;right:0;z-index:99;background:#333;color:#fff;
+  padding:10px 16px;display:flex;justify-content:space-between;align-items:center;font-size:13px;
+}
+.toolbar button,.toolbar a{border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:600;text-decoration:none}
+.toolbar .print{background:#f0a500;color:#000}
+.toolbar .back{background:#555;color:#fff}
+.doc{
+  width:210mm;max-width:210mm;margin:56px auto 24px;background:#fff;
+  border:1px solid var(--line);box-shadow:0 8px 32px rgba(26,58,92,.12);padding:12mm 10mm;
+}
+@media print{
+  .toolbar{display:none!important}
+  body{background:#fff}
+  .doc{margin:0;border:none;box-shadow:none;width:100%;max-width:none;padding:0}
+}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px solid var(--navy);padding-bottom:12px;margin-bottom:14px}
+.head-brand img{max-width:140px;max-height:70px;object-fit:contain}
+.head-title{text-align:left;direction:ltr}
+.head-title h1{font-size:20px;color:var(--navy);margin-bottom:4px}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 12px;margin-bottom:14px;font-size:11px}
+.meta-box{border:1px solid var(--line);padding:8px 10px;background:#fafcfe;border-radius:4px}
+.meta-label{color:var(--muted);font-size:10px;margin-bottom:2px}
+.meta-value{font-weight:700;color:var(--navy);direction:ltr;font-family:'DM Sans',sans-serif}
+.filter-note{font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5}
+.lines{width:100%;border-collapse:collapse;font-size:11px}
+.lines th,.lines td{border:1px solid var(--line);padding:7px 8px;text-align:center;vertical-align:middle}
+.lines th{background:#f4f7fb;color:var(--navy);font-size:10px}
+.lines td.name{text-align:right}
+.lines td.num{direction:ltr;font-family:'DM Sans',sans-serif;font-weight:600}
+.foot{margin-top:14px;font-size:10px;color:var(--muted);display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="toolbar no-print">
+  <span>بيان عهدة قطع الغيار</span>
+  <div>
+    <a class="back" href="{{ url_for('inventory') }}">← الأصناف</a>
+    <button type="button" class="print" onclick="window.print()">طباعة</button>
+  </div>
+</div>
+
+<div class="doc">
+  <div class="head">
+    <div class="head-brand">
+      {% if brand_logo_url %}<img src="{{ brand_logo_url }}" alt="Logo">{% endif %}
+      <div style="margin-top:8px;font-size:11px;font-weight:700">{{ company_settings.company_name if company_settings else 'LiftCore' }}</div>
+    </div>
+    <div class="head-title">
+      <h1>بيان عهدة قطع الغيار</h1>
+      <div style="font-size:11px;color:var(--muted);direction:rtl;text-align:left">{{ printed_at }}</div>
+    </div>
+  </div>
+
+  {% if filter_label %}
+  <div class="filter-note">الفلتر: {{ filter_label }}</div>
+  {% endif %}
+
+  <div class="meta-grid">
+    <div class="meta-box"><div class="meta-label">أصناف بعهدة</div><div class="meta-value">{{ summary.items_with_custody }}</div></div>
+    <div class="meta-box"><div class="meta-label">فنيون</div><div class="meta-value">{{ summary.technicians_with_custody }}</div></div>
+    <div class="meta-box"><div class="meta-label">إجمالي الكميات</div><div class="meta-value">{{ summary.total_qty|inv_qty }}</div></div>
+  </div>
+
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>الفني</th>
+        <th>كود الصنف</th>
+        <th>اسم الصنف</th>
+        <th>الكمية</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if rows %}
+      {% for r in rows %}
+      <tr>
+        <td class="num">{{ loop.index }}</td>
+        <td class="name">{{ r.technician_name or '—' }}</td>
+        <td class="num">{{ r.item_code or '—' }}</td>
+        <td class="name">{{ r.item_name or '—' }}</td>
+        <td class="num">{{ r.qty|inv_qty }}</td>
+      </tr>
+      {% endfor %}
+      {% else %}
+      <tr><td colspan="5">لا توجد عهدة مطابقة للفلتر</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+
+  <div class="foot">
+    <span>عدد الأسطر: {{ summary.line_count }}</span>
+    <span>LiftCore — المخزن</span>
+  </div>
+</div>
+</body>
+</html>

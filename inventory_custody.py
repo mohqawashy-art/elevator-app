@@ -697,3 +697,43 @@ def item_custody_fields(item_id: int, snapshot: dict | None = None) -> dict:
     }
 
 
+def filter_custody_rows(
+    rows: list[dict] | None,
+    *,
+    technician_id: int | None = None,
+    q: str = '',
+) -> list[dict]:
+    """فلترة بيان العهدة بالفني أو بحث نصي (اسم/كود الصنف أو اسم الفني)."""
+    out = list(rows or [])
+    if technician_id:
+        tid = int(technician_id)
+        out = [r for r in out if int(r.get('technician_id') or 0) == tid]
+    needle = (q or '').strip().lower()
+    if needle:
+        def _match(row: dict) -> bool:
+            hay = ' '.join([
+                str(row.get('technician_name') or ''),
+                str(row.get('item_name') or ''),
+                str(row.get('item_code') or ''),
+            ]).lower()
+            return needle in hay
+        out = [r for r in out if _match(r)]
+    return out
+
+
+def custody_report_summary(rows: list[dict] | None) -> dict:
+    """ملخص بيان العهدة لمجموعة أسطر (كاملة أو بعد فلترة)."""
+    item_ids: set[int] = set()
+    tech_ids: set[int] = set()
+    total_qty = 0.0
+    for row in rows or []:
+        item_ids.add(int(row.get('item_id') or 0))
+        tech_ids.add(int(row.get('technician_id') or 0))
+        total_qty += float(row.get('qty') or 0)
+    return {
+        'items_with_custody': len(item_ids),
+        'technicians_with_custody': len(tech_ids),
+        'total_qty': round(total_qty, 4),
+        'line_count': len(rows or []),
+    }
+
