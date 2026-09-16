@@ -30,15 +30,18 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .purchase-item-cell .lc-client-select-list{z-index:400;max-height:220px;overflow-y:auto}
 .line-total{font-family:var(--font-en);color:var(--text1);font-weight:600;white-space:nowrap;text-align:left;direction:ltr}
 .invoice-summary{margin-top:16px;padding-top:14px;border-top:1px solid var(--border);display:flex;justify-content:flex-end}
-.invoice-summary-box{min-width:min(100%,360px);display:flex;flex-direction:column;gap:8px}
-.doc-total-row{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;flex-wrap:wrap}
-.doc-total-row.doc-total-main{margin-top:6px;padding-top:10px;border-top:1px dashed var(--border)}
-.doc-total-label{color:var(--text2)}
-.doc-total-value{font-family:var(--font-en);font-size:15px;font-weight:700;color:var(--text1);direction:ltr;white-space:nowrap}
-.doc-total-value.accent{color:var(--accent);font-size:17px}
-.doc-total-value.discount{color:#f87171}
-.doc-discount-input{width:110px;padding:6px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-en);direction:ltr;text-align:left}
-.doc-tax-input{width:56px;padding:4px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-en);direction:ltr;text-align:center;margin:0 4px}
+.invoice-summary-box{width:min(100%,400px);background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);overflow:hidden}
+.inv-sum-row{display:grid;grid-template-columns:1fr 140px;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid rgba(100,160,255,.06)}
+.inv-sum-row:last-child{border-bottom:none}
+.inv-sum-row.inv-sum-grand{background:rgba(42,127,255,.06);border-top:1px dashed var(--border);border-bottom:none;padding-top:12px;padding-bottom:12px}
+.inv-sum-label{color:var(--text2);font-size:13px;line-height:1.4;text-align:right}
+.inv-sum-side{display:flex;align-items:center;justify-content:flex-end;gap:6px;direction:ltr}
+.inv-sum-value{font-family:var(--font-en);font-size:14px;font-weight:600;color:var(--text1);text-align:right;min-width:72px}
+.inv-sum-value.accent{color:var(--accent);font-size:18px;font-weight:700}
+.inv-sum-input{width:100%;max-width:140px;padding:7px 10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-en);direction:ltr;text-align:right}
+.inv-sum-input-sm{width:58px;max-width:58px;padding:6px 8px;text-align:center;flex:0 0 58px}
+.inv-sum-suffix{font-family:var(--font-en);font-size:13px;color:var(--text3);flex:0 0 auto}
+.inv-sum-tax-pct{display:inline-flex;align-items:center;gap:4px;direction:ltr}
 .attach-block{margin-top:16px;padding-top:14px;border-top:1px solid var(--border)}
 .attach-list{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .attach-item,.attach-pending{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -141,25 +144,33 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
 
         <div class="invoice-summary">
           <div class="invoice-summary-box">
-            <div class="doc-total-row">
-              <span class="doc-total-label">إجمالي قبل الخصم</span>
-              <span class="doc-total-value" id="doc-gross">0.00</span>
+            <div class="inv-sum-row">
+              <span class="inv-sum-label">إجمالي قبل الخصم</span>
+              <div class="inv-sum-side"><span class="inv-sum-value" id="doc-gross">0.00</span></div>
             </div>
-            <div class="doc-total-row">
-              <span class="doc-total-label">خصم تقريبي</span>
-              <input type="number" name="discount_approx" id="discount-approx" class="doc-discount-input" min="0" step="0.01" value="{{ edit_document.discount_approx if edit_document else 0 }}" placeholder="0.00">
+            <div class="inv-sum-row">
+              <span class="inv-sum-label">خصم تقريبي</span>
+              <div class="inv-sum-side">
+                <input type="number" name="discount_approx" id="discount-approx" class="inv-sum-input" min="0" step="0.01" value="{{ edit_document.discount_approx if edit_document else 0 }}" placeholder="0.00">
+              </div>
             </div>
-            <div class="doc-total-row">
-              <span class="doc-total-label">الصافي قبل الضريبة</span>
-              <span class="doc-total-value" id="doc-net">0.00</span>
+            <div class="inv-sum-row">
+              <span class="inv-sum-label">الصافي قبل الضريبة</span>
+              <div class="inv-sum-side"><span class="inv-sum-value" id="doc-net">0.00</span></div>
             </div>
-            <div class="doc-total-row">
-              <span class="doc-total-label">ضريبة القيمة المضافة (<input type="number" name="tax_pct" id="tax-pct" class="doc-tax-input" min="0" max="100" step="0.01" value="{{ edit_document.tax_pct if edit_document else 15 }}">%)</span>
-              <span class="doc-total-value" id="doc-tax">0.00</span>
+            <div class="inv-sum-row">
+              <span class="inv-sum-label">ضريبة القيمة المضافة</span>
+              <div class="inv-sum-side">
+                <span class="inv-sum-tax-pct">
+                  <input type="number" name="tax_pct" id="tax-pct" class="inv-sum-input inv-sum-input-sm" min="0" max="100" step="0.01" value="{{ edit_document.tax_pct if edit_document else 15 }}">
+                  <span class="inv-sum-suffix">%</span>
+                </span>
+                <span class="inv-sum-value" id="doc-tax">0.00</span>
+              </div>
             </div>
-            <div class="doc-total-row doc-total-main">
-              <span class="doc-total-label">الإجمالي شامل الضريبة</span>
-              <span class="doc-total-value accent" id="doc-grand">0.00</span>
+            <div class="inv-sum-row inv-sum-grand">
+              <span class="inv-sum-label" style="color:var(--text1);font-weight:600">الإجمالي شامل الضريبة</span>
+              <div class="inv-sum-side"><span class="inv-sum-value accent" id="doc-grand">0.00</span></div>
             </div>
           </div>
         </div>
