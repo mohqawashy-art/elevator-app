@@ -12432,6 +12432,76 @@ def inventory_custody_print():
     )
 
 
+@app.route('/inventory/custody/transfer/print')
+def inventory_custody_transfer_print():
+    from inventory_custody import custody_transfer_print_payload
+
+    movement_id = request.args.get('movement_id') or None
+    payload = None
+    if movement_id not in (None, ''):
+        try:
+            payload = custody_transfer_print_payload(movement_id=int(movement_id))
+        except (TypeError, ValueError):
+            payload = None
+    else:
+        tech_id = request.args.get('technician_id') or None
+        item_id = request.args.get('item_id') or None
+        contract_id = request.args.get('contract_id') or None
+        install_contract_id = request.args.get('install_contract_id') or None
+        movement_date = None
+        raw_date = (request.args.get('movement_date') or '').strip()
+        if raw_date:
+            try:
+                movement_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+            except ValueError:
+                flash('تاريخ غير صالح', 'error')
+                return redirect(url_for('inventory'))
+        try:
+            qty = float(request.args.get('quantity') or 0)
+            item_id = int(item_id or 0)
+            tech_id = int(tech_id or 0)
+        except (TypeError, ValueError):
+            flash('بيانات الإذن غير صالحة', 'error')
+            return redirect(url_for('inventory'))
+        if contract_id not in (None, ''):
+            try:
+                contract_id = int(contract_id)
+            except (TypeError, ValueError):
+                contract_id = None
+        else:
+            contract_id = None
+        if install_contract_id not in (None, ''):
+            try:
+                install_contract_id = int(install_contract_id)
+            except (TypeError, ValueError):
+                install_contract_id = None
+        else:
+            install_contract_id = None
+        payload = custody_transfer_print_payload(
+            item_id=item_id,
+            technician_id=tech_id,
+            target=(request.args.get('target') or '').strip(),
+            quantity=qty,
+            movement_date=movement_date,
+            notes=(request.args.get('notes') or '').strip(),
+            contract_id=contract_id,
+            install_contract_id=install_contract_id,
+            draft=request.args.get('draft') == '1',
+        )
+
+    if not payload:
+        flash('تعذّر تحميل إذن التحويل', 'error')
+        return redirect(url_for('inventory'))
+    settings = get_app_settings()
+    return render_template(
+        'inventory_custody_transfer_print.html',
+        printed_at=datetime.now().strftime('%Y-%m-%d %H:%M'),
+        brand_logo_url=brand_logo_url(settings),
+        company_settings=settings,
+        **payload,
+    )
+
+
 @app.route('/inventory/custody/settle', methods=['POST'])
 def inventory_custody_settle():
     from inventory_custody import settle_technician_custody
@@ -12498,6 +12568,7 @@ def inventory_custody_settle():
 
     return jsonify({
         'ok': True,
+        'movement_id': movement.id,
         'movement_code': movement.code,
         'message': 'تمت تسوية العهدة',
     })

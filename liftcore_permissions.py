@@ -233,6 +233,7 @@ PATH_PAGE_RULES: tuple[tuple[str, str], ...] = (
     ('/inventory/purchase-invoice', 'inventory'),
     ('/inventory/issue', 'inventory'),
     ('/inventory/custody/print', 'inventory'),
+    ('/inventory/custody/transfer/print', 'inventory'),
     ('/warehouse/opening', 'inventory'),
     ('/warehouse/issue', 'inventory'),
     ('/warehouse/issue/print', 'inventory'),

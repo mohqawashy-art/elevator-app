@@ -34,11 +34,12 @@ body{
 .head-brand img{max-width:140px;max-height:70px;object-fit:contain}
 .head-title{text-align:left;direction:ltr}
 .head-title h1{font-size:20px;color:var(--navy);margin-bottom:4px}
-.meta-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px 12px;margin-bottom:14px;font-size:11px}
+.meta-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px 12px;margin-bottom:14px;font-size:11px}
 .meta-box{border:1px solid var(--line);padding:8px 10px;background:#fafcfe;border-radius:4px}
 .meta-label{color:var(--muted);font-size:10px;margin-bottom:2px}
 .meta-value{font-weight:700;color:var(--navy);direction:ltr;font-family:'DM Sans',sans-serif}
-.filter-note{font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5}
+.filter-note{font-size:11px;color:var(--muted);margin-bottom:10px;line-height:1.5;padding:8px 10px;background:#fafcfe;border:1px solid var(--line);border-radius:4px}
+.sec-title{background:var(--navy);color:#fff;font-size:11px;font-weight:700;padding:6px 10px;margin-bottom:0}
 .lines{width:100%;border-collapse:collapse;font-size:11px}
 .lines th,.lines td{border:1px solid var(--line);padding:7px 8px;text-align:center;vertical-align:middle}
 .lines th{background:#f4f7fb;color:var(--navy);font-size:10px}
@@ -76,8 +77,10 @@ body{
     <div class="meta-box"><div class="meta-label">أصناف بعهدة</div><div class="meta-value">{{ summary.items_with_custody }}</div></div>
     <div class="meta-box"><div class="meta-label">فنيون</div><div class="meta-value">{{ summary.technicians_with_custody }}</div></div>
     <div class="meta-box"><div class="meta-label">إجمالي الكميات</div><div class="meta-value">{{ summary.total_qty|inv_qty }}</div></div>
+    <div class="meta-box"><div class="meta-label">عدد الأسطر</div><div class="meta-value">{{ summary.line_count }}</div></div>
   </div>
 
+  <div class="sec-title" style="margin-bottom:0">تفاصيل العهدة</div>
   <table class="lines">
     <thead>
       <tr>

@@ -737,3 +737,161 @@ def custody_report_summary(rows: list[dict] | None) -> dict:
         'line_count': len(rows or []),
     }
 
+
+SETTLE_TARGET_TITLES = {
+    SETTLE_TARGET_WAREHOUSE: 'إذن إرجاع عهدة للمخزن',
+    SETTLE_TARGET_CLIENT: 'إذن تحويل عهدة إلى عميل',
+    SETTLE_TARGET_PROJECT: 'إذن تحويل عهدة إلى مشروع',
+}
+
+
+def _settle_target_from_movement_type(movement_type: str | None) -> str:
+    mt = (movement_type or '').strip()
+    if mt == MOVEMENT_SETTLE_CLIENT:
+        return SETTLE_TARGET_CLIENT
+    if mt == MOVEMENT_SETTLE_PROJECT:
+        return SETTLE_TARGET_PROJECT
+    return SETTLE_TARGET_WAREHOUSE
+
+
+def _custody_destination_detail(
+    target: str,
+    *,
+    contract_id: int | None = None,
+    install_contract_id: int | None = None,
+    reason: str = '',
+) -> str:
+    if target == SETTLE_TARGET_WAREHOUSE:
+        return 'المخزن الرئيسي'
+    if target == SETTLE_TARGET_CLIENT and contract_id:
+        from models import Contract
+
+        contract = tenant_query(Contract).filter_by(id=int(contract_id)).first()
+        if contract:
+            cust = contract.customer.name if contract.customer else '—'
+            return f'{contract.code} — {cust}'
+    if target == SETTLE_TARGET_PROJECT and install_contract_id:
+        from installation.models import InstallContract
+
+        ic = tenant_query(InstallContract).filter_by(id=int(install_contract_id)).first()
+        if ic:
+            proj = ic.project
+            proj_label = (proj.title or '').strip() if proj and proj.title else ic.client_display
+            return f'{ic.code} — {proj_label}'
+    return (reason or '—').split('|', 1)[0].strip() or '—'
+
+
+def custody_transfer_print_payload(
+    *,
+    movement_id: int | None = None,
+    item_id: int | None = None,
+    technician_id: int | None = None,
+    target: str | None = None,
+    quantity: float | None = None,
+    movement_date: date | None = None,
+    notes: str = '',
+    contract_id: int | None = None,
+    install_contract_id: int | None = None,
+    draft: bool = False,
+) -> dict | None:
+    """بيانات طباعة إذن تحويل/إرجاع عهدة — من حركة مسجّلة أو معاينة قبل الحفظ."""
+    if movement_id:
+        movement = tenant_get_or_404(StockMovement, int(movement_id))
+        if (movement.movement_type or '') not in CUSTODY_SETTLE_TYPES:
+            return None
+        item = movement.item or tenant_get_or_404(InventoryItem, movement.item_id)
+        tech = db.session.get(Technician, movement.technician_id) if movement.technician_id else None
+        target_key = _settle_target_from_movement_type(movement.movement_type)
+        contract_id = None
+        install_contract_id = None
+        ref = (movement.reference or '').strip()
+        if ref.startswith('custody:maint:'):
+            try:
+                contract_id = int(ref.split(':', 2)[2])
+            except (TypeError, ValueError, IndexError):
+                contract_id = None
+        elif ref.startswith('custody:install:'):
+            try:
+                install_contract_id = int(ref.split(':', 2)[2])
+            except (TypeError, ValueError, IndexError):
+                install_contract_id = None
+        qty = float(movement.quantity or 0)
+        unit_price = float(movement.unit_price or 0)
+        return {
+            'doc_title': SETTLE_TARGET_TITLES.get(target_key, 'إذن تحويل عهدة'),
+            'doc_code': movement.code or '—',
+            'is_draft': False,
+            'movement_date': str(movement.movement_date or ''),
+            'target': target_key,
+            'target_label': SETTLE_TARGET_TITLES.get(target_key, '—'),
+            'movement_type': movement.movement_type or '—',
+            'direction': movement.direction or '—',
+            'technician_name': (tech.name if tech else '—'),
+            'item_code': item.code or '—',
+            'item_name': item.name or '—',
+            'item_unit': item.unit or 'قطعة',
+            'quantity': qty,
+            'unit_price': unit_price,
+            'total_value': float(movement.total_value or qty * unit_price),
+            'destination_detail': _custody_destination_detail(
+                target_key,
+                contract_id=contract_id,
+                install_contract_id=install_contract_id,
+                reason=movement.reason or '',
+            ),
+            'notes': (movement.notes or '').strip() or '—',
+        }
+
+    target_key = (target or '').strip().lower()
+    if target_key not in (SETTLE_TARGET_WAREHOUSE, SETTLE_TARGET_CLIENT, SETTLE_TARGET_PROJECT):
+        return None
+    try:
+        item_id = int(item_id or 0)
+        technician_id = int(technician_id or 0)
+        qty = float(quantity or 0)
+    except (TypeError, ValueError):
+        return None
+    if item_id <= 0 or technician_id <= 0 or qty <= 0:
+        return None
+    if target_key == SETTLE_TARGET_CLIENT and not contract_id:
+        return None
+    if target_key == SETTLE_TARGET_PROJECT and not install_contract_id:
+        return None
+
+    item = tenant_get_or_404(InventoryItem, item_id)
+    tech = tenant_get_or_404(Technician, technician_id)
+    unit_price = float(item.buy_price or 0)
+    mv_date = movement_date or date.today()
+    if target_key == SETTLE_TARGET_WAREHOUSE:
+        direction = 'وارد'
+        movement_type = MOVEMENT_RETURN_WAREHOUSE
+    elif target_key == SETTLE_TARGET_CLIENT:
+        direction = 'صادر'
+        movement_type = MOVEMENT_SETTLE_CLIENT
+    else:
+        direction = 'صادر'
+        movement_type = MOVEMENT_SETTLE_PROJECT
+
+    return {
+        'doc_title': SETTLE_TARGET_TITLES.get(target_key, 'إذن تحويل عهدة'),
+        'doc_code': 'مسودة' if draft else '—',
+        'is_draft': bool(draft),
+        'movement_date': str(mv_date),
+        'target': target_key,
+        'target_label': SETTLE_TARGET_TITLES.get(target_key, '—'),
+        'movement_type': movement_type,
+        'direction': direction,
+        'technician_name': tech.name or '—',
+        'item_code': item.code or '—',
+        'item_name': item.name or '—',
+        'item_unit': item.unit or 'قطعة',
+        'quantity': qty,
+        'unit_price': unit_price,
+        'total_value': round(qty * unit_price, 4),
+        'destination_detail': _custody_destination_detail(
+            target_key,
+            contract_id=contract_id,
+            install_contract_id=install_contract_id,
+        ),
+        'notes': (notes or '').strip() or '—',
+    }

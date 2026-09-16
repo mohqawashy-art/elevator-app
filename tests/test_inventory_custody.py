@@ -291,3 +291,56 @@ def test_custody_print_route(client):
     html = r.get_data(as_text=True)
     assert 'بيان عهدة قطع الغيار' in html
     assert tech.name in html
+
+
+def test_custody_transfer_print_preview(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        item, tech = _seed_item_and_tech()
+        db.session.commit()
+        item_id, tech_id = item.id, tech.id
+
+    r = client.get(
+        '/inventory/custody/transfer/print'
+        f'?item_id={item_id}&technician_id={tech_id}&target=warehouse'
+        f'&quantity=2&movement_date={date.today().isoformat()}&draft=1'
+    )
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert 'إذن إرجاع عهدة للمخزن' in html
+    assert 'مسودة' in html
+
+
+def test_custody_transfer_print_movement(client):
+    from tests.conftest import login_as
+    from inventory_custody import settle_technician_custody
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        item, tech = _seed_item_and_tech()
+        db.session.add(StockMovement(
+            code='MV-CP2',
+            item_id=item.id,
+            movement_date=date.today(),
+            direction='صادر',
+            movement_type='صرف عهدة للفني',
+            quantity=3,
+            technician_id=tech.id,
+        ))
+        db.session.commit()
+        movement = settle_technician_custody(
+            item_id=item.id,
+            technician_id=tech.id,
+            quantity=1,
+            target='warehouse',
+        )
+        db.session.commit()
+        movement_id = movement.id
+
+    r = client.get(f'/inventory/custody/transfer/print?movement_id={movement_id}')
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert movement.code in html
+    assert 'إرجاع عهدة للمخزن' in html
