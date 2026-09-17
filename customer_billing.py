@@ -1221,7 +1221,7 @@ def build_customer_statement(customer_id: int) -> dict:
             'date': str(pv.invoice_date or ''),
             'code': pv.code,
             'receipt_code': parent_code,
-            'type': pv.invoice_type or 'سند صرف',
+            'type': 'إلغاء سند',
             'description': (
                 (pv.description or '').strip()
                 or (f'إرجاع مبلغ سند قبض {parent_code}' if parent_code else 'إرجاع مبلغ')

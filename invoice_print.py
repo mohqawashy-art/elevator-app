@@ -82,15 +82,21 @@ def _is_paid_status(status: str | None) -> bool:
     return s in ('مدفوعة', 'مسددة', 'مدفوع', 'Paid', 'paid')
 
 
-def _doc_titles(invoice_type: str | None, is_tax: bool, is_receipt: bool, is_simplified: bool) -> tuple[str, str]:
+def _doc_titles(
+    invoice_type: str | None,
+    is_tax: bool,
+    is_receipt: bool,
+    is_simplified: bool,
+    *,
+    is_payment_voucher: bool = False,
+) -> tuple[str, str]:
     t = (invoice_type or '').strip()
     if 'إشعار دائن' in t:
         return 'إشعار دائن', 'Credit Note'
     if 'إشعار مدين' in t:
         return 'إشعار مدين', 'Debit Note'
-    t = (invoice_type or '').strip()
-    if 'سند صرف' in t:
-        return 'سند صرف', 'Payment Voucher'
+    if is_payment_voucher or 'سند صرف' in t:
+        return 'إلغاء سند', 'Receipt Cancellation'
     if is_receipt or 'قبض' in t:
         return 'سند قبض', 'Receipt Voucher'
     if is_simplified:
@@ -163,11 +169,21 @@ def invoice_print_payload(invo: Invoice, *, base_url: str = '') -> dict:
         if invo.contract_id else None
     )
 
+    from customer_billing import is_payment_voucher as _is_payment_voucher
+
     tax_pct = float(settings.tax_pct or 15)
+    is_pay_voucher = _is_payment_voucher(invo.invoice_type)
     is_receipt = not zatca_is_tax_invoice(invo.invoice_type)
     is_tax = zatca_is_tax_invoice(invo.invoice_type)
     is_simplified = _is_simplified(invo.invoice_type)
-    doc_title, doc_title_en = _doc_titles(invo.invoice_type, is_tax, is_receipt, is_simplified)
+    doc_title, doc_title_en = _doc_titles(
+        invo.invoice_type, is_tax, is_receipt, is_simplified, is_payment_voucher=is_pay_voucher,
+    )
+    parent_receipt = (
+        tenant_query(Invoice).filter_by(id=invo.parent_invoice_id).first()
+        if is_pay_voucher and invo.parent_invoice_id else None
+    )
+    parent_receipt_code = (parent_receipt.code or '').strip() if parent_receipt else ''
     page_size = 'A5' if is_receipt else 'A4'
     status = invo.status or '—'
     is_paid = _is_paid_status(status)
@@ -250,7 +266,10 @@ def invoice_print_payload(invo: Invoice, *, base_url: str = '') -> dict:
     return {
         'doc_title': doc_title,
         'doc_title_en': doc_title_en,
-        'invoice_type_label': (invo.invoice_type or doc_title).strip(),
+        'invoice_type_label': doc_title if is_pay_voucher else (invo.invoice_type or doc_title).strip(),
+        'is_payment_voucher': is_pay_voucher,
+        'parent_receipt_code': parent_receipt_code,
+        'serial_no': (invo.code or '').strip(),
         'irn': invo.code,
         'logo_url': _logo_url(settings),
         'logo_width': logo_width,

@@ -11875,7 +11875,7 @@ def invoice_add():
         )
     amt_err = invoice_amount_error(amount) if not pay_voucher else None
     if pay_voucher and total <= 0.01:
-        amt_err = 'أدخل مبلغ سند الصرف'
+        amt_err = 'أدخل مبلغ إلغاء السند'
     if amt_err:
         flash(amt_err, 'error')
         return redirect(url_for('invoices'))
@@ -11942,15 +11942,15 @@ def invoice_add():
         if parent_inv:
             if pay_voucher:
                 if not is_receipt_voucher(parent_inv.invoice_type):
-                    flash('سند الصرف يُصدر فقط مقابل سند قبض', 'error')
+                    flash('إلغاء السند يُصدر فقط مقابل سند قبض', 'error')
                     return redirect(url_for('invoices'))
                 existing_pay = payment_voucher_for_receipt(parent_inv.id)
                 if existing_pay:
-                    flash(f'يوجد سند صرف {existing_pay.code} لهذا السند مسبقاً', 'error')
+                    flash(f'يوجد إلغاء سند {existing_pay.code} لهذا السند مسبقاً', 'error')
                     return redirect(url_for('invoices'))
                 if total > _round_money(parent_inv.total) + 0.02:
                     flash(
-                        f'مبلغ سند الصرف لا يجب أن يتجاوز سند القبض ({_round_money(parent_inv.total):,.2f})',
+                        f'مبلغ إلغاء السند لا يجب أن يتجاوز سند القبض ({_round_money(parent_inv.total):,.2f})',
                         'error',
                     )
                     return redirect(url_for('invoices'))

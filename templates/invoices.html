@@ -66,6 +66,8 @@ html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
 .btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
 .btn-warning{background:var(--warning);color:#fff}
 .btn-warning:hover{filter:brightness(1.08)}
+.btn-danger{background:rgba(224,72,72,.15);color:var(--danger);border:1px solid rgba(224,72,72,.28)}
+.btn-danger:hover{background:rgba(224,72,72,.28);color:#fff}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
 /* STATS */
@@ -452,6 +454,10 @@ function isPaymentVoucherType(t) {
   return String(t || '').trim().indexOf('صرف') >= 0;
 }
 
+function invoiceTypeLabel(t) {
+  return isPaymentVoucherType(t) ? 'إلغاء سند' : String(t || '');
+}
+
 function paymentVoucherForReceipt(receiptId) {
   return INVOICES.find(function (x) {
     return x.parent_invoice_id === receiptId && isPaymentVoucherType(x.invoice_type);
@@ -540,7 +546,7 @@ function renderTable(data) {
   tbody.innerHTML = pg.rows.map(i => `
     <tr onclick="viewInvoice(${i.id})">
       <td class="td-code">${escHtml(i.code)}</td>
-      <td><span class="badge ${TYPE_BADGE[i.invoice_type]||'badge-blue'}">${escHtml(D(i.invoice_type))}</span></td>
+      <td><span class="badge ${TYPE_BADGE[i.invoice_type]||'badge-blue'}">${escHtml(D(invoiceTypeLabel(i.invoice_type)))}</span></td>
       <td>${escHtml(D(LC ? LC.name(i.customer, i.customer_name_en) : i.customer))} ${i.contract!=='—'?'/ '+escHtml(i.contract):''}</td>
       <td class="lc-date" style="direction:ltr">${escHtml(i.invoice_date)}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${escHtml(D(i.description||'—'))}</td>
@@ -555,8 +561,8 @@ function renderTable(data) {
           </a>
           ${invoiceHasWhatsApp(i) && window.LiftCoreFinancialWa ? LiftCoreFinancialWa.buttonHtml('invoice', i.id) : ''}
           ${canIssueNotice(i) ? '<button type="button" class="btn btn-primary btn-sm" onclick="openNoticeModal(' + i.id + ')">إشعار</button>' : ''}
-          ${canIssuePaymentVoucher(i) ? '<button type="button" class="btn btn-warning btn-sm" onclick="openPaymentModal(' + i.id + ')">سند صرف</button>' : ''}
-          <button class="btn btn-secondary btn-sm btn-icon" onclick="viewInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="viewInvoice(${i.id})" title="عرض"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
+          ${canIssuePaymentVoucher(i) ? '<button type="button" class="btn btn-danger btn-sm" onclick="openPaymentModal(' + i.id + ')">إلغاء سند</button>' : ''}
         </div>
       </td>
     </tr>`).join('');
@@ -616,7 +622,7 @@ function setModalMode(mode) {
   const taxWrap = document.querySelector('#modal-add .notice-tax-block');
   if (taxWrap) taxWrap.style.display = noticeMode ? '' : 'none';
   const saveBtn = document.querySelector('#modal-add .modal-foot .btn-primary');
-  if (saveBtn) saveBtn.textContent = noticeMode ? 'حفظ الإشعار' : 'حفظ سند الصرف';
+  if (saveBtn) saveBtn.textContent = noticeMode ? 'حفظ الإشعار' : 'حفظ إلغاء السند';
 }
 
 function setNoticeType(type) {
@@ -688,7 +694,7 @@ function openPaymentModal(receiptId) {
   const rec = INVOICES.find(function (x) { return x.id === receiptId; });
   if (!rec || !canIssuePaymentVoucher(rec)) return;
   setModalMode('payment');
-  document.getElementById('modal-title').textContent = 'إصدار سند صرف';
+  document.getElementById('modal-title').textContent = 'إلغاء سند قبض';
   document.getElementById('f-inv-type').value = 'سند صرف';
   if (typeof LcClientSelect !== 'undefined') {
     LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, rec.customer_id);
@@ -745,7 +751,7 @@ function saveInvoice() {
   const mode = document.getElementById('f-modal-mode')?.value || 'notice';
   if (mode === 'payment') {
     const payAmt = parseFloat(document.getElementById('f-payment-amount')?.value || 0);
-    if (!payAmt || payAmt <= 0) { alert('أدخل مبلغ سند الصرف'); return; }
+    if (!payAmt || payAmt <= 0) { alert('أدخل مبلغ إلغاء السند'); return; }
     const amtEl = document.getElementById('f-amount');
     const totalEl = document.getElementById('f-total');
     if (amtEl) amtEl.value = payAmt.toFixed(2);
