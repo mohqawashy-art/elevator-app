@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 {% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore — الفواتير</title>
+<title>LiftCore — الفواتير والسندات</title>
 <link rel="stylesheet" href="/static/customer_profile.css">
 <link rel="stylesheet" href="/static/tax_calc.css">
 <script src="/static/customer_profile.js"></script>
@@ -183,7 +183,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 </nav>
 </aside>
 <div class="main">
-  {% set page_title = 'الفواتير' %}
+  {% set page_title = 'الفواتير والسندات' %}
   {% include 'partials/app_header.html' %}
 
 
@@ -214,7 +214,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
     {% include 'partials/flash_messages.html' %}
     <div class="page-header">
-      <div class="page-title">الفواتير وسندات القبض <span id="invoices-count" data-i18n-skip></span></div>
+      <div class="page-title">الفواتير والسندات <span id="invoices-count" data-i18n-skip></span></div>
       <div class="page-actions">
         {% with report_url=url_for('report_invoices'), report_label='تقرير الفواتير' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">

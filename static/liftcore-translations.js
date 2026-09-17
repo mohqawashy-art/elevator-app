@@ -863,6 +863,7 @@ window.__LC_TRANSLATIONS = {
   'الأعطال': 'Faults',
   'الإيرادات': 'Revenues',
   'المصروفات': 'Expenses',
+  'الفواتير والسندات': 'Invoices & Vouchers',
   'الفواتير': 'Invoices',
   'العملاء': 'Clients',
   'المصاعد': 'Elevators',

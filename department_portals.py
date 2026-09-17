@@ -151,7 +151,7 @@ DEPARTMENT_PORTALS = {
         'links': (
             ('الإيرادات والتحصيل', 'Revenues & Collection', '/revenues', 'revenues.read'),
             ('المصروفات', 'Expenses', '/expenses', 'expenses.read'),
-            ('الفواتير', 'Invoices', '/invoices', 'invoices.read'),
+            ('الفواتير والسندات', 'Invoices & Vouchers', '/invoices', 'invoices.read'),
             ('شجرة الحسابات', 'Chart of Accounts', '/accounts', 'revenues.read'),
             ('القيود اليومية', 'Journal Entries', '/journals', 'revenues.read'),
             ('دفتر الأستاذ', 'General Ledger', '/ledger', 'revenues.read'),
