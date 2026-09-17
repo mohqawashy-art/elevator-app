@@ -84,6 +84,10 @@ def _is_paid_status(status: str | None) -> bool:
 
 def _doc_titles(invoice_type: str | None, is_tax: bool, is_receipt: bool, is_simplified: bool) -> tuple[str, str]:
     t = (invoice_type or '').strip()
+    if 'إشعار دائن' in t:
+        return 'إشعار دائن', 'Credit Note'
+    if 'إشعار مدين' in t:
+        return 'إشعار مدين', 'Debit Note'
     if is_receipt or 'سند' in t:
         return 'سند قبض', 'Receipt Voucher'
     if is_simplified:
