@@ -56,6 +56,9 @@
     if (opts.hintAfter) {
       container.innerHTML += '<div style="font-size:11px;color:var(--text3);margin-top:6px">' + escHtml(opts.hintAfter) + '</div>';
     }
+    if (global.LiftCoreFileViewer && global.LiftCoreFileViewer.bindLinks) {
+      global.LiftCoreFileViewer.bindLinks(container);
+    }
   }
 
   function appendToFormData(fd, input, fieldName) {

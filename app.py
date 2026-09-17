@@ -7136,7 +7136,7 @@ def _fin_proof_js_items(row) -> list[dict]:
     from attachment_paths import attachment_items
     return attachment_items(
         getattr(row, 'proof_path', None),
-        _upload_url_fast,
+        upload_view_url,
         name_fn=contract_file_display_name,
     )
 
@@ -7155,7 +7155,7 @@ def _contract_js_files(c) -> list[dict]:
     from attachment_paths import attachment_items
     return attachment_items(
         c.file_path,
-        upload_url,
+        upload_view_url,
         name_fn=contract_file_display_name,
     )
 
@@ -7206,7 +7206,7 @@ def _purchase_invoice_js_attachments(doc_code: str) -> list[dict]:
         return []
     return attachment_items(
         serialize_attachment_paths(paths),
-        _upload_url_fast,
+        upload_view_url,
         name_fn=contract_file_display_name,
     )
 
@@ -7949,7 +7949,7 @@ def technician_to_js_dict(t, *, meta: dict | None = None):
             'doc_type': d.doc_type or '',
             'title': d.title or d.file_name or '',
             'file_name': fname,
-            'url': _upload_url_fast(d.file_path) if d.file_path else '',
+            'url': upload_view_url(d.file_path) if d.file_path else '',
             'is_image': fname.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')),
             'is_pdf': fname.lower().endswith('.pdf'),
             'uploaded_at': d.uploaded_at.strftime('%Y-%m-%d') if d.uploaded_at else '',
@@ -8088,6 +8088,20 @@ def _tech_dir(tech_id, sub=''):
     return path
 
 
+def _upload_subpath(relative_path: str) -> str:
+    rel = (relative_path or '').replace('\\', '/').lstrip('/')
+    if rel.startswith('static/uploads/'):
+        return rel[len('static/uploads/'):]
+    if rel.startswith('uploads/'):
+        return rel[len('uploads/'):]
+    return rel
+
+
+_VIEWABLE_UPLOAD_EXT = frozenset({
+    '.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg',
+})
+
+
 def upload_url(relative_path):
     """رابط ملف مرفوع تحت static/uploads مع cache-buster."""
     if not relative_path:
@@ -8100,10 +8114,67 @@ def upload_url(relative_path):
     return url
 
 
+def upload_view_url(relative_path):
+    """صفحة عرض مرفق (PDF/صورة) مع شريط إغلاق — بدل فتح الملف مباشرة."""
+    if not relative_path:
+        return ''
+    subpath = _upload_subpath(relative_path)
+    ext = os.path.splitext(subpath)[1].lower()
+    if ext not in _VIEWABLE_UPLOAD_EXT:
+        return upload_url(relative_path)
+    return url_for('view_upload_file', subpath=subpath)
+
+
 def _static_upload_url(relative_path):
     if not relative_path:
         return None
     return upload_url(relative_path)
+
+
+def _safe_upload_return_url(fallback=None):
+    ret = (request.args.get('return') or '').strip()
+    if ret.startswith('/') and not ret.startswith('//'):
+        return ret
+    ref = request.referrer or ''
+    base = request.url_root.rstrip('/')
+    if ref.startswith(base):
+        return ref
+    return fallback or url_for('home')
+
+
+@app.route('/view/upload/<path:subpath>')
+def view_upload_file(subpath):
+    """عرض PDF/صورة مرفوعة داخل صفحة LiftCore مع زر إغلاق."""
+    from field_auth import field_session_technician_id
+
+    if not current_user() and not field_session_technician_id():
+        if request.path.startswith('/api/') or (
+            request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html
+        ):
+            abort(401)
+        ref = request.referrer or ''
+        base = request.url_root.rstrip('/')
+        if ref.startswith(base + '/field') or '/field/' in ref:
+            return redirect(url_for('field_login', next=request.path))
+        return redirect(url_for('login', next=request.path))
+
+    directory = os.path.join(app.root_path, 'static', 'uploads')
+    full = os.path.normpath(os.path.join(directory, subpath))
+    if not full.startswith(os.path.normpath(directory)) or not os.path.isfile(full):
+        abort(404)
+
+    mime = _guess_upload_mimetype(full)
+    if not (mime.startswith('image/') or mime == 'application/pdf'):
+        return redirect(upload_url(f'uploads/{subpath}'))
+
+    rel = f'uploads/{subpath.replace(chr(92), "/")}'
+    return render_template(
+        'file_view.html',
+        file_name=_upload_download_name(os.path.basename(full)),
+        file_url=upload_url(rel),
+        is_image=mime.startswith('image/'),
+        return_url=_safe_upload_return_url(),
+    )
 
 
 @app.route('/static/uploads/<path:subpath>')
@@ -8153,6 +8224,7 @@ def serve_upload_file(subpath):
 
 
 app.jinja_env.globals['upload_url'] = upload_url
+app.jinja_env.globals['upload_view_url'] = upload_view_url
 app.jinja_env.globals['contract_file_display_name'] = contract_file_display_name
 
 
@@ -8371,7 +8443,7 @@ def _technician_documents_json(tech):
         'doc_type': d.doc_type or '',
         'title': d.title or d.file_name or '',
         'file_name': d.file_name or '',
-        'url': _static_upload_url(d.file_path),
+        'url': upload_view_url(d.file_path) if d.file_path else '',
         'is_image': (d.mime_type or '').startswith('image/') or (
             d.file_name or ''
         ).lower().endswith(('.png', '.jpg', '.jpeg', '.webp')),

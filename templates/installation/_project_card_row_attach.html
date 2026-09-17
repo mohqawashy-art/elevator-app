@@ -17,7 +17,7 @@
       <ul class="pc-row-attach-list">
         {% for doc in row_docs %}
         <li>
-          <a href="{{ upload_url(doc.file_path) }}" class="lc-file-view">{{ doc.label or doc.file_name or 'مرفق' }}</a>
+          <a href="{{ upload_view_url(doc.file_path) }}" class="lc-file-view">{{ doc.label or doc.file_name or 'مرفق' }}</a>
           <form method="post" action="/installation/projects/{{ project.id }}/documents/{{ doc.id }}/delete" style="display:inline" onsubmit="return confirm('حذف المرفق؟')">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="step_key" value="{{ row.row_key }}">
