@@ -11917,6 +11917,19 @@ def invoice_add():
             description,
         )
 
+    parent_raw = (request.form.get('parent_invoice_id') or '').strip()
+    parent_invoice_id = int(parent_raw) if parent_raw.isdigit() else None
+    if parent_invoice_id:
+        parent_inv = tenant_query(Invoice).filter_by(id=parent_invoice_id).first()
+        if parent_inv:
+            if not customer_id:
+                customer_id = parent_inv.customer_id
+            if not contract_id:
+                contract_id = parent_inv.contract_id
+            ref = f'إشعار على {parent_inv.code}'
+            if ref not in (notes or ''):
+                notes = (ref + (' — ' + notes if notes else '')).strip()
+
     due_raw = request.form.get('due_date', '').strip()
     invoice_status = request.form.get('status', 'غير مدفوعة')
     invoice_paid = 0.0
@@ -11951,6 +11964,7 @@ def invoice_add():
         customer_id=int(customer_id) if customer_id else None,
         contract_id=int(contract_id) if contract_id else None,
         parts_billing_id=parts_billing_id,
+        parent_invoice_id=parent_invoice_id,
         invoice_date=datetime.strptime(request.form['invoice_date'], '%Y-%m-%d').date(),
         due_date=datetime.strptime(due_raw, '%Y-%m-%d').date() if due_raw else None,
         description=description,

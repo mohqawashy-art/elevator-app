@@ -233,17 +233,6 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
           تصدير
         </button>
-        <div class="lc-notice-menu-wrap">
-          <button type="button" class="btn btn-primary btn-sm" onclick="toggleNoticeMenu(event)">
-            <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 2h10v10H2z"/><path d="M4 5h6M4 7.5h6M4 10h4"/></svg>
-            إشعار
-            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" width="10" height="10"><path d="M3 4.5l3 3 3-3"/></svg>
-          </button>
-          <div class="lc-notice-menu" id="notice-menu">
-            <button type="button" onclick="openNoticeModal('إشعار مدين')">إشعار مدين</button>
-            <button type="button" onclick="openNoticeModal('إشعار دائن')">إشعار دائن</button>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -328,11 +317,17 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 <div class="modal-overlay" id="modal-add">
   <div class="modal" style="max-width:720px">
     <div class="modal-head">
-      <span class="modal-title" id="modal-title">إشعار دائن</span>
+      <span class="modal-title" id="modal-title">إصدار إشعار</span>
       <button type="button" class="modal-close" onclick="closeAddModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
+      <div class="doc-type-toggle">
+        <button type="button" class="doc-type-btn" id="mt-debit" onclick="setNoticeType('إشعار مدين')">إشعار مدين</button>
+        <button type="button" class="doc-type-btn active" id="mt-credit" onclick="setNoticeType('إشعار دائن')">إشعار دائن</button>
+      </div>
+      <div id="notice-parent-info" class="form-full" style="display:none;margin-bottom:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);font-size:12px;color:var(--text2)"></div>
       <input type="hidden" id="f-inv-type" value="إشعار دائن">
+      <input type="hidden" id="f-parent-invoice-id" value="">
       <div class="form-grid">
         <div class="field form-full">
           <label>العميل <span>*</span></label>
@@ -432,6 +427,11 @@ function invoiceHasWhatsApp(i) {
   return i && (i.invoice_type || '').indexOf('سند') < 0 && (i.status || '').indexOf('ملغ') < 0;
 }
 
+function canIssueNotice(i) {
+  const t = String(i && i.invoice_type || '').trim();
+  return t.indexOf('سند') < 0 && t.indexOf('إشعار') < 0;
+}
+
 let currentTab = 'all';
 var filtered = [...INVOICES];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
@@ -524,6 +524,7 @@ function renderTable(data) {
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg>
           </a>
           ${invoiceHasWhatsApp(i) && window.LiftCoreFinancialWa ? LiftCoreFinancialWa.buttonHtml('invoice', i.id) : ''}
+          ${canIssueNotice(i) ? '<button type="button" class="btn btn-primary btn-sm" onclick="openNoticeModal(' + i.id + ')">إشعار</button>' : ''}
           <button class="btn btn-secondary btn-sm btn-icon" onclick="viewInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
         </div>
       </td>
@@ -572,38 +573,63 @@ function clearFilters() {
   renderTable(filtered);
 }
 
-function toggleNoticeMenu(e) {
-  if (e) e.stopPropagation();
-  const menu = document.getElementById('notice-menu');
-  if (menu) menu.classList.toggle('open');
+function setNoticeType(type) {
+  const t = type || 'إشعار دائن';
+  document.getElementById('f-inv-type').value = t;
+  document.getElementById('modal-title').textContent = 'إصدار ' + t;
+  const debitBtn = document.getElementById('mt-debit');
+  const creditBtn = document.getElementById('mt-credit');
+  if (debitBtn) debitBtn.classList.toggle('active', t === 'إشعار مدين');
+  if (creditBtn) creditBtn.classList.toggle('active', t === 'إشعار دائن');
 }
 
-function closeNoticeMenu() {
-  const menu = document.getElementById('notice-menu');
-  if (menu) menu.classList.remove('open');
-}
-
-document.addEventListener('click', function () { closeNoticeMenu(); });
-
-function openNoticeModal(noticeType) {
-  closeNoticeMenu();
-  const type = noticeType || 'إشعار دائن';
-  document.getElementById('modal-title').textContent = type;
-  document.getElementById('f-inv-type').value = type;
+function openNoticeModal(invoiceId) {
+  const inv = invoiceId ? INVOICES.find(x => x.id === invoiceId) : null;
+  setNoticeType('إشعار دائن');
   if (typeof LcClientSelect !== 'undefined') {
-    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, '');
+    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, inv ? inv.customer_id : '');
   } else {
     const sel = document.getElementById('f-customer-sel');
-    if (sel) sel.innerHTML = '<option value="">اختر العميل</option>' + CUSTOMERS.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
+    if (sel) {
+      sel.innerHTML = '<option value="">اختر العميل</option>' + CUSTOMERS.map(c =>
+        '<option value="' + c.id + '"' + (inv && c.id === inv.customer_id ? ' selected' : '') + '>' + escHtml(c.name) + '</option>'
+      ).join('');
+    }
   }
   ['f-desc','f-notes','f-amount','f-due-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   clearInvoiceSource();
+  const parentEl = document.getElementById('f-parent-invoice-id');
+  const parentInfo = document.getElementById('notice-parent-info');
+  if (inv) {
+    if (parentEl) parentEl.value = String(inv.id);
+    if (document.getElementById('f-contract-id')) document.getElementById('f-contract-id').value = inv.contract_id || '';
+    if (parentInfo) {
+      parentInfo.style.display = 'block';
+      parentInfo.innerHTML = 'مرجع الإشعار: <strong style="color:var(--accent)">' + escHtml(inv.code) + '</strong>'
+        + (inv.description ? ' — ' + escHtml(inv.description) : '');
+    }
+    const desc = document.getElementById('f-desc');
+    if (desc) desc.value = 'إشعار على ' + (inv.code || 'فاتورة') + (inv.description ? ' — ' + inv.description : '');
+    const notes = document.getElementById('f-notes');
+    if (notes) notes.value = 'مرتبط بالفاتورة ' + (inv.code || '');
+    const pay = document.getElementById('f-pay-method');
+    if (pay && inv.pay_method) pay.value = inv.pay_method;
+  } else {
+    if (parentEl) parentEl.value = '';
+    if (parentInfo) { parentInfo.style.display = 'none'; parentInfo.innerHTML = ''; }
+  }
   const d = document.getElementById('f-date');
   if (d) d.value = new Date().toISOString().slice(0, 10);
   const st = document.getElementById('f-status-sel');
   if (st) st.value = 'غير مدفوعة';
   const taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.resetElement(taxBlock);
+  if (taxBlock && window.LiftCoreTaxCalc) {
+    if (inv && inv.total != null && LiftCoreTaxCalc.loadInclusiveElement) {
+      LiftCoreTaxCalc.loadInclusiveElement(taxBlock, inv.total, 15);
+    } else {
+      LiftCoreTaxCalc.resetElement(taxBlock);
+    }
+  }
   document.getElementById('modal-add').classList.add('open');
 }
 
@@ -632,7 +658,7 @@ function saveInvoice() {
   const fd = new FormData();
   [['invoice_type','f-inv-type'],['customer_id','f-customer-sel'],['invoice_date','f-date'],['due_date','f-due-date'],
    ['description','f-desc'],['amount','f-amount'],['total','f-total'],['payment_method','f-pay-method'],['status','f-status-sel'],['notes','f-notes'],
-   ['source_type','f-source-type'],['source_id','f-source-id'],['contract_id','f-contract-id']
+   ['source_type','f-source-type'],['source_id','f-source-id'],['contract_id','f-contract-id'],['parent_invoice_id','f-parent-invoice-id']
   ].forEach(([f,i]) => { const el = document.getElementById(i); if (el) fd.append(f, el.value); });
   fetch('/invoices/add', { method:'POST', body:fd })
     .then(() => window.location.reload());
