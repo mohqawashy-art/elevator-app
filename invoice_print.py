@@ -96,7 +96,7 @@ def _doc_titles(
     if 'إشعار مدين' in t:
         return 'إشعار مدين', 'Debit Note'
     if is_payment_voucher or 'سند صرف' in t:
-        return 'إلغاء سند', 'Receipt Cancellation'
+        return 'سند صرف', 'Payment Voucher'
     if is_receipt or 'قبض' in t:
         return 'سند قبض', 'Receipt Voucher'
     if is_simplified:
