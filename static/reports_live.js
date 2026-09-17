@@ -317,7 +317,7 @@ function hookReportPagination(reset) {
   global.__lcSyncPrintFromScreen = __lcSyncPrintFromScreen;
 
   var REVENUE_TYPE_FILTER_GROUPS = [
-    ['تجديد عقد', 'الدفعات المستحقة', 'عقد صيانة', 'صيانة', 'عقد ضمان', 'ضمان'],
+    ['تجديد عقد', 'دفعة عقد', 'الدفعات المستحقة', 'عقد صيانة', 'صيانة', 'عقد ضمان', 'ضمان'],
     ['عقد جديد', 'عقد تركيب', 'تركيب'],
     ['عقد تحديث', 'تحديث'],
   ];

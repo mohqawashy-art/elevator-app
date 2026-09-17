@@ -604,7 +604,7 @@ class Revenue(TenantMixin, db.Model):
     parts_billing_id = db.Column(db.Integer, db.ForeignKey('parts_billing.id'))
     revenue_date    = db.Column(db.Date, nullable=False)
     title           = db.Column(db.String(300))  # البيان / عنوان العملية
-    revenue_type    = db.Column(db.String(100))  # عقد صيانة / قطع غيار / أعمال إضافية
+    revenue_type    = db.Column(db.String(100))  # دفعة عقد / تجديد عقد / قطع غيار / أعمال إضافية
     payment_method  = db.Column(db.String(50))   # نقد / تحويل / شيك / بطاقة
     amount          = db.Column(db.Float, nullable=False)
     tax_amount      = db.Column(db.Float, default=0)

@@ -755,6 +755,7 @@ window.__LC_TRANSLATIONS = {
   'عقود صيانة': 'Maintenance Contracts',
   'عقود الصيانة': 'Maintenance Contracts',
   'دفعة عقد': 'Contract Payment',
+  'الدفعات المستحقة': 'Contract Payment',
   'متأخرات عقد': 'Contract Arrears',
   'المتأخرات': 'Arrears',
   'تحويل': 'Transfer',

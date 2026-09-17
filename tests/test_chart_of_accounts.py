@@ -84,8 +84,9 @@ def test_resolve_revenue_and_expense_map_keys(client):
         acc = db.session.get(Account, renew_id)
         assert acc and acc.code == '4120'
 
-        due_id = resolve_revenue_account_id('الدفعات المستحقة')
+        due_id = resolve_revenue_account_id('دفعة عقد')
         assert due_id == renew_id
+        assert resolve_revenue_account_id('الدفعات المستحقة') == renew_id
 
         install_id = resolve_revenue_account_id('عقد تركيب')
         assert install_id == resolve_revenue_account_id('عقد جديد')

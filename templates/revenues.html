@@ -436,7 +436,7 @@ var OUTSTANDING_CONTRACTS = {{ (outstanding_contracts or 0)|tojson }};
 
 function isRenewalRevenueType(rt) {
   const t = String(rt || '').trim();
-  return t === 'تجديد عقد' || t === 'الدفعات المستحقة' || t === 'عقد صيانة';
+  return t === 'تجديد عقد' || t === 'دفعة عقد' || t === 'الدفعات المستحقة' || t === 'عقد صيانة';
 }
 
 function isNewContractRevenueType(rt) {
@@ -452,7 +452,7 @@ function revenueTypeForPendingOp(op) {
     const t = String(op.title || '');
     if (t.indexOf('تركيب') >= 0) return 'عقد تركيب';
     if (t.indexOf('تحديث') >= 0) return 'عقد تحديث';
-    return 'الدفعات المستحقة';
+    return 'دفعة عقد';
   }
   return REV_TYPE_BY_SOURCE[op.source_type] || 'زيارة';
 }
@@ -661,7 +661,7 @@ function escHtml(s) {
 }
 
 const REV_TYPE_BY_SOURCE = {
-  contract: 'الدفعات المستحقة',
+  contract: 'دفعة عقد',
   invoice: 'عقد جديد',
   parts_billing: 'قطع غيار',
 };
@@ -869,7 +869,7 @@ function openAddModal(preselectedCustomerId, opts) {
   const dateEl = document.getElementById('f-date');
   if (dateEl) dateEl.value = today;
   const revType = document.getElementById('f-rev-type');
-  if (revType) revType.value = 'الدفعات المستحقة';
+  if (revType) revType.value = 'دفعة عقد';
   const statusEl = document.getElementById('f-status-sel');
   if (statusEl) statusEl.value = 'محصّل';
   const taxBlock = document.querySelector('#modal-add .lc-tax-block');

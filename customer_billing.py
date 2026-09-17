@@ -19,9 +19,8 @@ CONTRACT_REVENUE_KEYWORDS = ('عقد', 'صيانة', 'ضمان', 'تجديد', '
 
 REVENUE_TYPE_OPTIONS = [
     'تجديد عقد',
-    'الدفعات المستحقة',
+    'دفعة عقد',
     'عقد جديد',
-    'عقد صيانة',
     'عقد تركيب',
     'عقد تحديث',
     'قطع غيار',
@@ -273,7 +272,7 @@ def repair_contract_payment_links(commit: bool = True) -> int:
 
 
 SOURCE_REVENUE_TYPES = {
-    'contract': 'الدفعات المستحقة',
+    'contract': 'دفعة عقد',
     'invoice': 'عقد جديد',
     'parts_billing': 'قطع غيار',
 }
@@ -518,7 +517,9 @@ def _is_renewal_revenue(revenue: Revenue) -> bool:
     rev_type = (revenue.revenue_type or '').strip()
     if 'تجديد' in rev_type:
         return True
-    if rev_type in ('تجديد عقد', 'عقد صيانة', 'صيانة', 'عقد ضمان') and revenue.contract_id:
+    if rev_type in (
+        'تجديد عقد', 'دفعة عقد', 'الدفعات المستحقة', 'عقد صيانة', 'صيانة', 'عقد ضمان',
+    ) and revenue.contract_id:
         return True
     return False
 
@@ -1019,12 +1020,12 @@ def customer_financial_totals(revenues, parts, invoices) -> dict:
         invoice_extra.append(inv)
 
     contract_rev_types = (
-        'عقد صيانة', 'عقد ضمان', 'عقد تركيب', 'عقد تحديث',
-        'تجديد عقد', 'الدفعات المستحقة', 'عقد جديد', 'صيانة',
+        'دفعة عقد', 'الدفعات المستحقة', 'عقد ضمان', 'عقد تركيب', 'عقد تحديث',
+        'تجديد عقد', 'عقد جديد', 'صيانة', 'عقد صيانة',
     )
     contract_payments = sum(
         r.total or 0 for r in revenues
-        if (r.revenue_type or 'عقد صيانة') in contract_rev_types
+        if (r.revenue_type or 'دفعة عقد') in contract_rev_types
     )
     contract_payments += sum(i.total or 0 for i in invoice_extra if i.contract_id)
 
