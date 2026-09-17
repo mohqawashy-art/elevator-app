@@ -1,0 +1,20 @@
+<div id="lc-file-viewer" class="lc-file-viewer" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="lc-file-viewer-title">
+  <div class="lc-file-viewer__backdrop" data-lc-file-viewer-close></div>
+  <div class="lc-file-viewer__panel">
+    <div class="lc-file-viewer__toolbar">
+      <div id="lc-file-viewer-title" class="lc-file-viewer__title">مرفق</div>
+      <div class="lc-file-viewer__actions">
+        <a href="#" class="btn btn-secondary btn-sm lc-file-viewer__download" download>تنزيل</a>
+        <button type="button" class="btn btn-primary btn-sm lc-file-viewer__close" data-lc-file-viewer-close>إغلاق</button>
+      </div>
+    </div>
+    <div class="lc-file-viewer__body">
+      <iframe class="lc-file-viewer__frame" title="" hidden></iframe>
+      <img class="lc-file-viewer__img" alt="" hidden>
+      <div class="lc-file-viewer__fallback" hidden>
+        <p>تعذّر عرض الملف داخل المتصفح.</p>
+        <a href="#" class="btn btn-secondary btn-sm lc-file-viewer__open">فتح الملف</a>
+      </div>
+    </div>
+  </div>
+</div>

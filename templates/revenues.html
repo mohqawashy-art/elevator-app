@@ -983,7 +983,7 @@ function viewRevenue(id) {
       <div class="view-item"><div class="view-label">نوع الإيراد</div><div class="view-val">${r.revenue_type}</div></div>
       <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${r.pay_method}</div></div>
       <div class="view-item"><div class="view-label">المرجع</div><div class="view-val" style="font-family:var(--font-en)">${r.reference||'—'}</div></div>
-      <div class="view-item"><div class="view-label">إثبات الدفع</div><div class="view-val">${window.LiftCoreMultiAttach ? LiftCoreMultiAttach.proofsHtml(r.proofs, { recordId: r.id, removeFn: 'removeRevenueProofAt', empty: '—' }) : (r.proof_url ? '<a href="'+r.proof_url+'">عرض المستند</a>' : '—')}</div></div>
+      <div class="view-item"><div class="view-label">إثبات الدفع</div><div class="view-val">${window.LiftCoreMultiAttach ? LiftCoreMultiAttach.proofsHtml(r.proofs, { recordId: r.id, removeFn: 'removeRevenueProofAt', empty: '—' }) : (r.proof_url ? '<a href="'+r.proof_url+'" class="lc-file-view">عرض المستند</a>' : '—')}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[r.status]||'badge-active'}">${r.status}</span></div></div>
       <div class="view-item"><div class="view-label">سجّله</div><div class="view-val">${escHtml(r.created_by || '—')}</div></div>
       ${r.notes?`<div class="view-item view-full"><div class="view-label">ملاحظات</div><div class="view-val">${r.notes}</div></div>`:''}

@@ -859,7 +859,7 @@ function renderExistingDocs(docs, techId) {
   list.innerHTML = docs.map(function(d) {
     return '<div class="existing-doc-item">' +
       '<div><span style="color:var(--accent)">' + esc(d.doc_type) + '</span> — ' + esc(d.title) +
-      ' <a href="' + esc(d.url) + '">عرض</a></div>' +
+      ' <a href="' + esc(d.url) + '" class="lc-file-view">عرض</a></div>' +
       '<button type="button" class="btn btn-danger btn-sm lc-admin-delete" onclick="deleteTechDocument(' + d.id + ',' + techId + ')">حذف</button>' +
     '</div>';
   }).join('');
@@ -899,13 +899,13 @@ function renderDocumentsGrid(docs, techId) {
       ? '<img src="' + esc(d.url) + '" alt="' + esc(d.title) + '">'
       : '<div class="doc-thumb-pdf">' + (d.is_pdf ? 'PDF' : '📄') + '</div>';
     html += '<div class="doc-card">' +
-      '<div class="doc-thumb" onclick="window.location.href=\'' + esc(d.url).replace(/'/g, '%27') + '\'">' + thumb + '</div>' +
+      '<div class="doc-thumb" onclick="LiftCoreFileViewer && LiftCoreFileViewer.open(\'' + esc(d.url).replace(/'/g, '%27') + '\',\'' + esc(d.title || 'مستند').replace(/'/g, '%27') + '\')">' + thumb + '</div>' +
       '<div class="doc-meta">' +
         '<div class="doc-type">' + esc(d.doc_type || 'مستند') + '</div>' +
         '<div class="doc-title">' + esc(d.title) + '</div>' +
         '<div class="doc-date">' + esc(d.uploaded_at || '') + '</div>' +
         '<div class="doc-actions">' +
-          '<a class="btn btn-secondary btn-sm" href="' + esc(d.url) + '">عرض</a> ' +
+          '<a class="btn btn-secondary btn-sm lc-file-view" href="' + esc(d.url) + '">عرض</a> ' +
           '<button type="button" class="btn btn-danger btn-sm lc-admin-delete" onclick="event.stopPropagation();deleteTechDocument(' + d.id + ',' + techId + ')">حذف</button>' +
         '</div>' +
       '</div></div>';
