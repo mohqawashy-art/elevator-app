@@ -64,6 +64,8 @@ html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
 .btn-primary:hover{background:#1e6fe8}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
+.btn-warning{background:var(--warning);color:#fff}
+.btn-warning:hover{filter:brightness(1.08)}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
 /* STATS */
@@ -321,11 +323,13 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       <button type="button" class="modal-close" onclick="closeAddModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
-      <div class="doc-type-toggle">
+      <div class="doc-type-toggle notice-only">
         <button type="button" class="doc-type-btn" id="mt-debit" onclick="setNoticeType('إشعار مدين')">إشعار مدين</button>
         <button type="button" class="doc-type-btn active" id="mt-credit" onclick="setNoticeType('إشعار دائن')">إشعار دائن</button>
       </div>
-      <div id="notice-parent-info" class="form-full" style="display:none;margin-bottom:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);font-size:12px;color:var(--text2)"></div>
+      <div id="notice-parent-info" class="form-full notice-only" style="display:none;margin-bottom:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);font-size:12px;color:var(--text2)"></div>
+      <div id="payment-parent-info" class="form-full payment-only" style="display:none;margin-bottom:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);font-size:12px;color:var(--text2)"></div>
+      <input type="hidden" id="f-modal-mode" value="notice">
       <input type="hidden" id="f-inv-type" value="إشعار دائن">
       <input type="hidden" id="f-parent-invoice-id" value="">
       <div class="form-grid">
@@ -348,9 +352,15 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <label>البيان <span>*</span></label>
           <textarea id="f-desc" placeholder="وصف الخدمة أو القطع..."></textarea>
         </div>
+        <div class="field form-full payment-only" style="display:none">
+          <label>المبلغ المراد إرجاعه <span>*</span></label>
+          <input type="number" id="f-payment-amount" step="0.01" min="0" style="direction:ltr">
+        </div>
+        <div class="notice-tax-block">
         {% with prefix='invtax', before_field_id='f-amount', total_field_id='f-total', pct_id='f-tax-pct' %}
           {% include '_tax_amount_block.html' %}
         {% endwith %}
+        </div>
         <div class="field">
           <label>طريقة الدفع</label>
           <select id="f-pay-method">
@@ -416,7 +426,8 @@ function escHtml(s) {
 
 function invoiceTabType(row) {
   const t = (row.invoice_type || '').trim();
-  return t.indexOf('سند') >= 0 ? 'receipt' : 'invoice';
+  if (t.indexOf('قبض') >= 0 || t.indexOf('صرف') >= 0) return 'receipt';
+  return 'invoice';
 }
 
 function isPaidStatus(st) {
@@ -429,7 +440,26 @@ function invoiceHasWhatsApp(i) {
 
 function canIssueNotice(i) {
   const t = String(i && i.invoice_type || '').trim();
-  return t.indexOf('سند') < 0 && t.indexOf('إشعار') < 0;
+  return t.indexOf('قبض') < 0 && t.indexOf('صرف') < 0 && t.indexOf('إشعار') < 0;
+}
+
+function isReceiptVoucherRow(i) {
+  const t = String(i && i.invoice_type || '').trim();
+  return t.indexOf('قبض') >= 0 && t.indexOf('صرف') < 0;
+}
+
+function isPaymentVoucherType(t) {
+  return String(t || '').trim().indexOf('صرف') >= 0;
+}
+
+function paymentVoucherForReceipt(receiptId) {
+  return INVOICES.find(function (x) {
+    return x.parent_invoice_id === receiptId && isPaymentVoucherType(x.invoice_type);
+  });
+}
+
+function canIssuePaymentVoucher(i) {
+  return isReceiptVoucherRow(i) && !paymentVoucherForReceipt(i.id);
 }
 
 let currentTab = 'all';
@@ -481,7 +511,7 @@ const STATUS_BADGE = {
 };
 const TYPE_BADGE = {
   'فاتورة':'badge-blue','فاتورة ضريبية':'badge-blue','فاتورة ضريبية مبسطة':'badge-purple',
-  'سند قبض':'badge-green','إشعار دائن':'badge-gold','إشعار مدين':'badge-red'
+  'سند قبض':'badge-green','سند صرف':'badge-red','إشعار دائن':'badge-gold','إشعار مدين':'badge-red'
 };
 
 function renderTable(data) {
@@ -525,6 +555,7 @@ function renderTable(data) {
           </a>
           ${invoiceHasWhatsApp(i) && window.LiftCoreFinancialWa ? LiftCoreFinancialWa.buttonHtml('invoice', i.id) : ''}
           ${canIssueNotice(i) ? '<button type="button" class="btn btn-primary btn-sm" onclick="openNoticeModal(' + i.id + ')">إشعار</button>' : ''}
+          ${canIssuePaymentVoucher(i) ? '<button type="button" class="btn btn-warning btn-sm" onclick="openPaymentModal(' + i.id + ')">سند صرف</button>' : ''}
           <button class="btn btn-secondary btn-sm btn-icon" onclick="viewInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
         </div>
       </td>
@@ -573,6 +604,21 @@ function clearFilters() {
   renderTable(filtered);
 }
 
+function setModalMode(mode) {
+  const noticeMode = mode !== 'payment';
+  document.getElementById('f-modal-mode').value = noticeMode ? 'notice' : 'payment';
+  document.querySelectorAll('.notice-only').forEach(function (el) {
+    el.style.display = noticeMode ? '' : 'none';
+  });
+  document.querySelectorAll('.payment-only').forEach(function (el) {
+    el.style.display = noticeMode ? 'none' : '';
+  });
+  const taxWrap = document.querySelector('#modal-add .notice-tax-block');
+  if (taxWrap) taxWrap.style.display = noticeMode ? '' : 'none';
+  const saveBtn = document.querySelector('#modal-add .modal-foot .btn-primary');
+  if (saveBtn) saveBtn.textContent = noticeMode ? 'حفظ الإشعار' : 'حفظ سند الصرف';
+}
+
 function setNoticeType(type) {
   const t = type || 'إشعار دائن';
   document.getElementById('f-inv-type').value = t;
@@ -585,6 +631,7 @@ function setNoticeType(type) {
 
 function openNoticeModal(invoiceId) {
   const inv = invoiceId ? INVOICES.find(x => x.id === invoiceId) : null;
+  setModalMode('notice');
   setNoticeType('إشعار دائن');
   if (typeof LcClientSelect !== 'undefined') {
     LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, inv ? inv.customer_id : '');
@@ -618,6 +665,10 @@ function openNoticeModal(invoiceId) {
     if (parentEl) parentEl.value = '';
     if (parentInfo) { parentInfo.style.display = 'none'; parentInfo.innerHTML = ''; }
   }
+  const paymentInfo = document.getElementById('payment-parent-info');
+  if (paymentInfo) { paymentInfo.style.display = 'none'; paymentInfo.innerHTML = ''; }
+  const payAmt = document.getElementById('f-payment-amount');
+  if (payAmt) payAmt.value = '';
   const d = document.getElementById('f-date');
   if (d) d.value = new Date().toISOString().slice(0, 10);
   const st = document.getElementById('f-status-sel');
@@ -630,6 +681,49 @@ function openNoticeModal(invoiceId) {
       LiftCoreTaxCalc.resetElement(taxBlock);
     }
   }
+  document.getElementById('modal-add').classList.add('open');
+}
+
+function openPaymentModal(receiptId) {
+  const rec = INVOICES.find(function (x) { return x.id === receiptId; });
+  if (!rec || !canIssuePaymentVoucher(rec)) return;
+  setModalMode('payment');
+  document.getElementById('modal-title').textContent = 'إصدار سند صرف';
+  document.getElementById('f-inv-type').value = 'سند صرف';
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, rec.customer_id);
+  } else {
+    const sel = document.getElementById('f-customer-sel');
+    if (sel) {
+      sel.innerHTML = CUSTOMERS.map(function (c) {
+        return '<option value="' + c.id + '"' + (c.id === rec.customer_id ? ' selected' : '') + '>' + escHtml(c.name) + '</option>';
+      }).join('');
+    }
+  }
+  const parentEl = document.getElementById('f-parent-invoice-id');
+  if (parentEl) parentEl.value = String(rec.id);
+  if (document.getElementById('f-contract-id')) document.getElementById('f-contract-id').value = rec.contract_id || '';
+  const paymentInfo = document.getElementById('payment-parent-info');
+  if (paymentInfo) {
+    paymentInfo.style.display = 'block';
+    paymentInfo.innerHTML = 'إرجاع مبلغ سند القبض: <strong style="color:var(--gold)">' + escHtml(rec.code) + '</strong>'
+      + ' — المبلغ الأصلي: <strong dir="ltr">' + Number(rec.total || 0).toLocaleString('en-US') + '</strong>';
+  }
+  const noticeInfo = document.getElementById('notice-parent-info');
+  if (noticeInfo) { noticeInfo.style.display = 'none'; noticeInfo.innerHTML = ''; }
+  const desc = document.getElementById('f-desc');
+  if (desc) desc.value = 'إرجاع مبلغ سند قبض ' + (rec.code || '');
+  const notes = document.getElementById('f-notes');
+  if (notes) notes.value = 'مرتبط بسند قبض ' + (rec.code || '');
+  const payAmt = document.getElementById('f-payment-amount');
+  if (payAmt) payAmt.value = Number(rec.total || 0).toFixed(2);
+  const pay = document.getElementById('f-pay-method');
+  if (pay && rec.pay_method) pay.value = rec.pay_method;
+  const d = document.getElementById('f-date');
+  if (d) d.value = new Date().toISOString().slice(0, 10);
+  const st = document.getElementById('f-status-sel');
+  if (st) st.value = 'مدفوعة';
+  clearInvoiceSource();
   document.getElementById('modal-add').classList.add('open');
 }
 
@@ -648,13 +742,23 @@ function calcTotal() {
 }
 
 function saveInvoice() {
-  var block = document.querySelector('#modal-add .lc-tax-block');
-  if (block && block._lcTaxCalc) block._lcTaxCalc.update();
+  const mode = document.getElementById('f-modal-mode')?.value || 'notice';
+  if (mode === 'payment') {
+    const payAmt = parseFloat(document.getElementById('f-payment-amount')?.value || 0);
+    if (!payAmt || payAmt <= 0) { alert('أدخل مبلغ سند الصرف'); return; }
+    const amtEl = document.getElementById('f-amount');
+    const totalEl = document.getElementById('f-total');
+    if (amtEl) amtEl.value = payAmt.toFixed(2);
+    if (totalEl) totalEl.value = payAmt.toFixed(2);
+  } else {
+    var block = document.querySelector('#modal-add .lc-tax-block');
+    if (block && block._lcTaxCalc) block._lcTaxCalc.update();
+  }
   const cust = document.getElementById('f-customer-sel');
   if (!cust || !cust.value) { alert('اختر العميل'); return; }
   if (!document.getElementById('f-date')?.value) { alert('حدد تاريخ الإصدار'); return; }
   if (!document.getElementById('f-desc')?.value.trim()) { alert('أدخل البيان'); return; }
-  if (!parseFloat(document.getElementById('f-amount')?.value || 0)) { alert('أدخل المبلغ'); return; }
+  if (mode !== 'payment' && !parseFloat(document.getElementById('f-amount')?.value || 0)) { alert('أدخل المبلغ'); return; }
   const fd = new FormData();
   [['invoice_type','f-inv-type'],['customer_id','f-customer-sel'],['invoice_date','f-date'],['due_date','f-due-date'],
    ['description','f-desc'],['amount','f-amount'],['total','f-total'],['payment_method','f-pay-method'],['status','f-status-sel'],['notes','f-notes'],

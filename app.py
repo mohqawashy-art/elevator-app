@@ -4815,16 +4815,19 @@ def get_dashboard_stats():
     in_30_days = today + timedelta(days=30)
 
     from customer_billing import (
+        is_payment_voucher,
         is_receipt_voucher,
         tenant_outstanding_collectible,
     )
 
     outstanding = tenant_outstanding_collectible(today=today)
 
-    # فواتير ضريبية فقط (بدون سندات قبض) — المتبقي = الإجمالي − المدفوع
+    # فواتير ضريبية فقط (بدون سندات قبض/صرف) — المتبقي = الإجمالي − المدفوع
     tax_invoices = [
         inv for inv in tenant_query(Invoice).all()
-        if not is_receipt_voucher(inv.invoice_type) and not getattr(inv, 'revenue_id', None)
+        if not is_receipt_voucher(inv.invoice_type)
+        and not is_payment_voucher(inv.invoice_type)
+        and not getattr(inv, 'revenue_id', None)
     ]
     total_invoices = sum(_money_round(inv.total) for inv in tax_invoices)
     paid_invoices = sum(
@@ -11847,19 +11850,32 @@ def invoice_add():
     from form_validation import invoice_amount_error
     from customer_billing import (
         contract_paid_amount,
+        is_payment_voucher,
+        is_receipt_voucher,
+        payment_voucher_for_receipt,
         split_vat_amounts,
         validate_tax_invoice_full_amount,
+        _round_money,
     )
+
+    invoice_type = (request.form.get('invoice_type') or 'فاتورة ضريبية').strip()
+    pay_voucher = is_payment_voucher(invoice_type)
 
     amount_raw = request.form.get('amount', 0)
     total_raw = request.form.get('total')
-    amount, tax, total = split_vat_amounts(
-        amount_ex_vat=amount_raw,
-        total_incl_vat=total_raw if total_raw not in (None, '') else None,
-        tax_pct=15,
-    )
-    invoice_type = request.form.get('invoice_type', 'فاتورة ضريبية')
-    amt_err = invoice_amount_error(amount)
+    if pay_voucher:
+        total = _round_money(total_raw if total_raw not in (None, '') else amount_raw)
+        amount = total
+        tax = 0.0
+    else:
+        amount, tax, total = split_vat_amounts(
+            amount_ex_vat=amount_raw,
+            total_incl_vat=total_raw if total_raw not in (None, '') else None,
+            tax_pct=15,
+        )
+    amt_err = invoice_amount_error(amount) if not pay_voucher else None
+    if pay_voucher and total <= 0.01:
+        amt_err = 'أدخل مبلغ سند الصرف'
     if amt_err:
         flash(amt_err, 'error')
         return redirect(url_for('invoices'))
@@ -11867,17 +11883,18 @@ def invoice_add():
     source_id = (request.form.get('source_id') or '').strip()
     source_id_int = int(source_id) if source_id.isdigit() else None
 
-    tax_err = validate_tax_invoice_full_amount(
-        invoice_type, total, source_type or None, source_id_int,
-    )
-    if tax_err:
-        flash(tax_err, 'error')
-        return redirect(url_for('invoices'))
-    from zatca_tenant import tax_invoice_zatca_error
-    zatca_err = tax_invoice_zatca_error(invoice_type)
-    if zatca_err:
-        flash(zatca_err, 'error')
-        return redirect(url_for('invoices'))
+    if not pay_voucher:
+        tax_err = validate_tax_invoice_full_amount(
+            invoice_type, total, source_type or None, source_id_int,
+        )
+        if tax_err:
+            flash(tax_err, 'error')
+            return redirect(url_for('invoices'))
+        from zatca_tenant import tax_invoice_zatca_error
+        zatca_err = tax_invoice_zatca_error(invoice_type)
+        if zatca_err:
+            flash(zatca_err, 'error')
+            return redirect(url_for('invoices'))
     customer_id = request.form.get('customer_id') or None
     contract_id = request.form.get('contract_id') or None
     parts_billing_id = None
@@ -11919,21 +11936,48 @@ def invoice_add():
 
     parent_raw = (request.form.get('parent_invoice_id') or '').strip()
     parent_invoice_id = int(parent_raw) if parent_raw.isdigit() else None
+    payment_revenue_id = None
     if parent_invoice_id:
         parent_inv = tenant_query(Invoice).filter_by(id=parent_invoice_id).first()
         if parent_inv:
-            if not customer_id:
+            if pay_voucher:
+                if not is_receipt_voucher(parent_inv.invoice_type):
+                    flash('سند الصرف يُصدر فقط مقابل سند قبض', 'error')
+                    return redirect(url_for('invoices'))
+                existing_pay = payment_voucher_for_receipt(parent_inv.id)
+                if existing_pay:
+                    flash(f'يوجد سند صرف {existing_pay.code} لهذا السند مسبقاً', 'error')
+                    return redirect(url_for('invoices'))
+                if total > _round_money(parent_inv.total) + 0.02:
+                    flash(
+                        f'مبلغ سند الصرف لا يجب أن يتجاوز سند القبض ({_round_money(parent_inv.total):,.2f})',
+                        'error',
+                    )
+                    return redirect(url_for('invoices'))
                 customer_id = parent_inv.customer_id
-            if not contract_id:
                 contract_id = parent_inv.contract_id
-            ref = f'إشعار على {parent_inv.code}'
-            if ref not in (notes or ''):
-                notes = (ref + (' — ' + notes if notes else '')).strip()
+                payment_revenue_id = getattr(parent_inv, 'revenue_id', None)
+                ref = f'إرجاع مبلغ سند قبض {parent_inv.code}'
+                if ref not in (notes or ''):
+                    notes = (ref + (' — ' + notes if notes else '')).strip()
+                if not description:
+                    description = ref[:300]
+            else:
+                if not customer_id:
+                    customer_id = parent_inv.customer_id
+                if not contract_id:
+                    contract_id = parent_inv.contract_id
+                ref = f'إشعار على {parent_inv.code}'
+                if ref not in (notes or ''):
+                    notes = (ref + (' — ' + notes if notes else '')).strip()
 
     due_raw = request.form.get('due_date', '').strip()
     invoice_status = request.form.get('status', 'غير مدفوعة')
     invoice_paid = 0.0
-    if source_type == 'parts_billing' and source_id:
+    if pay_voucher:
+        invoice_status = 'مدفوعة'
+        invoice_paid = total
+    elif source_type == 'parts_billing' and source_id:
         pb = tenant_query(PartsBilling).filter_by(id=int(source_id)).first()
         if pb:
             from customer_billing import _round_money
@@ -11958,13 +12002,15 @@ def invoice_add():
             else:
                 invoice_status = 'غير مدفوعة'
 
+    doc_code = next_code(Invoice, 'PYV-', digits=4) if pay_voucher else next_code(Invoice, 'INV-', digits=4)
     i = Invoice(
-        code=next_code(Invoice, 'INV-', digits=4),
+        code=doc_code,
         invoice_type=invoice_type,
         customer_id=int(customer_id) if customer_id else None,
         contract_id=int(contract_id) if contract_id else None,
         parts_billing_id=parts_billing_id,
         parent_invoice_id=parent_invoice_id,
+        revenue_id=payment_revenue_id,
         invoice_date=datetime.strptime(request.form['invoice_date'], '%Y-%m-%d').date(),
         due_date=datetime.strptime(due_raw, '%Y-%m-%d').date() if due_raw else None,
         description=description,

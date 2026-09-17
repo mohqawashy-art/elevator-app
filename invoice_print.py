@@ -88,7 +88,10 @@ def _doc_titles(invoice_type: str | None, is_tax: bool, is_receipt: bool, is_sim
         return 'إشعار دائن', 'Credit Note'
     if 'إشعار مدين' in t:
         return 'إشعار مدين', 'Debit Note'
-    if is_receipt or 'سند' in t:
+    t = (invoice_type or '').strip()
+    if 'سند صرف' in t:
+        return 'سند صرف', 'Payment Voucher'
+    if is_receipt or 'قبض' in t:
         return 'سند قبض', 'Receipt Voucher'
     if is_simplified:
         return 'فاتورة ضريبية مبسطة', 'Simplified Tax Invoice'

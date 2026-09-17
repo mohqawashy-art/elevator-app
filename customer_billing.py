@@ -328,7 +328,7 @@ def contract_paid_amount(contract_id: int) -> float:
     inv_extra = 0.0
     for inv in tenant_query(Invoice).filter_by(contract_id=contract_id).all():
         # سند القبض = نفس مبلغ الإيراد — لا يُحسب مرتين
-        if is_receipt_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
+        if is_receipt_voucher(inv.invoice_type) or is_payment_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
             continue
         # فاتورة قطع غيار مربوطة بالعقد للمرجعية — ليست سداداً لقيمة العقد
         if getattr(inv, 'parts_billing_id', None):
@@ -372,7 +372,7 @@ def contract_paid_amount(contract_id: int) -> float:
         Invoice.contract_id.is_(None),
     ).all()
     for inv in orphan_invs:
-        if is_receipt_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
+        if is_receipt_voucher(inv.invoice_type) or is_payment_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
             continue
         if getattr(inv, 'parts_billing_id', None):
             continue
@@ -651,7 +651,7 @@ def tenant_outstanding_collectible(*, today: date | None = None) -> dict:
         })
 
     for inv in tenant_query(Invoice).filter(Invoice.contract_id.is_(None)).all():
-        if is_receipt_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
+        if is_receipt_voucher(inv.invoice_type) or is_payment_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
             continue
         rem = invoice_remaining(inv)
         if rem <= 0.01:
@@ -892,8 +892,16 @@ def apply_payment_to_source(
     raise ValueError('نوع العملية غير معروف')
 
 
+def is_payment_voucher(invoice_type: str | None) -> bool:
+    t = (invoice_type or '').strip()
+    return t == 'سند صرف' or ('صرف' in t and 'قبض' not in t)
+
+
 def is_receipt_voucher(invoice_type: str | None) -> bool:
-    return 'سند' in (invoice_type or '')
+    t = (invoice_type or '').strip()
+    if is_payment_voucher(t):
+        return False
+    return t == 'سند قبض' or 'قبض' in t
 
 
 def validate_tax_invoice_full_amount(
@@ -941,6 +949,21 @@ def expected_source_total(source_type: str | None, source_id: int | None) -> flo
 
 def receipt_for_revenue(revenue_id: int) -> Invoice | None:
     return tenant_query(Invoice).filter_by(revenue_id=revenue_id).first()
+
+
+def payment_voucher_for_receipt(receipt_id: int) -> Invoice | None:
+    if not receipt_id:
+        return None
+    rows = (
+        tenant_query(Invoice)
+        .filter_by(parent_invoice_id=int(receipt_id))
+        .order_by(Invoice.id.desc())
+        .all()
+    )
+    for row in rows:
+        if is_payment_voucher(row.invoice_type):
+            return row
+    return None
 
 
 def create_receipt_voucher_for_revenue(revenue: Revenue) -> Invoice | None:
@@ -1009,7 +1032,7 @@ def customer_financial_totals(revenues, parts, invoices) -> dict:
     invoice_extra = []
     for inv in invoices:
         # سند القبض مرآة للإيراد — لا يُضاف للمجموع
-        if is_receipt_voucher(inv.invoice_type):
+        if is_receipt_voucher(inv.invoice_type) or is_payment_voucher(inv.invoice_type):
             continue
         if getattr(inv, 'revenue_id', None) and int(inv.revenue_id) in revenue_ids:
             continue
@@ -1067,7 +1090,7 @@ def build_customer_statement(customer_id: int) -> dict:
     invoiced_contract_ids: set[int] = set()
     invoiced_parts_ids: set[int] = set()
     for inv in tax_invoices:
-        if is_receipt_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
+        if is_receipt_voucher(inv.invoice_type) or is_payment_voucher(inv.invoice_type) or getattr(inv, 'revenue_id', None):
             continue
         remaining = invoice_remaining(inv)
         if inv.contract_id:
@@ -1182,6 +1205,36 @@ def build_customer_statement(customer_id: int) -> dict:
             'invoice_id': r.invoice_id,
         })
 
+    for pv in (
+        tenant_query(Invoice).filter_by(customer_id=customer_id)
+        .order_by(Invoice.invoice_date.asc(), Invoice.id.asc())
+        .all()
+    ):
+        if not is_payment_voucher(pv.invoice_type):
+            continue
+        parent = (
+            tenant_query(Invoice).filter_by(id=pv.parent_invoice_id).first()
+            if pv.parent_invoice_id else None
+        )
+        parent_code = parent.code if parent else ''
+        credits.append({
+            'date': str(pv.invoice_date or ''),
+            'code': pv.code,
+            'receipt_code': parent_code,
+            'type': pv.invoice_type or 'سند صرف',
+            'description': (
+                (pv.description or '').strip()
+                or (f'إرجاع مبلغ سند قبض {parent_code}' if parent_code else 'إرجاع مبلغ')
+            )[:200],
+            'debit': _round_money(pv.total),
+            'credit': 0,
+            'status': pv.status or '',
+            'source_type': 'payment_voucher',
+            'source_id': pv.id,
+            'receipt_id': pv.parent_invoice_id,
+            'invoice_id': None,
+        })
+
     # دفتر حركة موحّد مع رصيد جاري
     raw_lines: list[dict] = []
     for d in debits:
@@ -1197,15 +1250,15 @@ def build_customer_statement(customer_id: int) -> dict:
         })
     for c in credits:
         desc = c['description']
-        if c.get('receipt_code'):
+        if c.get('receipt_code') and c.get('source_type') != 'payment_voucher':
             desc = f"{desc} — سند {c['receipt_code']}".strip(' —')
         raw_lines.append({
             'date': c['date'],
             'code': c['code'],
             'type': c['type'],
             'description': desc,
-            'debit': 0.0,
-            'credit': c['credit'],
+            'debit': _round_money(c.get('debit') or 0),
+            'credit': _round_money(c.get('credit') or 0),
             'source_type': c['source_type'],
             'source_id': c['source_id'],
         })
@@ -1218,8 +1271,9 @@ def build_customer_statement(customer_id: int) -> dict:
         lines.append({**row, 'balance': balance})
 
     total_invoiced = _round_money(sum(d['debit'] for d in debits))
-    total_paid = _round_money(sum(c['credit'] for c in credits))
-    balance_due = max(_round_money(total_invoiced - total_paid), 0)
+    total_paid = _round_money(sum(_round_money(c.get('credit') or 0) for c in credits))
+    total_refunded = _round_money(sum(_round_money(c.get('debit') or 0) for c in credits))
+    balance_due = max(_round_money(total_invoiced - total_paid + total_refunded), 0)
     # إن وُجد رصيد دائن (دفع زائد) يظهر سالباً في running balance
     running = lines[-1]['balance'] if lines else 0.0
 

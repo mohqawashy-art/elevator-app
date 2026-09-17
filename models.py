@@ -752,7 +752,7 @@ class Invoice(TenantMixin, db.Model):
 
     id              = db.Column(db.Integer, primary_key=True)
     code            = db.Column(db.String(20), nullable=False)  # INV-0001
-    invoice_type    = db.Column(db.String(30))   # فاتورة / سند قبض / إشعار مدين / إشعار دائن
+    invoice_type    = db.Column(db.String(30))   # فاتورة / سند قبض / سند صرف / إشعار
     customer_id     = db.Column(db.Integer, db.ForeignKey('customers.id'))
     contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'))
     parts_billing_id = db.Column(db.Integer, db.ForeignKey('parts_billing.id'))
