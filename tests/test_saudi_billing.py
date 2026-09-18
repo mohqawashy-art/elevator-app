@@ -74,6 +74,52 @@ def test_receipt_voucher_created_on_revenue(client):
         assert inv.paid_amount == 5000
 
 
+def test_payment_voucher_links_to_receipt(client):
+    login_as(client, 'admin')
+    cid, contract_id, _ = _seed_customer_contract(client)
+
+    with client.application.app_context():
+        receipt = Invoice(
+            code='RCP-PY01',
+            invoice_type='سند قبض',
+            customer_id=cid,
+            contract_id=contract_id,
+            invoice_date=date.today(),
+            amount=2500,
+            tax_amount=0,
+            total=2500,
+            paid_amount=2500,
+            status='مدفوعة',
+            description='سند قبض تجريبي',
+        )
+        db.session.add(receipt)
+        db.session.commit()
+        receipt_id = receipt.id
+
+    r = client.post('/invoices/add', data={
+        'customer_id': cid,
+        'contract_id': contract_id,
+        'parent_invoice_id': receipt_id,
+        'invoice_type': 'سند صرف',
+        'invoice_date': date.today().isoformat(),
+        'description': 'إرجاع مبلغ سند قبض RCP-PY01',
+        'amount': '2500',
+        'total': '2500',
+        'status': 'مدفوعة',
+        'notes': 'مرتبط بسند قبض RCP-PY01',
+    }, follow_redirects=False)
+    assert r.status_code in (302, 303)
+
+    with client.application.app_context():
+        from customer_billing import payment_voucher_for_receipt
+        pay = payment_voucher_for_receipt(receipt_id)
+        assert pay is not None
+        assert pay.invoice_type == 'سند صرف'
+        assert pay.code.startswith('PYV-')
+        assert pay.parent_invoice_id == receipt_id
+        assert pay.total == 2500
+
+
 def test_tax_invoice_must_be_full_contract_amount(client):
     login_as(client, 'admin')
     cid, contract_id, total = _seed_customer_contract(client, total=11500.0)

@@ -5,7 +5,7 @@ from datetime import date, datetime
 
 from flask import flash, redirect, render_template, request, url_for
 
-from models import Customer, MaintenanceQuote, Technician, db
+from models import Customer, MaintenanceQuote, MaintenanceQuoteSurvey, Technician, db
 from sales import sales_bp
 from sales.maint_survey import (
     SURVEY_DONE,
@@ -122,6 +122,30 @@ def _maint_form_context(quote=None, *, selected_elevator_ids=None):
         survey_units=survey_units,
         technicians=technicians,
     )
+
+
+def _send_survey_from_form(quote: MaintenanceQuote, form) -> MaintenanceQuoteSurvey:
+    from app import next_code
+
+    tech_id = form.get('technician_id', type=int)
+    if not tech_id:
+        raise ValueError('اختر الفني لإرسال طلب المعاينة')
+    notes = (form.get('survey_notes') or '').strip()
+    return create_survey_request(
+        quote,
+        technician_id=tech_id,
+        request_notes=notes,
+        next_code_fn=next_code,
+    )
+
+
+def _maint_quote_action(form) -> str:
+    return (form.get('action') or 'save').strip()
+
+
+def _validate_maint_quote_total(quote: MaintenanceQuote, *, require_total: bool) -> None:
+    if require_total and money_round(quote.total) <= 0:
+        raise ValueError('أدخل الإجمالي شامل الضريبة')
 
 
 @sales_bp.route('/')
@@ -448,6 +472,8 @@ def maintenance_quote_new():
     from app import next_code
 
     if request.method == 'POST':
+        action = _maint_quote_action(request.form)
+        send_survey = action == 'save_send_survey'
         customer_id = request.form.get('customer_id', type=int)
         if not customer_id:
             flash('اختر العميل', 'error')
@@ -458,13 +484,23 @@ def maintenance_quote_new():
         if not quote.customer_id:
             flash('اختر العميل', 'error')
             return redirect(url_for('sales.maintenance_quote_new'))
-        if money_round(quote.total) <= 0:
-            flash('أدخل الإجمالي شامل الضريبة', 'error')
+        try:
+            _validate_maint_quote_total(quote, require_total=not send_survey)
+            db.session.add(quote)
+            db.session.flush()
+            survey = None
+            if send_survey:
+                survey = _send_survey_from_form(quote, request.form)
+            db.session.commit()
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'error')
             return redirect(url_for('sales.maintenance_quote_new'))
-        db.session.add(quote)
-        db.session.commit()
-        flash(f'تم إنشاء عرض {quote.code} — أرسل طلب فحص للفني لتحديد مواصفات المصاعد', 'success')
-        if (request.form.get('action') or '').strip() == 'save_print':
+        if send_survey and survey:
+            flash(f'تم حفظ العرض {quote.code} وإرسال طلب فحص {survey.code} للفني للمعاينة', 'success')
+        else:
+            flash(f'تم إنشاء عرض {quote.code}', 'success')
+        if action == 'save_print':
             return redirect(url_for('sales.maintenance_quote_print', quote_id=quote.id))
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
 
@@ -484,14 +520,25 @@ def maintenance_quote_edit(quote_id):
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
 
     if request.method == 'POST':
+        action = _maint_quote_action(request.form)
+        send_survey = action == 'save_send_survey'
         _apply_maint_quote_form(quote, request.form)
-        if money_round(quote.total) <= 0:
-            flash('أدخل الإجمالي شامل الضريبة', 'error')
+        try:
+            _validate_maint_quote_total(quote, require_total=not send_survey)
+            quote.updated_at = datetime.utcnow()
+            survey = None
+            if send_survey:
+                survey = _send_survey_from_form(quote, request.form)
+            db.session.commit()
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'error')
             return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
-        quote.updated_at = datetime.utcnow()
-        db.session.commit()
-        flash('تم حفظ العرض', 'success')
-        if (request.form.get('action') or '').strip() == 'save_print':
+        if send_survey and survey:
+            flash(f'تم حفظ العرض وإرسال طلب فحص {survey.code} للفني للمعاينة', 'success')
+        else:
+            flash('تم حفظ العرض', 'success')
+        if action == 'save_print':
             return redirect(url_for('sales.maintenance_quote_print', quote_id=quote.id))
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
 

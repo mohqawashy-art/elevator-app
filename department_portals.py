@@ -108,16 +108,15 @@ DEPARTMENT_PORTALS = {
         'title_en': 'Warehouses & Purchasing Platform',
         'short_title': 'المخازن والمشتريات',
         'short_title_en': 'Warehouses & Purchasing',
-        'description': 'الأصناف وحركة المخزون وطلبات الشراء وتقارير المخازن',
-        'description_en': 'Items, stock movements, purchase orders, and warehouse reports',
+        'description': 'الأصناف ورصيد أول المدة وفواتير الشراء وأذون صرف وحركة المخزن',
+        'description_en': 'Items, opening stock, purchase invoices, issue slips, and stock movements',
         'color': '#1fb87a',
         'links': (
             ('الأصناف', 'Inventory Items', '/inventory', 'inventory.read'),
             ('رصيد أول المدة', 'Opening Stock', '/warehouse/opening', 'inventory.read'),
-            ('أذون صرف', 'Issue Orders', '/warehouse/issue', 'inventory.read'),
+            ('فواتير الشراء', 'Purchase Invoices', '/warehouse/purchases', 'stock_movements.read'),
+            ('أذون صرف', 'Issue Slips', '/warehouse/issue', 'inventory.read'),
             ('حركة المخزن', 'Stock Movements', '/stock-movements', 'stock_movements.read'),
-            ('المشتريات', 'Purchases', '/warehouse/purchases', 'stock_movements.read'),
-            ('طلب شراء', 'Purchase Order', '/purchase-orders', 'purchase_orders.read'),
         ),
         'reports': (),
     },
@@ -152,7 +151,7 @@ DEPARTMENT_PORTALS = {
         'links': (
             ('الإيرادات والتحصيل', 'Revenues & Collection', '/revenues', 'revenues.read'),
             ('المصروفات', 'Expenses', '/expenses', 'expenses.read'),
-            ('الفواتير', 'Invoices', '/invoices', 'invoices.read'),
+            ('الفواتير والسندات', 'Invoices & Vouchers', '/invoices', 'invoices.read'),
             ('شجرة الحسابات', 'Chart of Accounts', '/accounts', 'revenues.read'),
             ('القيود اليومية', 'Journal Entries', '/journals', 'revenues.read'),
             ('دفتر الأستاذ', 'General Ledger', '/ledger', 'revenues.read'),
@@ -287,7 +286,13 @@ def _filter_portal_items(
         install_only = bool(flags and flags[0])
         if install_only and not install_enabled:
             continue
-        if href.startswith('/inventory') or href.startswith('/stock-movements') or href.startswith('/reports/inventory') or href.startswith('/reports/stock-movements'):
+        if (
+            href.startswith('/inventory')
+            or href.startswith('/warehouse')
+            or href.startswith('/stock-movements')
+            or href.startswith('/reports/inventory')
+            or href.startswith('/reports/stock-movements')
+        ):
             if not feature_ok('inventory'):
                 continue
         if href.startswith('/purchase-orders'):

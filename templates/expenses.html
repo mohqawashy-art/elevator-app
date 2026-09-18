@@ -581,7 +581,7 @@ function viewExpense(id) {
   document.getElementById('view-title').textContent = e.code + (e.description ? ' — ' + e.description : '');
   const proofHtml = window.LiftCoreMultiAttach
     ? LiftCoreMultiAttach.proofsHtml(e.proofs, { recordId: e.id, removeFn: 'removeExpenseProofAt', empty: '—' })
-    : (e.proof_url ? '<a href="' + escHtml(e.proof_url) + '" target="_blank" rel="noopener">عرض المستند</a>' : '—');
+    : (e.proof_url ? '<a href="' + escHtml(e.proof_url) + '" class="lc-file-view">عرض المستند</a>' : '—');
   document.getElementById('view-body').innerHTML = `
     <div class="view-grid">
       <div class="view-section">تفاصيل المصروف</div>

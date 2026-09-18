@@ -24,7 +24,7 @@
       e.stopPropagation();
     }
     if (!url || url === '#') return false;
-    window.open(withPopupParam(url), '_blank');
+    window.location.href = withPopupParam(url);
     return false;
   }
 

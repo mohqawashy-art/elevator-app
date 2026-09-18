@@ -3,7 +3,7 @@ LiftCore — Flask Application
 app.py
 """
 
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, abort, make_response, has_app_context
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, g, send_from_directory, send_file, abort, make_response, has_app_context
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice, Account
 from models import JournalEntry, JournalLine
@@ -750,6 +750,16 @@ def en_num_filter(value):
         return western_digits(value)
 
 
+@app.template_filter('inv_qty')
+def inv_qty_filter(value, unit=None):
+    from inventory_units import format_inventory_qty
+
+    try:
+        return format_inventory_qty(value, unit)
+    except (TypeError, ValueError):
+        return western_digits(value)
+
+
 @app.template_filter('en_date')
 def en_date_filter(value):
     if not value:
@@ -1473,6 +1483,8 @@ def invoice_to_js_dict(i):
 
 
 def stock_movement_to_js_dict(m, tech_names=None):
+    from inventory_warehouse import parse_stock_movement_user_notes
+
     tech_names = tech_names or {}
     return {
         'id': m.id,
@@ -1483,23 +1495,28 @@ def stock_movement_to_js_dict(m, tech_names=None):
         'movement_date': str(m.movement_date or ''),
         'direction': m.direction or '',
         'movement_type': m.movement_type or '',
-        'quantity': m.quantity or 0,
+        'quantity': float(m.quantity or 0),
+        'item_unit': (m.item.unit if m.item else '') or 'قطعة',
         'unit_price': m.unit_price or 0,
         'total_value': m.total_value or 0,
         'technician': tech_names.get(m.technician_id, '—') if m.technician_id else '—',
         'tech_id': m.technician_id,
         'reason': m.reason or '',
-        'notes': m.notes or '',
+        'reference': m.reference or '',
+        'notes': parse_stock_movement_user_notes(m.notes, m.reference) or '',
     }
 
 
 def inventory_item_js_dict(i):
+    from inventory_units import unit_allows_decimals
+
     return {
         'id': i.id,
         'code': i.code,
         'name': i.name,
         'category': i.category or '',
         'unit': i.unit or 'قطعة',
+        'qty_decimals': unit_allows_decimals(i.unit),
         'buy_price': i.buy_price or 0,
         'sell_price': i.sell_price or 0,
         'current_qty': float(i.current_qty or 0),
@@ -4798,16 +4815,19 @@ def get_dashboard_stats():
     in_30_days = today + timedelta(days=30)
 
     from customer_billing import (
+        is_payment_voucher,
         is_receipt_voucher,
         tenant_outstanding_collectible,
     )
 
     outstanding = tenant_outstanding_collectible(today=today)
 
-    # فواتير ضريبية فقط (بدون سندات قبض) — المتبقي = الإجمالي − المدفوع
+    # فواتير ضريبية فقط (بدون سندات قبض/صرف) — المتبقي = الإجمالي − المدفوع
     tax_invoices = [
         inv for inv in tenant_query(Invoice).all()
-        if not is_receipt_voucher(inv.invoice_type) and not getattr(inv, 'revenue_id', None)
+        if not is_receipt_voucher(inv.invoice_type)
+        and not is_payment_voucher(inv.invoice_type)
+        and not getattr(inv, 'revenue_id', None)
     ]
     total_invoices = sum(_money_round(inv.total) for inv in tax_invoices)
     paid_invoices = sum(
@@ -7119,7 +7139,7 @@ def _fin_proof_js_items(row) -> list[dict]:
     from attachment_paths import attachment_items
     return attachment_items(
         getattr(row, 'proof_path', None),
-        _upload_url_fast,
+        upload_view_url,
         name_fn=contract_file_display_name,
     )
 
@@ -7138,7 +7158,7 @@ def _contract_js_files(c) -> list[dict]:
     from attachment_paths import attachment_items
     return attachment_items(
         c.file_path,
-        upload_url,
+        upload_view_url,
         name_fn=contract_file_display_name,
     )
 
@@ -7162,6 +7182,68 @@ def _fin_proof_upload_dir(kind, row_id):
     path = os.path.join(FIN_PROOF_UPLOAD_ROOT, kind, str(row_id))
     os.makedirs(path, exist_ok=True)
     return path
+
+
+def _purchase_invoice_upload_dir(doc_code: str) -> str:
+    from tenant_scope import current_organization_id
+
+    org_id = current_organization_id() or 0
+    path = os.path.join(
+        app.root_path,
+        'static',
+        'uploads',
+        'purchase_invoices',
+        str(org_id),
+        str(doc_code),
+    )
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _purchase_invoice_js_attachments(doc_code: str) -> list[dict]:
+    from attachment_paths import attachment_items, serialize_attachment_paths
+    from inventory_warehouse import purchase_invoice_attachment_paths
+
+    paths = purchase_invoice_attachment_paths(doc_code)
+    if not paths:
+        return []
+    return attachment_items(
+        serialize_attachment_paths(paths),
+        upload_view_url,
+        name_fn=contract_file_display_name,
+    )
+
+
+def _add_purchase_invoice_files(doc_code: str, file_storages, existing_paths=None) -> list[str]:
+    from inventory_warehouse import purchase_invoice_attachment_paths
+
+    paths = list(existing_paths if existing_paths is not None else purchase_invoice_attachment_paths(doc_code))
+    files = [f for f in (file_storages or []) if f and getattr(f, 'filename', None)]
+    if not files:
+        return paths
+    if len(paths) + len(files) > MAX_ATTACHMENT_FILES:
+        raise ValueError(f'يمكن إرفاق حتى {MAX_ATTACHMENT_FILES} مستندات')
+    upload_dir = _purchase_invoice_upload_dir(doc_code)
+    from tenant_scope import current_organization_id
+
+    org_id = current_organization_id() or 0
+    for file_storage in files:
+        ok, err = _upload_ok(file_storage, ALLOWED_FIN_PROOF_EXT)
+        if not ok:
+            raise ValueError('مرفق الفاتورة: ' + (err or 'نوع الملف غير مسموح'))
+        file_storage.seek(0, os.SEEK_END)
+        size = file_storage.tell()
+        file_storage.seek(0)
+        if size > MAX_FIN_PROOF_BYTES:
+            raise ValueError('مرفق الفاتورة أكبر من الحد المسموح (10 ميجا)')
+        stored = _safe_stored_upload_name(
+            file_storage.filename,
+            allowed=ALLOWED_FIN_PROOF_EXT,
+            default_stem='invoice',
+        )
+        file_storage.save(os.path.join(upload_dir, stored))
+        paths.append(f'uploads/purchase_invoices/{org_id}/{doc_code}/{stored}')
+    return paths
 
 
 def _remove_fin_proof(row):
@@ -7870,7 +7952,7 @@ def technician_to_js_dict(t, *, meta: dict | None = None):
             'doc_type': d.doc_type or '',
             'title': d.title or d.file_name or '',
             'file_name': fname,
-            'url': _upload_url_fast(d.file_path) if d.file_path else '',
+            'url': upload_view_url(d.file_path) if d.file_path else '',
             'is_image': fname.lower().endswith(('.png', '.jpg', '.jpeg', '.webp')),
             'is_pdf': fname.lower().endswith('.pdf'),
             'uploaded_at': d.uploaded_at.strftime('%Y-%m-%d') if d.uploaded_at else '',
@@ -8009,6 +8091,20 @@ def _tech_dir(tech_id, sub=''):
     return path
 
 
+def _upload_subpath(relative_path: str) -> str:
+    rel = (relative_path or '').replace('\\', '/').lstrip('/')
+    if rel.startswith('static/uploads/'):
+        return rel[len('static/uploads/'):]
+    if rel.startswith('uploads/'):
+        return rel[len('uploads/'):]
+    return rel
+
+
+_VIEWABLE_UPLOAD_EXT = frozenset({
+    '.pdf', '.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.svg',
+})
+
+
 def upload_url(relative_path):
     """رابط ملف مرفوع تحت static/uploads مع cache-buster."""
     if not relative_path:
@@ -8021,10 +8117,67 @@ def upload_url(relative_path):
     return url
 
 
+def upload_view_url(relative_path):
+    """صفحة عرض مرفق (PDF/صورة) مع شريط إغلاق — بدل فتح الملف مباشرة."""
+    if not relative_path:
+        return ''
+    subpath = _upload_subpath(relative_path)
+    ext = os.path.splitext(subpath)[1].lower()
+    if ext not in _VIEWABLE_UPLOAD_EXT:
+        return upload_url(relative_path)
+    return url_for('view_upload_file', subpath=subpath)
+
+
 def _static_upload_url(relative_path):
     if not relative_path:
         return None
     return upload_url(relative_path)
+
+
+def _safe_upload_return_url(fallback=None):
+    ret = (request.args.get('return') or '').strip()
+    if ret.startswith('/') and not ret.startswith('//'):
+        return ret
+    ref = request.referrer or ''
+    base = request.url_root.rstrip('/')
+    if ref.startswith(base):
+        return ref
+    return fallback or url_for('home')
+
+
+@app.route('/view/upload/<path:subpath>')
+def view_upload_file(subpath):
+    """عرض PDF/صورة مرفوعة داخل صفحة LiftCore مع زر إغلاق."""
+    from field_auth import field_session_technician_id
+
+    if not current_user() and not field_session_technician_id():
+        if request.path.startswith('/api/') or (
+            request.accept_mimetypes.accept_json and not request.accept_mimetypes.accept_html
+        ):
+            abort(401)
+        ref = request.referrer or ''
+        base = request.url_root.rstrip('/')
+        if ref.startswith(base + '/field') or '/field/' in ref:
+            return redirect(url_for('field_login', next=request.path))
+        return redirect(url_for('login', next=request.path))
+
+    directory = os.path.join(app.root_path, 'static', 'uploads')
+    full = os.path.normpath(os.path.join(directory, subpath))
+    if not full.startswith(os.path.normpath(directory)) or not os.path.isfile(full):
+        abort(404)
+
+    mime = _guess_upload_mimetype(full)
+    if not (mime.startswith('image/') or mime == 'application/pdf'):
+        return redirect(upload_url(f'uploads/{subpath}'))
+
+    rel = f'uploads/{subpath.replace(chr(92), "/")}'
+    return render_template(
+        'file_view.html',
+        file_name=_upload_download_name(os.path.basename(full)),
+        file_url=upload_url(rel),
+        is_image=mime.startswith('image/'),
+        return_url=_safe_upload_return_url(),
+    )
 
 
 @app.route('/static/uploads/<path:subpath>')
@@ -8074,6 +8227,7 @@ def serve_upload_file(subpath):
 
 
 app.jinja_env.globals['upload_url'] = upload_url
+app.jinja_env.globals['upload_view_url'] = upload_view_url
 app.jinja_env.globals['contract_file_display_name'] = contract_file_display_name
 
 
@@ -8292,7 +8446,7 @@ def _technician_documents_json(tech):
         'doc_type': d.doc_type or '',
         'title': d.title or d.file_name or '',
         'file_name': d.file_name or '',
-        'url': _static_upload_url(d.file_path),
+        'url': upload_view_url(d.file_path) if d.file_path else '',
         'is_image': (d.mime_type or '').startswith('image/') or (
             d.file_name or ''
         ).lower().endswith(('.png', '.jpg', '.jpeg', '.webp')),
@@ -11696,19 +11850,32 @@ def invoice_add():
     from form_validation import invoice_amount_error
     from customer_billing import (
         contract_paid_amount,
+        is_payment_voucher,
+        is_receipt_voucher,
+        payment_voucher_for_receipt,
         split_vat_amounts,
         validate_tax_invoice_full_amount,
+        _round_money,
     )
+
+    invoice_type = (request.form.get('invoice_type') or 'فاتورة ضريبية').strip()
+    pay_voucher = is_payment_voucher(invoice_type)
 
     amount_raw = request.form.get('amount', 0)
     total_raw = request.form.get('total')
-    amount, tax, total = split_vat_amounts(
-        amount_ex_vat=amount_raw,
-        total_incl_vat=total_raw if total_raw not in (None, '') else None,
-        tax_pct=15,
-    )
-    invoice_type = request.form.get('invoice_type', 'فاتورة ضريبية')
-    amt_err = invoice_amount_error(amount)
+    if pay_voucher:
+        total = _round_money(total_raw if total_raw not in (None, '') else amount_raw)
+        amount = total
+        tax = 0.0
+    else:
+        amount, tax, total = split_vat_amounts(
+            amount_ex_vat=amount_raw,
+            total_incl_vat=total_raw if total_raw not in (None, '') else None,
+            tax_pct=15,
+        )
+    amt_err = invoice_amount_error(amount) if not pay_voucher else None
+    if pay_voucher and total <= 0.01:
+        amt_err = 'أدخل مبلغ إلغاء السند'
     if amt_err:
         flash(amt_err, 'error')
         return redirect(url_for('invoices'))
@@ -11716,17 +11883,18 @@ def invoice_add():
     source_id = (request.form.get('source_id') or '').strip()
     source_id_int = int(source_id) if source_id.isdigit() else None
 
-    tax_err = validate_tax_invoice_full_amount(
-        invoice_type, total, source_type or None, source_id_int,
-    )
-    if tax_err:
-        flash(tax_err, 'error')
-        return redirect(url_for('invoices'))
-    from zatca_tenant import tax_invoice_zatca_error
-    zatca_err = tax_invoice_zatca_error(invoice_type)
-    if zatca_err:
-        flash(zatca_err, 'error')
-        return redirect(url_for('invoices'))
+    if not pay_voucher:
+        tax_err = validate_tax_invoice_full_amount(
+            invoice_type, total, source_type or None, source_id_int,
+        )
+        if tax_err:
+            flash(tax_err, 'error')
+            return redirect(url_for('invoices'))
+        from zatca_tenant import tax_invoice_zatca_error
+        zatca_err = tax_invoice_zatca_error(invoice_type)
+        if zatca_err:
+            flash(zatca_err, 'error')
+            return redirect(url_for('invoices'))
     customer_id = request.form.get('customer_id') or None
     contract_id = request.form.get('contract_id') or None
     parts_billing_id = None
@@ -11766,10 +11934,50 @@ def invoice_add():
             description,
         )
 
+    parent_raw = (request.form.get('parent_invoice_id') or '').strip()
+    parent_invoice_id = int(parent_raw) if parent_raw.isdigit() else None
+    payment_revenue_id = None
+    if parent_invoice_id:
+        parent_inv = tenant_query(Invoice).filter_by(id=parent_invoice_id).first()
+        if parent_inv:
+            if pay_voucher:
+                if not is_receipt_voucher(parent_inv.invoice_type):
+                    flash('إلغاء السند يُصدر فقط مقابل سند قبض', 'error')
+                    return redirect(url_for('invoices'))
+                existing_pay = payment_voucher_for_receipt(parent_inv.id)
+                if existing_pay:
+                    flash(f'يوجد إلغاء سند {existing_pay.code} لهذا السند مسبقاً', 'error')
+                    return redirect(url_for('invoices'))
+                if total > _round_money(parent_inv.total) + 0.02:
+                    flash(
+                        f'مبلغ إلغاء السند لا يجب أن يتجاوز سند القبض ({_round_money(parent_inv.total):,.2f})',
+                        'error',
+                    )
+                    return redirect(url_for('invoices'))
+                customer_id = parent_inv.customer_id
+                contract_id = parent_inv.contract_id
+                payment_revenue_id = getattr(parent_inv, 'revenue_id', None)
+                ref = f'إرجاع مبلغ سند قبض {parent_inv.code}'
+                if ref not in (notes or ''):
+                    notes = (ref + (' — ' + notes if notes else '')).strip()
+                if not description:
+                    description = ref[:300]
+            else:
+                if not customer_id:
+                    customer_id = parent_inv.customer_id
+                if not contract_id:
+                    contract_id = parent_inv.contract_id
+                ref = f'إشعار على {parent_inv.code}'
+                if ref not in (notes or ''):
+                    notes = (ref + (' — ' + notes if notes else '')).strip()
+
     due_raw = request.form.get('due_date', '').strip()
     invoice_status = request.form.get('status', 'غير مدفوعة')
     invoice_paid = 0.0
-    if source_type == 'parts_billing' and source_id:
+    if pay_voucher:
+        invoice_status = 'مدفوعة'
+        invoice_paid = total
+    elif source_type == 'parts_billing' and source_id:
         pb = tenant_query(PartsBilling).filter_by(id=int(source_id)).first()
         if pb:
             from customer_billing import _round_money
@@ -11794,12 +12002,15 @@ def invoice_add():
             else:
                 invoice_status = 'غير مدفوعة'
 
+    doc_code = next_code(Invoice, 'PYV-', digits=4) if pay_voucher else next_code(Invoice, 'INV-', digits=4)
     i = Invoice(
-        code=next_code(Invoice, 'INV-', digits=4),
+        code=doc_code,
         invoice_type=invoice_type,
         customer_id=int(customer_id) if customer_id else None,
         contract_id=int(contract_id) if contract_id else None,
         parts_billing_id=parts_billing_id,
+        parent_invoice_id=parent_invoice_id,
+        revenue_id=payment_revenue_id,
         invoice_date=datetime.strptime(request.form['invoice_date'], '%Y-%m-%d').date(),
         due_date=datetime.strptime(due_raw, '%Y-%m-%d').date() if due_raw else None,
         description=description,
@@ -11895,12 +12106,15 @@ def inventory():
     technicians = tenant_query(Technician).filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).order_by(Technician.name).all()
     items_json = []
     for i in items:
+        from inventory_units import unit_allows_decimals
+
         row = {
             'id': i.id,
             'code': i.code or '',
             'name': i.name or '',
             'category': i.category or '',
             'unit': i.unit or 'قطعة',
+            'qty_decimals': unit_allows_decimals(i.unit),
             'current_qty': float(i.current_qty or 0),
             'min_qty': float(i.min_qty or 0),
             'buy_price': float(i.buy_price or 0),
@@ -11949,7 +12163,7 @@ def inventory_item_card(item_id):
 
 @app.route('/inventory/opening-stock', methods=['POST'])
 def inventory_opening_stock():
-    from inventory_warehouse import record_opening_stock_batch
+    from inventory_warehouse import record_opening_stock_batch, update_opening_batch
 
     movement_date = date.today()
     raw_date = (request.form.get('movement_date') or '').strip()
@@ -11960,6 +12174,7 @@ def inventory_opening_stock():
             flash('تاريخ غير صالح', 'error')
             return redirect(url_for('warehouse_opening'))
 
+    edit_doc_code = (request.form.get('edit_doc_code') or '').strip()
     notes = (request.form.get('notes') or '').strip()
     return_to = (request.form.get('return_to') or '').strip()
     item_ids = request.form.getlist('item_id')
@@ -11983,17 +12198,29 @@ def inventory_opening_stock():
         })
     if not lines_data:
         flash('أضف صنفاً واحداً على الأقل', 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_opening', edit=edit_doc_code))
         return redirect(url_for('warehouse_opening'))
 
+    if edit_doc_code and not require_admin():
+        flash('تعديل مستند رصيد أول المدة متاح لمدير النظام فقط', 'error')
+        return redirect(url_for('warehouse_opening'))
+
+    batch_kwargs = dict(
+        lines=lines_data,
+        movement_date=movement_date,
+        notes=notes,
+    )
     try:
-        doc_code, movements = record_opening_stock_batch(
-            lines=lines_data,
-            movement_date=movement_date,
-            notes=notes,
-        )
+        if edit_doc_code:
+            doc_code, movements = update_opening_batch(edit_doc_code, **batch_kwargs)
+            action = 'تحديث'
+        else:
+            doc_code, movements = record_opening_stock_batch(**batch_kwargs)
+            action = 'حفظ'
         db.session.commit()
         flash(
-            f'تم حفظ مستند رصيد أول المدة {doc_code} — {len(movements)} صنف',
+            f'تم {action} مستند رصيد أول المدة {doc_code} — {len(movements)} صنف',
             'success',
         )
         if return_to == 'item' and len(movements) == 1:
@@ -12001,23 +12228,160 @@ def inventory_opening_stock():
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_opening', edit=edit_doc_code))
     except Exception:
         db.session.rollback()
         app.logger.exception('inventory_opening_stock failed')
         flash('تعذّر تسجيل رصيد أول المدة', 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_opening', edit=edit_doc_code))
     return redirect(url_for('warehouse_opening'))
+
+
+@app.route('/inventory/opening-stock/delete/<doc_code>', methods=['POST'])
+def inventory_opening_stock_delete(doc_code):
+    from inventory_warehouse import reverse_opening_document
+
+    err = enforce_admin_delete()
+    if err:
+        return err
+    code = (doc_code or '').strip()
+    as_json = _admin_delete_wants_json()
+    try:
+        count = reverse_opening_document(code)
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        msg = str(exc)
+        if as_json:
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('not_found', 404, message_ar=msg)
+        flash(msg, 'error')
+        return redirect(url_for('warehouse_opening'))
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('inventory_opening_stock_delete failed')
+        msg = 'تعذّر حذف مستند رصيد أول المدة'
+        if as_json:
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('delete_failed', 500, message_ar=msg)
+        flash(msg, 'error')
+        return redirect(url_for('warehouse_opening'))
+    msg = f'تم حذف مستند رصيد أول المدة {code} — {count} حركة'
+    if as_json:
+        return jsonify({'ok': True, 'message': msg, 'doc_code': code, 'deleted': count})
+    flash(msg, 'success')
+    return redirect(url_for('warehouse_opening'))
+
+
+@app.route('/inventory/purchase-invoice', methods=['POST'])
+def inventory_purchase_invoice():
+    from inventory_warehouse import (
+        DEFAULT_PURCHASE_TAX_PCT,
+        purchase_invoice_attachment_paths,
+        record_purchase_invoice_batch,
+        refresh_purchase_invoice_notes,
+        update_purchase_invoice_batch,
+    )
+
+    movement_date = date.today()
+    raw_date = (request.form.get('movement_date') or '').strip()
+    if raw_date:
+        try:
+            movement_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+        except ValueError:
+            flash('تاريخ غير صالح', 'error')
+            return redirect(url_for('warehouse_purchases'))
+
+    edit_doc_code = (request.form.get('edit_doc_code') or '').strip()
+    invoice_no = (request.form.get('invoice_no') or '').strip()
+    supplier = (request.form.get('supplier') or '').strip()
+    notes = (request.form.get('notes') or '').strip()
+    try:
+        discount_approx = float(request.form.get('discount_approx') or 0)
+    except (TypeError, ValueError):
+        discount_approx = 0.0
+    try:
+        tax_pct = float(request.form.get('tax_pct') or DEFAULT_PURCHASE_TAX_PCT)
+    except (TypeError, ValueError):
+        tax_pct = DEFAULT_PURCHASE_TAX_PCT
+    item_ids = request.form.getlist('item_id')
+    quantities = request.form.getlist('quantity')
+    unit_prices = request.form.getlist('unit_price')
+    lines_data = []
+    n = max(len(item_ids), len(quantities), len(unit_prices))
+    for i in range(n):
+        item_id = item_ids[i] if i < len(item_ids) else ''
+        qty = quantities[i] if i < len(quantities) else ''
+        price = unit_prices[i] if i < len(unit_prices) else ''
+        if not item_id:
+            continue
+        lines_data.append({
+            'item_id': item_id,
+            'quantity': qty,
+            'unit_price': price,
+        })
+    if not lines_data:
+        flash('أضف صنفاً واحداً على الأقل', 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_purchases', edit=edit_doc_code))
+        return redirect(url_for('warehouse_purchases'))
+
+    batch_kwargs = dict(
+        lines=lines_data,
+        invoice_no=invoice_no,
+        movement_date=movement_date,
+        supplier=supplier,
+        notes=notes,
+        discount_approx=discount_approx,
+        tax_pct=tax_pct,
+    )
+    try:
+        if edit_doc_code:
+            doc_code, movements = update_purchase_invoice_batch(edit_doc_code, **batch_kwargs)
+            action = 'تحديث'
+        else:
+            doc_code, movements = record_purchase_invoice_batch(**batch_kwargs)
+            action = 'حفظ'
+        uploaded = [
+            f for f in request.files.getlist('attachments')
+            if f and getattr(f, 'filename', None)
+        ]
+        attachment_paths = _add_purchase_invoice_files(
+            doc_code,
+            uploaded,
+            purchase_invoice_attachment_paths(doc_code),
+        )
+        if uploaded or attachment_paths:
+            refresh_purchase_invoice_notes(
+                doc_code,
+                user_notes=notes,
+                discount_approx=discount_approx,
+                attachment_paths=attachment_paths,
+            )
+        db.session.commit()
+        flash(
+            f'تم {action} فاتورة الشراء {doc_code} — {len(movements)} صنف — فاتورة {invoice_no}',
+            'success',
+        )
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_purchases', edit=edit_doc_code))
+    except Exception:
+        db.session.rollback()
+        app.logger.exception('inventory_purchase_invoice failed')
+        flash('تعذّر تسجيل فاتورة الشراء', 'error')
+        if edit_doc_code:
+            return redirect(url_for('warehouse_purchases', edit=edit_doc_code))
+    return redirect(url_for('warehouse_purchases'))
 
 
 @app.route('/inventory/issue', methods=['POST'])
 def inventory_issue():
-    from inventory_warehouse import record_issue_authorization
-
-    try:
-        item_id = int(request.form.get('item_id') or 0)
-        quantity = float(request.form.get('quantity') or 0)
-    except (TypeError, ValueError):
-        flash('بيانات غير صالحة', 'error')
-        return redirect(url_for('warehouse_issue_page'))
+    from inventory_warehouse import record_issue_authorization, record_issue_batch, update_issue_batch
 
     target = (request.form.get('target') or '').strip()
     technician_id = request.form.get('technician_id') or None
@@ -12054,6 +12418,70 @@ def inventory_issue():
             flash('تاريخ غير صالح', 'error')
             return redirect(url_for('warehouse_issue_page'))
 
+    notes = (request.form.get('notes') or '').strip()
+    return_to = (request.form.get('return_to') or '').strip()
+    edit_doc_code = (request.form.get('edit_doc_code') or '').strip()
+    item_ids = request.form.getlist('item_id')
+    quantities = request.form.getlist('quantity')
+
+    if request.form.get('batch') == '1':
+        if edit_doc_code and not require_admin():
+            flash('تعديل إذن الصرف متاح لمدير النظام فقط', 'error')
+            return redirect(url_for('warehouse_issue_page'))
+        lines_data = []
+        n = max(len(item_ids), len(quantities))
+        for i in range(n):
+            item_id = item_ids[i] if i < len(item_ids) else ''
+            qty = quantities[i] if i < len(quantities) else ''
+            if not item_id:
+                continue
+            lines_data.append({'item_id': item_id, 'quantity': qty})
+        if not lines_data:
+            flash('أضف صنفاً واحداً على الأقل', 'error')
+            if edit_doc_code:
+                return redirect(url_for('warehouse_issue_page', edit=edit_doc_code))
+            return redirect(url_for('warehouse_issue_page'))
+        batch_kwargs = dict(
+            lines=lines_data,
+            target=target,
+            movement_date=movement_date,
+            technician_id=technician_id,
+            contract_id=contract_id,
+            install_contract_id=install_contract_id,
+            notes=notes,
+        )
+        try:
+            if edit_doc_code:
+                doc_code, movements = update_issue_batch(edit_doc_code, **batch_kwargs)
+                action = 'تحديث'
+            else:
+                doc_code, movements = record_issue_batch(**batch_kwargs)
+                action = 'حفظ'
+            db.session.commit()
+            flash(
+                f'تم {action} إذن الصرف {doc_code} — {len(movements)} صنف',
+                'success',
+            )
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'error')
+            if edit_doc_code:
+                return redirect(url_for('warehouse_issue_page', edit=edit_doc_code))
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('inventory_issue batch failed')
+            flash('تعذّر تسجيل إذن الصرف', 'error')
+            if edit_doc_code:
+                return redirect(url_for('warehouse_issue_page', edit=edit_doc_code))
+        return redirect(url_for('warehouse_issue_page'))
+
+    try:
+        item_id = int(request.form.get('item_id') or 0)
+        quantity = float(request.form.get('quantity') or 0)
+    except (TypeError, ValueError):
+        flash('بيانات غير صالحة', 'error')
+        return redirect(url_for('warehouse_issue_page'))
+
     try:
         movement = record_issue_authorization(
             item_id=item_id,
@@ -12064,11 +12492,12 @@ def inventory_issue():
             contract_id=contract_id,
             install_contract_id=install_contract_id,
             reason=(request.form.get('reason') or '').strip(),
-            notes=(request.form.get('notes') or '').strip(),
+            notes=notes,
         )
         db.session.commit()
         flash(f'تم تسجيل إذن الصرف — {movement.code}', 'success')
-        return redirect(url_for('inventory_item_card', item_id=item_id))
+        if return_to == 'item':
+            return redirect(url_for('inventory_item_card', item_id=item_id))
     except ValueError as exc:
         db.session.rollback()
         flash(str(exc), 'error')
@@ -12081,31 +12510,218 @@ def inventory_issue():
 
 @app.route('/warehouse/opening')
 def warehouse_opening():
-    from inventory_warehouse import warehouse_page_context
+    from inventory_warehouse import opening_document_for_edit, warehouse_page_context
 
-    return render_template('warehouse_opening.html', **warehouse_page_context())
+    ctx = warehouse_page_context()
+    edit_code = (request.args.get('edit') or '').strip()
+    view_code = (request.args.get('view') or '').strip()
+    edit_document = None
+    view_document = None
+    if edit_code:
+        if not require_admin():
+            flash('تعديل مستند رصيد أول المدة متاح لمدير النظام فقط', 'error')
+        else:
+            edit_document = opening_document_for_edit(edit_code)
+            if edit_document is None:
+                flash(f'مستند رصيد أول المدة «{edit_code}» غير موجود', 'error')
+    elif view_code:
+        view_document = opening_document_for_edit(view_code)
+        if view_document is None:
+            flash(f'مستند رصيد أول المدة «{view_code}» غير موجود', 'error')
+    return render_template(
+        'warehouse_opening.html',
+        edit_document=edit_document,
+        view_document=view_document,
+        **ctx,
+    )
+
+
+@app.route('/warehouse/opening/print/<doc_code>')
+def warehouse_opening_print(doc_code):
+    from inventory_warehouse import opening_print_payload
+
+    payload = opening_print_payload((doc_code or '').strip())
+    if not payload:
+        flash('مستند رصيد أول المدة غير موجود', 'error')
+        return redirect(url_for('warehouse_opening'))
+    settings = get_app_settings()
+    return render_template(
+        'warehouse_opening_print.html',
+        brand_logo_url=brand_logo_url(settings),
+        company_settings=settings,
+        **payload,
+    )
 
 
 @app.route('/warehouse/issue')
 def warehouse_issue_page():
-    from inventory_warehouse import warehouse_page_context
+    from inventory_warehouse import issue_document_for_edit, warehouse_page_context
 
-    return render_template('warehouse_issue.html', **warehouse_page_context())
+    ctx = warehouse_page_context()
+    edit_code = (request.args.get('edit') or '').strip()
+    edit_document = None
+    if edit_code:
+        if not require_admin():
+            flash('تعديل إذن الصرف متاح لمدير النظام فقط', 'error')
+        else:
+            edit_document = issue_document_for_edit(edit_code)
+            if edit_document is None:
+                flash(f'إذن الصرف «{edit_code}» غير موجود', 'error')
+    return render_template(
+        'warehouse_issue.html',
+        edit_document=edit_document,
+        **ctx,
+    )
+
+
+@app.route('/warehouse/issue/print/<doc_code>')
+def warehouse_issue_print(doc_code):
+    from inventory_warehouse import issue_print_payload
+
+    payload = issue_print_payload((doc_code or '').strip())
+    if not payload:
+        flash('إذن الصرف غير موجود', 'error')
+        return redirect(url_for('warehouse_issue_page'))
+    settings = get_app_settings()
+    return render_template(
+        'warehouse_issue_print.html',
+        brand_logo_url=brand_logo_url(settings),
+        company_settings=settings,
+        **payload,
+    )
 
 
 @app.route('/warehouse/purchases')
 def warehouse_purchases():
-    from inventory_warehouse import purchase_movements
+    from inventory_warehouse import purchase_invoice_for_edit, purchase_movements, warehouse_page_context
 
+    ctx = warehouse_page_context()
     rows = purchase_movements()
     total_qty = round(sum(r['quantity'] for r in rows), 4)
     total_val = round(sum(r['total_value'] for r in rows), 2)
+    edit_code = (request.args.get('edit') or '').strip()
+    edit_document = purchase_invoice_for_edit(edit_code) if edit_code else None
+    if edit_document:
+        edit_document['attachment_items'] = _purchase_invoice_js_attachments(edit_document['code'])
+    if edit_code and edit_document is None:
+        flash(f'فاتورة الشراء «{edit_code}» غير موجودة', 'error')
     return render_template(
         'warehouse_purchases.html',
         movements=rows,
         purchase_count=len(rows),
         purchase_total_qty=total_qty,
         purchase_total_value=total_val,
+        edit_document=edit_document,
+        **ctx,
+    )
+
+
+@app.route('/inventory/custody/print')
+def inventory_custody_print():
+    from inventory_custody import (
+        build_technician_custody_snapshot,
+        custody_report_summary,
+        filter_custody_rows,
+    )
+
+    snapshot = build_technician_custody_snapshot()
+    tech_id = request.args.get('technician_id') or None
+    if tech_id not in (None, ''):
+        try:
+            tech_id = int(tech_id)
+        except (TypeError, ValueError):
+            tech_id = None
+    else:
+        tech_id = None
+    q = (request.args.get('q') or '').strip()
+    rows = filter_custody_rows(snapshot['rows'], technician_id=tech_id, q=q)
+    summary = custody_report_summary(rows)
+    filter_parts = []
+    if tech_id:
+        tech = tenant_query(Technician).filter_by(id=tech_id).first()
+        if tech:
+            filter_parts.append(f'الفني: {tech.name}')
+    if q:
+        filter_parts.append(f'بحث: {q}')
+    settings = get_app_settings()
+    return render_template(
+        'inventory_custody_print.html',
+        rows=rows,
+        summary=summary,
+        filter_label=' · '.join(filter_parts) if filter_parts else '',
+        printed_at=datetime.now().strftime('%Y-%m-%d %H:%M'),
+        brand_logo_url=brand_logo_url(settings),
+        company_settings=settings,
+    )
+
+
+@app.route('/inventory/custody/transfer/print')
+def inventory_custody_transfer_print():
+    from inventory_custody import custody_transfer_print_payload
+
+    movement_id = request.args.get('movement_id') or None
+    payload = None
+    if movement_id not in (None, ''):
+        try:
+            payload = custody_transfer_print_payload(movement_id=int(movement_id))
+        except (TypeError, ValueError):
+            payload = None
+    else:
+        tech_id = request.args.get('technician_id') or None
+        item_id = request.args.get('item_id') or None
+        contract_id = request.args.get('contract_id') or None
+        install_contract_id = request.args.get('install_contract_id') or None
+        movement_date = None
+        raw_date = (request.args.get('movement_date') or '').strip()
+        if raw_date:
+            try:
+                movement_date = datetime.strptime(raw_date, '%Y-%m-%d').date()
+            except ValueError:
+                flash('تاريخ غير صالح', 'error')
+                return redirect(url_for('inventory'))
+        try:
+            qty = float(request.args.get('quantity') or 0)
+            item_id = int(item_id or 0)
+            tech_id = int(tech_id or 0)
+        except (TypeError, ValueError):
+            flash('بيانات الإذن غير صالحة', 'error')
+            return redirect(url_for('inventory'))
+        if contract_id not in (None, ''):
+            try:
+                contract_id = int(contract_id)
+            except (TypeError, ValueError):
+                contract_id = None
+        else:
+            contract_id = None
+        if install_contract_id not in (None, ''):
+            try:
+                install_contract_id = int(install_contract_id)
+            except (TypeError, ValueError):
+                install_contract_id = None
+        else:
+            install_contract_id = None
+        payload = custody_transfer_print_payload(
+            item_id=item_id,
+            technician_id=tech_id,
+            target=(request.args.get('target') or '').strip(),
+            quantity=qty,
+            movement_date=movement_date,
+            notes=(request.args.get('notes') or '').strip(),
+            contract_id=contract_id,
+            install_contract_id=install_contract_id,
+            draft=request.args.get('draft') == '1',
+        )
+
+    if not payload:
+        flash('تعذّر تحميل إذن التحويل', 'error')
+        return redirect(url_for('inventory'))
+    settings = get_app_settings()
+    return render_template(
+        'inventory_custody_transfer_print.html',
+        printed_at=datetime.now().strftime('%Y-%m-%d %H:%M'),
+        brand_logo_url=brand_logo_url(settings),
+        company_settings=settings,
+        **payload,
     )
 
 
@@ -12175,6 +12791,7 @@ def inventory_custody_settle():
 
     return jsonify({
         'ok': True,
+        'movement_id': movement.id,
         'movement_code': movement.code,
         'message': 'تمت تسوية العهدة',
     })
@@ -12193,9 +12810,15 @@ def inventory_edit(id):
         return redirect(url_for('inventory'))
     item.name = name
     item.category = request.form.get('category', '')
-    item.unit = request.form.get('unit', 'قطعة')
-    item.current_qty = float(request.form.get('current_qty', 0) or 0)
-    item.min_qty = float(request.form.get('min_qty', 0) or 0)
+    unit = request.form.get('unit', 'قطعة')
+    item.unit = unit
+    try:
+        from inventory_units import normalize_inventory_qty_field
+        item.current_qty = normalize_inventory_qty_field(request.form.get('current_qty', 0), unit)
+        item.min_qty = normalize_inventory_qty_field(request.form.get('min_qty', 0), unit)
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('inventory'))
     item.buy_price = float(request.form.get('buy_price', 0) or 0)
     item.sell_price = float(request.form.get('sell_price', 0) or 0)
     supplier_name = (request.form.get('supplier') or '').strip()
@@ -12222,13 +12845,21 @@ def inventory_add():
     code = (request.form.get('code') or '').strip() or next_code(InventoryItem, '#', digits=3)
     if tenant_query(InventoryItem).filter_by(code=code).first():
         code = next_code(InventoryItem, '#', digits=3)
+    unit = request.form.get('unit', 'قطعة')
+    try:
+        from inventory_units import normalize_inventory_qty_field
+        current_qty = normalize_inventory_qty_field(request.form.get('current_qty', 0), unit)
+        min_qty = normalize_inventory_qty_field(request.form.get('min_qty', 0), unit)
+    except ValueError as exc:
+        flash(str(exc), 'error')
+        return redirect(url_for('inventory'))
     item = InventoryItem(
         code=code,
         name=name,
         category=request.form.get('category', ''),
-        unit=request.form.get('unit', 'قطعة'),
-        current_qty=float(request.form.get('current_qty', 0) or 0),
-        min_qty=float(request.form.get('min_qty', 0) or 0),
+        unit=unit,
+        current_qty=current_qty,
+        min_qty=min_qty,
         buy_price=float(request.form.get('buy_price', 0) or 0),
         sell_price=float(request.form.get('sell_price', 0) or 0),
         supplier=(request.form.get('supplier') or '').strip(),
@@ -12526,7 +13157,6 @@ def _po_status_bilingual(status):
 def _apply_purchase_receipt(order):
     if order.status != 'مستلم' or order.received_at:
         return
-    from inventory_warehouse import record_purchase_receipt_movements
     from supplier_prices import find_or_create_supplier
 
     db.session.flush()
@@ -12537,7 +13167,7 @@ def _apply_purchase_receipt(order):
             order.supplier, order.supplier_phone, order.supplier_email, assign_organization,
         )
         order.supplier_id = supplier_row.id if supplier_row else None
-    record_purchase_receipt_movements(order)
+    # إدخال المخزون يتم عبر فواتير الشراء (/warehouse/purchases) — لا استلام PO تلقائي
     order.received_at = datetime.utcnow()
 
 
@@ -13557,6 +14187,14 @@ def stock_add():
     unit_price= float(request.form.get('unit_price', 0))
     movement_type = (request.form.get('movement_type') or '').strip()
 
+    blocked_inbound = (
+        movement_type in ('اضافة مخزنية (شراء)', 'فاتورة شراء')
+        or (direction == 'وارد' and movement_type == 'رصيد افتتاحي')
+    )
+    if blocked_inbound:
+        flash('إدخال الشراء ورصيد أول المدة من صفحات المخزن المخصصة فقط', 'error')
+        return redirect(url_for('stock_movements'))
+
     item = tenant_query(InventoryItem).filter_by(id=item_id).first()
     if not item:
         flash('الصنف غير موجود — اختر صنفاً من قائمة المخزون', 'error')
@@ -13564,6 +14202,13 @@ def stock_add():
 
     if qty <= 0:
         flash('أدخل كمية أكبر من صفر', 'error')
+        return redirect(url_for('stock_movements'))
+
+    try:
+        from inventory_units import normalize_inventory_qty
+        qty = normalize_inventory_qty(qty, item.unit)
+    except ValueError as exc:
+        flash(str(exc), 'error')
         return redirect(url_for('stock_movements'))
 
     if direction == 'صادر':

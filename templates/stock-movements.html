@@ -218,13 +218,14 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="filter-label">نوع الحركة</div>
         <select class="filter-select" id="f-type" onchange="applyFilters()">
           <option value="">الكل</option>
-          <option>اضافة مخزنية (شراء)</option>
+          <option>فاتورة شراء</option>
           <option>صرف لفني</option>
           <option>صرف عهدة للفني</option>
           <option>إرجاع عهدة للمخزن</option>
           <option>تسوية عهدة — عميل</option>
           <option>تسوية عهدة — مشروع</option>
           <option>صرف لمشروع / عميل</option>
+          <option>رصيد افتتاحي</option>
         </select>
       </div>
       <div class="filter-group">
@@ -300,7 +301,6 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
             <option>تسوية عهدة — عميل</option>
             <option>تسوية عهدة — مشروع</option>
             <option>صرف لمشروع / عميل</option>
-            <option>اضافة مخزنية (شراء)</option>
           </select>
         </div>
         <div class="field form-full">
@@ -418,7 +418,7 @@ function renderTable(data) {
       <td><span class="badge ${m.direction==='وارد'?'badge-active':'badge-expired'}">${D(m.direction)}</span></td>
       <td>${D(m.movement_type)}</td>
       <td>${D(m.item_name)} <span style="font-family:var(--font-en);color:var(--text3);font-size:11px">(${m.item_code})</span></td>
-      <td style="font-family:var(--font-en);text-align:center">${m.quantity}</td>
+      <td style="font-family:var(--font-en);text-align:center">${window.LcInventoryQty ? LcInventoryQty.fmt(m.quantity, m.item_unit) : m.quantity}</td>
       <td style="font-family:var(--font-en);color:var(--text1)">${D(m.total_value.toLocaleString() + ' ⃁')}</td>
       <td>${D(m.technician)}</td>
       <td style="color:var(--text3);font-size:11px">${D(m.reason||'—')}</td>
@@ -494,6 +494,8 @@ function onItemPicked() {
   if (item) {
     const priceEl = document.getElementById('m-price');
     if (priceEl && (!priceEl.value || priceEl.value === '0')) priceEl.value = item.buy_price || 0;
+    const qtyEl = document.getElementById('m-qty');
+    if (window.LcInventoryQty && qtyEl) LcInventoryQty.applyInput(qtyEl, item.unit);
     const typeEl = document.getElementById('m-type');
     const cat = (item.category || '').trim();
     const isConsumable = cat === 'مستهلكات' || cat.indexOf('مستهلك') >= 0;
@@ -550,7 +552,8 @@ function saveRecord() {
     var avail = item ? parseFloat(item.current_qty || 0) : 0;
     var need = parseFloat(qty);
     if (need > avail + 1e-9) {
-      alert('الكمية أكبر من الرصيد المتاح (' + avail + ')');
+      var availTxt = window.LcInventoryQty ? LcInventoryQty.fmt(avail, item.unit) : avail;
+      alert('الكمية أكبر من الرصيد المتاح (' + availTxt + ')');
       return;
     }
   }

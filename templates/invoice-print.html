@@ -233,6 +233,12 @@ body.page-a5 .qr-side img{width:85px;height:85px}
         {% if contract_code and contract_code != '—' %}<tr><th>رقم العقد</th><td class="ltr">{{ contract_code }}</td></tr>{% endif %}
         <tr><th>حالة السداد</th><td><span class="badge {% if is_paid %}paid{% else %}unpaid{% endif %}">{{ status }}</span></td></tr>
       </table>
+      {% elif is_payment_voucher %}
+      <table class="facts-table">
+        <tr><th>رقم تسلسلي</th><td class="ltr">{{ serial_no or irn }}</td></tr>
+        <tr><th>سند القبض المرجعي</th><td class="ltr">{{ parent_receipt_code or '—' }}</td></tr>
+        <tr><th>التاريخ</th><td>{{ invoice_date }}</td></tr>
+      </table>
       {% else %}
       <table class="facts-table">
         <tr><th>رقم المستند</th><td class="ltr">{{ irn }}</td></tr>

@@ -129,6 +129,30 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .modal-close svg{width:14px;height:14px}
 .modal-body{flex:1;overflow-y:auto;padding:22px}
 .modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;flex-shrink:0}
+.modal.modal-custody-panel{max-width:min(1180px,96vw)}
+.modal.modal-custody-settle{max-width:640px}
+.custody-summary-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:14px}
+.custody-stat{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 10px;text-align:center}
+.custody-stat .val{font-size:20px;font-weight:700;color:var(--text1);font-family:var(--font-en);line-height:1.2}
+.custody-stat .lbl{font-size:10px;color:var(--text3);margin-top:4px}
+.custody-toolbar{display:grid;grid-template-columns:minmax(220px,1fr) 190px auto auto;gap:10px;align-items:end;margin-bottom:14px;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm)}
+.custody-toolbar .search-wrap{min-width:0;margin:0}
+.custody-toolbar .filter-group{margin:0}
+.custody-toolbar .filter-select{min-width:170px}
+.custody-table-scroll{max-height:min(56vh,560px)}
+.custody-settle-btns{display:flex;flex-wrap:wrap;gap:6px}
+.custody-settle-btns .btn-sm{min-width:74px;justify-content:center}
+.modal-foot.custody-foot{justify-content:space-between;align-items:center;flex-wrap:wrap}
+.modal-foot.custody-foot .foot-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.custody-settle-summary-box{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--text2);line-height:1.7}
+@media(max-width:900px){
+  .custody-toolbar{grid-template-columns:1fr 1fr}
+  .custody-summary-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:560px){
+  .custody-toolbar{grid-template-columns:1fr}
+  .custody-summary-row{grid-template-columns:1fr 1fr}
+}
 .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .form-full{grid-column:1/-1}
 .field{display:flex;flex-direction:column;gap:6px}
@@ -337,19 +361,37 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
 <!-- MODAL: بيان عهدة الفنيين -->
 <div class="modal-overlay" id="modal-custody">
-  <div class="modal" style="max-width:920px">
+  <div class="modal modal-custody-panel">
     <div class="modal-head">
       <div class="modal-title">بيان عهدة قطع الغيار مع الفنيين</div>
       <button class="modal-close" onclick="closeModal('modal-custody')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:12px;color:var(--text2)">
-        <span>أصناف بعهدة: <strong id="cust-s-items">{{ custody_summary.items_with_custody or 0 }}</strong></span>
-        <span>فنيون: <strong id="cust-s-techs">{{ custody_summary.technicians_with_custody or 0 }}</strong></span>
-        <span>إجمالي الكميات: <strong id="cust-s-qty">{{ custody_summary.total_qty or 0 }}</strong></span>
+      <div class="custody-summary-row">
+        <div class="custody-stat"><div class="val" id="cust-s-items">{{ custody_summary.items_with_custody or 0 }}</div><div class="lbl">أصناف بعهدة</div></div>
+        <div class="custody-stat"><div class="val" id="cust-s-techs">{{ custody_summary.technicians_with_custody or 0 }}</div><div class="lbl">فنيون</div></div>
+        <div class="custody-stat"><div class="val" id="cust-s-qty">{{ custody_summary.total_qty or 0 }}</div><div class="lbl">إجمالي الكميات</div></div>
+        <div class="custody-stat"><div class="val" id="cust-s-lines">{{ custody_summary.line_count or 0 }}</div><div class="lbl">أسطر</div></div>
+      </div>
+      <div class="custody-toolbar">
+        <div class="search-wrap">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
+          <input class="search-input" type="text" id="cust-f-search" placeholder="بحث بالفني أو اسم/كود الصنف..." oninput="applyCustodyFilters()">
+        </div>
+        <div class="filter-group">
+          <div class="filter-label">الفني</div>
+          <select class="filter-select" id="cust-f-tech" onchange="applyCustodyFilters()">
+            <option value="">الكل</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="resetCustodyFilters()">مسح</button>
+        <button type="button" class="btn btn-primary btn-sm" onclick="printCustodyReport()">
+          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="14" height="14"><path d="M3 5V2h8v3M3 9H2V6h10v3h-1"/><rect x="3" y="9" width="8" height="3"/></svg>
+          طباعة البيان
+        </button>
       </div>
       <div class="table-wrap" style="margin:0">
-        <div class="table-scroll" style="max-height:420px">
+        <div class="table-scroll custody-table-scroll">
           <table>
             <thead>
               <tr>
@@ -357,7 +399,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
                 <th>كود الصنف</th>
                 <th>اسم الصنف</th>
                 <th>الكمية</th>
-                <th style="min-width:240px">تحويل العهدة</th>
+                <th style="min-width:260px">تحويل العهدة</th>
               </tr>
             </thead>
             <tbody id="custody-tbody"></tbody>
@@ -368,20 +410,24 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         العهدة تُزاد بـ «صرف عهدة للفني». التحويل إلى **عميل** يختار من **عقود الصيانة**، وإلى **مشروع** من **عقود التركيب**.
       </p>
     </div>
-    <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal('modal-custody')">إغلاق</button>
+    <div class="modal-foot custody-foot">
+      <span style="font-size:11px;color:var(--text3)">يمكن طباعة البيان مع الفلتر الحالي</span>
+      <div class="foot-actions">
+        <button type="button" class="btn btn-secondary" onclick="printCustodyReport()">طباعة البيان</button>
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-custody')">إغلاق</button>
+      </div>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modal-custody-settle">
-  <div class="modal" style="max-width:520px">
+  <div class="modal modal-custody-settle">
     <div class="modal-head">
       <div class="modal-title" id="cust-settle-title">تحويل العهدة</div>
       <button class="modal-close" onclick="closeModal('modal-custody-settle')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
-      <p id="cust-settle-summary" style="font-size:12px;color:var(--text2);margin-bottom:12px;line-height:1.6"></p>
+      <div class="custody-settle-summary-box" id="cust-settle-summary"></div>
       <div class="form-grid" style="grid-template-columns:1fr 1fr">
         <div class="field">
           <label>التاريخ</label>
@@ -409,9 +455,15 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         </div>
       </div>
     </div>
-    <div class="modal-foot">
-      <button class="btn btn-secondary" onclick="closeModal('modal-custody-settle')">إلغاء</button>
-      <button class="btn btn-primary" onclick="submitCustodySettle()">تأكيد التحويل</button>
+    <div class="modal-foot custody-foot">
+      <button type="button" class="btn btn-secondary" onclick="printCustodyTransferPermit(true)">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3" width="14" height="14"><path d="M3 5V2h8v3M3 9H2V6h10v3h-1"/><rect x="3" y="9" width="8" height="3"/></svg>
+        طباعة إذن تحويل
+      </button>
+      <div class="foot-actions">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-custody-settle')">إلغاء</button>
+        <button type="button" class="btn btn-primary" onclick="submitCustodySettle()">تأكيد التحويل</button>
+      </div>
     </div>
   </div>
 </div>
@@ -441,7 +493,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         </div>
         <div class="field">
           <label>الوحدة</label>
-          <input id="m-unit" placeholder="قطعة / متر / لتر">
+          <input id="m-unit" placeholder="قطعة / متر / لتر" oninput="syncItemQtyInputs()">
         </div>
         <div class="field">
           <label>الرصيد الحالي</label>
@@ -473,7 +525,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               {% endfor %}
             </select>
             <input id="m-supplier" placeholder="أو اكتب اسم مورد" style="flex:1;min-width:160px">
-            <a href="/suppliers" class="btn btn-secondary btn-sm" target="_blank" rel="noopener">+ مورد</a>
+            <a href="/suppliers" class="btn btn-secondary btn-sm">+ مورد</a>
           </div>
         </div>
         <div class="field form-full">
@@ -498,6 +550,7 @@ const MAINT_CONTRACTS = {{ maintenance_contracts_js | tojson }};
 const INSTALL_CONTRACTS = {{ installation_contracts_js | tojson }};
 const NEXT_CODE = {{ next_item_code | tojson }};
 var custodySettleCtx = null;
+var custodyFiltered = [];
 
 const ORDER_BADGE = { 'كافي': 'badge-green', 'منخفض': 'badge-gold', 'نافد': 'badge-red' };
 var filtered = [...ITEMS];
@@ -532,9 +585,17 @@ function updateStats() {
   set('s-ok', ok);
 }
 
-function fmtQty(n) {
+function fmtQty(n, unit) {
+  if (window.LcInventoryQty) return LcInventoryQty.fmt(n, unit);
   var q = Number(n || 0);
   return Math.abs(q - Math.round(q)) < 1e-9 ? String(Math.round(q)) : String(Math.round(q * 100) / 100);
+}
+
+function syncItemQtyInputs() {
+  if (!window.LcInventoryQty) return;
+  var unit = document.getElementById('m-unit')?.value || 'قطعة';
+  LcInventoryQty.applyInput(document.getElementById('m-balance'), unit);
+  LcInventoryQty.applyInput(document.getElementById('m-min'), unit);
 }
 
 function renderTable(data) {
@@ -558,7 +619,7 @@ function renderTable(data) {
   tbody.innerHTML = pg.rows.map(i => {
     var custodyCell = '—';
     if ((i.custody_qty || 0) > 0.01) {
-      custodyCell = '<span class="td-num" style="color:var(--warning);font-weight:600">' + fmtQty(i.custody_qty) + '</span>';
+      custodyCell = '<span class="td-num" style="color:var(--warning);font-weight:600">' + fmtQty(i.custody_qty, i.unit) + '</span>';
       if (i.custody_summary && i.custody_summary !== '—') {
         custodyCell += '<div style="font-size:11px;color:var(--text3);margin-top:2px;max-width:220px;white-space:normal">' + D(i.custody_summary) + '</div>';
       }
@@ -568,8 +629,8 @@ function renderTable(data) {
       <td class="td-code">${i.code}</td>
       <td class="td-name">${D(i.name)}</td>
       <td>${D(i.category || '—')}</td>
-      <td class="td-num">${D(i.current_qty + ' ' + (i.unit || ''))}</td>
-      <td class="td-num">${i.min_qty}</td>
+      <td class="td-num">${fmtQty(i.current_qty, i.unit)} ${D(i.unit || '')}</td>
+      <td class="td-num">${fmtQty(i.min_qty, i.unit)}</td>
       <td class="td-num">${fmt(i.buy_price)}</td>
       <td class="td-num" style="color:var(--accent)">${fmt(i.stock_value)}</td>
       <td>${D(i.supplier || '—')}</td>
@@ -619,28 +680,167 @@ function filterLow() {
   applyFilters();
 }
 
-function openCustodyModal() {
+function custodyTechnicianOptions() {
+  var seen = {};
+  var opts = [];
+  CUSTODY_ROWS.forEach(function (r) {
+    var id = String(r.technician_id || '');
+    if (!id || seen[id]) return;
+    seen[id] = true;
+    opts.push({ id: r.technician_id, name: r.technician_name || '—' });
+  });
+  opts.sort(function (a, b) {
+    return String(a.name || '').localeCompare(String(b.name || ''), 'ar');
+  });
+  return opts;
+}
+
+function updateCustodySummary(rows) {
+  var itemIds = {};
+  var techIds = {};
+  var totalQty = 0;
+  (rows || []).forEach(function (r) {
+    itemIds[String(r.item_id)] = true;
+    techIds[String(r.technician_id)] = true;
+    totalQty += Number(r.qty || 0);
+  });
+  var set = function (id, val) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
+  set('cust-s-items', Object.keys(itemIds).length);
+  set('cust-s-techs', Object.keys(techIds).length);
+  set('cust-s-qty', window.LcInventoryQty ? LcInventoryQty.fmt(totalQty) : totalQty);
+  set('cust-s-lines', (rows || []).length);
+}
+
+function applyCustodyFilters() {
+  var s = (document.getElementById('cust-f-search').value || '').trim();
+  var techId = document.getElementById('cust-f-tech').value || '';
+  custodyFiltered = CUSTODY_ROWS.filter(function (r) {
+    var matchTech = !techId || String(r.technician_id) === String(techId);
+    var matchSearch = !s || (window.LcSearch
+      ? LcSearch.match(s, [r.technician_name, r.item_name, r.item_code])
+      : [r.technician_name, r.item_name, r.item_code].join(' ').toLowerCase().indexOf(s.toLowerCase()) >= 0);
+    return matchTech && matchSearch;
+  });
+  updateCustodySummary(custodyFiltered);
+  renderCustodyTable();
+}
+
+function resetCustodyFilters() {
+  document.getElementById('cust-f-search').value = '';
+  document.getElementById('cust-f-tech').value = '';
+  applyCustodyFilters();
+}
+
+function renderCustodyTable() {
   var tbody = document.getElementById('custody-tbody');
   var D = window.lcDisp || (s => s);
   if (!tbody) return;
-  if (!CUSTODY_ROWS.length) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">لا توجد عهدة مسجّلة للفنيين</td></tr>';
-  } else {
-    tbody.innerHTML = CUSTODY_ROWS.map(function(r) {
-      var btns = '<div class="custody-settle-btns" style="display:flex;flex-wrap:wrap;gap:4px">'
-        + '<button type="button" class="btn btn-secondary btn-sm" onclick="openCustodySettle(' + r.item_id + ',' + r.technician_id + ',\'warehouse\')">→ مخزن</button>'
-        + '<button type="button" class="btn btn-secondary btn-sm" onclick="openCustodySettle(' + r.item_id + ',' + r.technician_id + ',\'client\')">→ عميل</button>'
-        + '<button type="button" class="btn btn-secondary btn-sm" onclick="openCustodySettle(' + r.item_id + ',' + r.technician_id + ',\'project\')">→ مشروع</button>'
-        + '</div>';
-      return '<tr>'
-        + '<td>' + D(r.technician_name || '—') + '</td>'
-        + '<td class="td-code">' + (r.item_code || '—') + '</td>'
-        + '<td>' + D(r.item_name || '—') + '</td>'
-        + '<td class="td-num">' + fmtQty(r.qty) + '</td>'
-        + '<td onclick="event.stopPropagation()">' + btns + '</td>'
-        + '</tr>';
+  if (!custodyFiltered.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px">'
+      + (CUSTODY_ROWS.length ? 'لا توجد نتائج مطابقة للفلتر' : 'لا توجد عهدة مسجّلة للفنيين')
+      + '</td></tr>';
+    return;
+  }
+  tbody.innerHTML = custodyFiltered.map(function (r) {
+    var btns = '<div class="custody-settle-btns" style="display:flex;flex-wrap:wrap;gap:4px">'
+      + '<button type="button" class="btn btn-secondary btn-sm" onclick="openCustodySettle(' + r.item_id + ',' + r.technician_id + ',\'warehouse\')">→ مخزن</button>'
+      + '<button type="button" class="btn btn-secondary btn-sm" onclick="openCustodySettle(' + r.item_id + ',' + r.technician_id + ',\'client\')">→ عميل</button>'
+      + '<button type="button" class="btn btn-secondary btn-sm" onclick="openCustodySettle(' + r.item_id + ',' + r.technician_id + ',\'project\')">→ مشروع</button>'
+      + '</div>';
+    return '<tr>'
+      + '<td>' + D(r.technician_name || '—') + '</td>'
+      + '<td class="td-code">' + (r.item_code || '—') + '</td>'
+      + '<td>' + D(r.item_name || '—') + '</td>'
+      + '<td class="td-num">' + fmtQty(r.qty) + '</td>'
+      + '<td onclick="event.stopPropagation()">' + btns + '</td>'
+      + '</tr>';
+  }).join('');
+}
+
+function openInternalPrint(url) {
+  if (window.LiftCoreNav && LiftCoreNav.openTab) LiftCoreNav.openTab(url);
+  else window.location.href = url + (url.indexOf('?') >= 0 ? '&' : '?') + 'popup=1';
+}
+
+function printCustodyReport() {
+  var params = new URLSearchParams();
+  var s = (document.getElementById('cust-f-search').value || '').trim();
+  var techId = document.getElementById('cust-f-tech').value || '';
+  if (techId) params.set('technician_id', techId);
+  if (s) params.set('q', s);
+  var qs = params.toString();
+  openInternalPrint('/inventory/custody/print' + (qs ? ('?' + qs) : ''));
+}
+
+function buildCustodySettlePayload(validateContracts) {
+  if (!custodySettleCtx) return null;
+  var qty = parseFloat(document.getElementById('cust-settle-qty').value);
+  if (!qty || qty <= 0) {
+    alert('أدخل كمية صحيحة');
+    return null;
+  }
+  if (qty > custodySettleCtx.max_qty + 1e-9) {
+    alert('الكمية أكبر من العهدة المتاحة (' + custodySettleCtx.max_qty + ')');
+    return null;
+  }
+  var payload = {
+    item_id: custodySettleCtx.item_id,
+    technician_id: custodySettleCtx.technician_id,
+    target: custodySettleCtx.target,
+    quantity: qty,
+    movement_date: document.getElementById('cust-settle-date').value,
+    notes: (document.getElementById('cust-settle-notes').value || '').trim(),
+  };
+  if (custodySettleCtx.target === 'client') {
+    var maintId = document.getElementById('cust-settle-maint-contract').value;
+    if (validateContracts && !maintId) {
+      alert('اختر عقد الصيانة من سجل العقود');
+      return null;
+    }
+    if (maintId) payload.contract_id = maintId;
+  }
+  if (custodySettleCtx.target === 'project') {
+    var installId = document.getElementById('cust-settle-install-contract').value;
+    if (validateContracts && !installId) {
+      alert('اختر عقد التركيب / المشروع');
+      return null;
+    }
+    if (installId) payload.install_contract_id = installId;
+  }
+  return payload;
+}
+
+function printCustodyTransferPermit(isDraft) {
+  var payload = buildCustodySettlePayload(true);
+  if (!payload) return;
+  var params = new URLSearchParams();
+  params.set('item_id', payload.item_id);
+  params.set('technician_id', payload.technician_id);
+  params.set('target', payload.target);
+  params.set('quantity', payload.quantity);
+  if (payload.movement_date) params.set('movement_date', payload.movement_date);
+  if (payload.notes) params.set('notes', payload.notes);
+  if (payload.contract_id) params.set('contract_id', payload.contract_id);
+  if (payload.install_contract_id) params.set('install_contract_id', payload.install_contract_id);
+  if (isDraft) params.set('draft', '1');
+  openInternalPrint('/inventory/custody/transfer/print?' + params.toString());
+}
+
+function openCustodyModal() {
+  var sel = document.getElementById('cust-f-tech');
+  if (sel) {
+    sel.innerHTML = '<option value="">الكل</option>' + custodyTechnicianOptions().map(function (t) {
+      return '<option value="' + t.id + '">' + (t.name || '—') + '</option>';
     }).join('');
   }
+  document.getElementById('cust-f-search').value = '';
+  if (sel) sel.value = '';
+  custodyFiltered = CUSTODY_ROWS.slice();
+  updateCustodySummary(custodyFiltered);
+  renderCustodyTable();
   document.getElementById('modal-custody').classList.add('open');
 }
 
@@ -677,9 +877,11 @@ function openCustodySettle(itemId, techId, target) {
     max_qty: row.qty,
   };
   document.getElementById('cust-settle-title').textContent = cfg.title;
-  document.getElementById('cust-settle-summary').textContent =
-    (row.technician_name || '—') + ' · ' + (row.item_code || '') + ' ' + (row.item_name || '') +
-    ' — متاح: ' + fmtQty(row.qty);
+  document.getElementById('cust-settle-summary').innerHTML =
+    '<strong>' + (row.technician_name || '—') + '</strong><br>'
+    + '<span style="font-family:var(--font-en)">' + (row.item_code || '—') + '</span> '
+    + (row.item_name || '—')
+    + '<br><span style="color:var(--warning);font-weight:600">متاح: ' + fmtQty(row.qty) + '</span>';
   document.getElementById('cust-settle-date').value = new Date().toISOString().slice(0, 10);
   document.getElementById('cust-settle-qty').value = String(row.qty);
   document.getElementById('cust-settle-qty').max = String(row.qty);
@@ -704,31 +906,8 @@ function openCustodySettle(itemId, techId, target) {
 }
 
 function submitCustodySettle() {
-  if (!custodySettleCtx) return;
-  var qty = parseFloat(document.getElementById('cust-settle-qty').value);
-  if (!qty || qty <= 0) { alert('أدخل كمية صحيحة'); return; }
-  if (qty > custodySettleCtx.max_qty + 1e-9) {
-    alert('الكمية أكبر من العهدة المتاحة (' + custodySettleCtx.max_qty + ')');
-    return;
-  }
-  var payload = {
-    item_id: custodySettleCtx.item_id,
-    technician_id: custodySettleCtx.technician_id,
-    target: custodySettleCtx.target,
-    quantity: qty,
-    movement_date: document.getElementById('cust-settle-date').value,
-    notes: (document.getElementById('cust-settle-notes').value || '').trim(),
-  };
-  if (custodySettleCtx.target === 'client') {
-    var maintId = document.getElementById('cust-settle-maint-contract').value;
-    if (!maintId) { alert('اختر عقد الصيانة من سجل العقود'); return; }
-    payload.contract_id = maintId;
-  }
-  if (custodySettleCtx.target === 'project') {
-    var installId = document.getElementById('cust-settle-install-contract').value;
-    if (!installId) { alert('اختر عقد التركيب / المشروع'); return; }
-    payload.install_contract_id = installId;
-  }
+  var payload = buildCustodySettlePayload(true);
+  if (!payload) return;
   fetch('/inventory/custody/settle', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -738,6 +917,12 @@ function submitCustodySettle() {
     .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
     .then(function (res) {
       if (!res.ok || !res.j.ok) throw new Error((res.j && res.j.error) || 'fail');
+      if (res.j.movement_id) {
+        closeModal('modal-custody-settle');
+        closeModal('modal-custody');
+        openInternalPrint('/inventory/custody/transfer/print?movement_id=' + res.j.movement_id);
+        return;
+      }
       closeModal('modal-custody-settle');
       closeModal('modal-custody');
       window.location.reload();
@@ -765,6 +950,7 @@ function openModal(editId) {
     document.getElementById('m-supplier-select').value = '';
     document.getElementById('m-notes').value = '';
   }
+  syncItemQtyInputs();
   modal.classList.add('open');
 }
 
@@ -821,6 +1007,7 @@ function editItem(id) {
   document.getElementById('m-location').value = i.location || '';
   setInvSupplierField(i.supplier || '');
   document.getElementById('m-notes').value = i.notes || '';
+  syncItemQtyInputs();
 }
 
 function saveRecord() {

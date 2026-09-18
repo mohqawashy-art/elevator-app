@@ -307,10 +307,12 @@ def _append_bank_details(lines: list[str], settings: Settings | None) -> None:
 
 
 def invoice_whatsapp_eligible(invoice) -> bool:
-    """أي فاتورة/مستند ضريبي (ليس سند قبض) — يمكن إرساله واتساب."""
+    """أي فاتورة/مستند ضريبي (ليس سند قبض/صرف) — يمكن إرساله واتساب."""
     if not invoice:
         return False
-    if 'سند' in (invoice.invoice_type or ''):
+    from customer_billing import is_payment_voucher, is_receipt_voucher
+    inv_type = invoice.invoice_type or ''
+    if is_receipt_voucher(inv_type) or is_payment_voucher(inv_type):
         return False
     return not _is_cancelled_status(invoice.status)
 

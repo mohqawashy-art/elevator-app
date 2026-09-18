@@ -48,13 +48,16 @@
           'onclick="' + escHtml(opts.onRemove) + '(' + Number(opts.recordId) + ',' + idx + ')" title="حذف">×</button>';
       }
       return '<div class="lc-attach-existing-item" style="display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap">' +
-        '<a href="' + escHtml(url) + '" target="_blank" rel="noopener" style="font-size:12px">📎 ' + escHtml(name) + '</a>' +
+        '<a href="' + escHtml(url) + '" class="lc-file-view" style="font-size:12px">📎 ' + escHtml(name) + '</a>' +
         delBtn +
         '</div>';
     }).join('');
     container.innerHTML = '<div style="font-size:12px;color:var(--text3);margin-bottom:4px">' + escHtml(label) + '</div>' + html;
     if (opts.hintAfter) {
       container.innerHTML += '<div style="font-size:11px;color:var(--text3);margin-top:6px">' + escHtml(opts.hintAfter) + '</div>';
+    }
+    if (global.LiftCoreFileViewer && global.LiftCoreFileViewer.bindLinks) {
+      global.LiftCoreFileViewer.bindLinks(container);
     }
   }
 
@@ -80,7 +83,7 @@
         adminDel = ' <button type="button" class="btn btn-danger btn-sm lc-admin-delete" onclick="' +
           opts.removeFn + '(' + Number(opts.recordId) + ',' + idx + ')">حذف</button>';
       }
-      return '<a href="' + escHtml(url) + '" target="_blank" rel="noopener">' + escHtml(name) + '</a>' + adminDel;
+      return '<a href="' + escHtml(url) + '" class="lc-file-view">' + escHtml(name) + '</a>' + adminDel;
     }).join('<br>');
   }
 

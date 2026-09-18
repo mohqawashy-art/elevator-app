@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+{% include 'partials/liftcore_boot.html' %}
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>رصيد أول المدة {{ doc_code }}</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--navy:#1a3a5c;--line:#d5dee8;--muted:#6b7c93}
+body{
+  font-family:Arial,'IBM Plex Sans Arabic','Traditional Arabic',Tahoma,sans-serif;
+  color:var(--navy);background:#eef2f7;font-size:12px;
+  -webkit-print-color-adjust:exact;print-color-adjust:exact;
+}
+@page{size:A4 portrait;margin:10mm}
+.toolbar{
+  position:fixed;top:0;left:0;right:0;z-index:99;background:#333;color:#fff;
+  padding:10px 16px;display:flex;justify-content:space-between;align-items:center;font-size:13px;
+}
+.toolbar button,.toolbar a{border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-weight:600;text-decoration:none}
+.toolbar .print{background:#f0a500;color:#000}
+.toolbar .back{background:#555;color:#fff}
+.doc{
+  width:210mm;max-width:210mm;margin:56px auto 24px;background:#fff;
+  border:1px solid var(--line);box-shadow:0 8px 32px rgba(26,58,92,.12);padding:12mm 10mm;
+}
+@media print{
+  .toolbar{display:none!important}
+  body{background:#fff}
+  .doc{margin:0;border:none;box-shadow:none;width:100%;max-width:none;padding:0}
+}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:3px solid var(--navy);padding-bottom:12px;margin-bottom:14px}
+.head-brand img{max-width:140px;max-height:70px;object-fit:contain}
+.head-title{text-align:left;direction:ltr}
+.head-title h1{font-size:22px;color:var(--navy);margin-bottom:4px}
+.head-title .code{font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;color:var(--navy)}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;margin-bottom:14px;font-size:11px}
+.meta-row{display:flex;gap:8px;align-items:baseline}
+.meta-label{color:var(--muted);min-width:88px}
+.meta-value{font-weight:600;color:var(--navy)}
+.meta-value.ltr{direction:ltr;font-family:'DM Sans',sans-serif}
+.sec-title{background:var(--navy);color:#fff;font-size:11px;font-weight:700;padding:6px 10px;margin-bottom:0}
+.lines{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:14px}
+.lines th,.lines td{border:1px solid var(--line);padding:7px 8px;text-align:center;vertical-align:middle}
+.lines th{background:#f4f7fb;color:var(--navy);font-size:10px}
+.lines td.name{text-align:right}
+.lines td.num{direction:ltr;font-family:'DM Sans',sans-serif;font-weight:600}
+.totals{display:flex;justify-content:flex-end;margin-top:4px}
+.totals-box{min-width:260px;border:1px solid var(--line);padding:10px 12px;background:#fafcfe}
+.totals-row{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-size:12px}
+.totals-row.main{border-top:1px dashed var(--line);margin-top:6px;padding-top:8px;font-size:14px;font-weight:700;color:var(--navy)}
+.notes{margin-top:14px;font-size:11px;color:var(--muted);line-height:1.6}
+.signatures{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px;padding-top:12px}
+.sig-box{text-align:center;font-size:11px}
+.sig-title{font-weight:700;margin-bottom:36px;color:var(--navy)}
+.sig-line{border-top:1px solid #999;width:80%;margin:0 auto;padding-top:6px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="toolbar no-print">
+  <span>طباعة مستند رصيد أول المدة {{ doc_code }}</span>
+  <div>
+    <a class="back" href="{{ url_for('warehouse_opening') }}">← رصيد أول المدة</a>
+    <button type="button" class="print" onclick="window.print()">طباعة</button>
+  </div>
+</div>
+
+<div class="doc">
+  <div class="head">
+    <div class="head-brand">
+      {% if brand_logo_url %}<img src="{{ brand_logo_url }}" alt="Logo">{% endif %}
+      <div style="margin-top:8px;font-size:11px;font-weight:700">{{ company_settings.company_name if company_settings else 'LiftCore' }}</div>
+    </div>
+    <div class="head-title">
+      <h1>مستند رصيد أول المدة</h1>
+      <div class="code">{{ doc_code }}</div>
+    </div>
+  </div>
+
+  <div class="meta-grid">
+    <div class="meta-row">
+      <span class="meta-label">التاريخ</span>
+      <span class="meta-value ltr">{{ movement_date }}</span>
+    </div>
+    <div class="meta-row">
+      <span class="meta-label">عدد الأصناف</span>
+      <span class="meta-value ltr">{{ line_count }}</span>
+    </div>
+    <div class="meta-row">
+      <span class="meta-label">أرقام الفواتير</span>
+      <span class="meta-value ltr">{{ invoice_summary }}</span>
+    </div>
+    <div class="meta-row">
+      <span class="meta-label">إجمالي الكمية</span>
+      <span class="meta-value ltr">{{ total_qty }}</span>
+    </div>
+  </div>
+
+  <div class="sec-title">تفاصيل الأصناف</div>
+  <table class="lines">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>الكود</th>
+        <th>الصنف</th>
+        <th>الوحدة</th>
+        <th>الكمية</th>
+        <th>سعر الوحدة</th>
+        <th>الإجمالي</th>
+        <th>رقم الفاتورة</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for line in lines %}
+      <tr>
+        <td class="num">{{ loop.index }}</td>
+        <td class="num">{{ line.code }}</td>
+        <td class="name">{{ line.name }}</td>
+        <td>{{ line.unit }}</td>
+        <td class="num">{{ line.quantity }}</td>
+        <td class="num">{{ '%.2f'|format(line.unit_price) }}</td>
+        <td class="num">{{ '%.2f'|format(line.total_value) }}</td>
+        <td class="num">{{ line.invoice_no }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="totals">
+    <div class="totals-box">
+      <div class="totals-row">
+        <span>إجمالي الكميات</span>
+        <span class="num">{{ total_qty }}</span>
+      </div>
+      <div class="totals-row main">
+        <span>إجمالي القيمة</span>
+        <span class="num">{{ '%.2f'|format(total_value) }} ر.س</span>
+      </div>
+    </div>
+  </div>
+
+  {% if notes and notes != '—' %}
+  <div class="notes"><strong>ملاحظات:</strong> {{ notes }}</div>
+  {% endif %}
+
+  <div class="signatures">
+    <div class="sig-box">
+      <div class="sig-title">أمين المخزن</div>
+      <div class="sig-line">التوقيع</div>
+    </div>
+    <div class="sig-box">
+      <div class="sig-title">الاعتماد</div>
+      <div class="sig-line">التوقيع</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

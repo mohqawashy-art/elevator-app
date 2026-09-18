@@ -17,7 +17,7 @@
     { path: '/contracts', label: 'إضافة عقد', addFn: 'openAddModal' },
     { path: '/faults', label: 'تسجيل عطل', addFn: 'openAddModal' },
     { path: '/maintenance-visits', label: 'جدولة زيارة', addFn: 'openAddModal' },
-    { path: '/invoices', label: 'إنشاء فاتورة', addFn: 'openAddModal' },
+    { path: '/invoices', label: 'إصدار إشعار', addFn: 'openNoticeModal' },
     { path: '/revenues', label: 'تسجيل إيراد', addFn: 'openAddModal' },
     { path: '/expenses', label: 'إضافة مصروف', addFn: 'openModal' },
     { path: '/technicians', label: 'إضافة فني', addFn: 'openAddModal' },
@@ -138,6 +138,7 @@
       if (typeof fn === 'function') {
         try {
           if (page.path === '/revenues') fn(null);
+          else if (page.addArg) fn(page.addArg);
           else fn();
           toast(page.label + ' (' + keyLabel + ')');
           return true;

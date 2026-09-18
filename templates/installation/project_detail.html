@@ -39,7 +39,7 @@
       <div class="page-actions">
         <a href="/installation/projects" class="btn btn-secondary btn-sm">← المشاريع</a>
         <a href="#project-card" class="btn btn-primary btn-sm">كارت المشروع المالي</a>
-        <a href="/installation/projects/{{ project.id }}/card/print" class="btn btn-secondary btn-sm" target="_blank">طباعة الكارت المالي</a>
+        <a href="/installation/projects/{{ project.id }}/card/print" class="btn btn-secondary btn-sm lc-open-tab">طباعة الكارت المالي</a>
         {% if card and card.install_contract %}
         <a href="/installation/contracts/{{ card.install_contract.id }}" class="btn btn-secondary btn-sm">كارت عقد التركيب</a>
         {% endif %}
@@ -110,7 +110,7 @@
           {% if card.install_contract %}
           <a href="/installation/contracts/{{ card.install_contract.id }}" class="btn btn-secondary btn-sm">كارت عقد التركيب →</a>
           {% endif %}
-          <a href="/installation/projects/{{ project.id }}/card/print" class="btn btn-secondary btn-sm" target="_blank">طباعة الكارت المالي</a>
+          <a href="/installation/projects/{{ project.id }}/card/print" class="btn btn-secondary btn-sm lc-open-tab">طباعة الكارت المالي</a>
         </span>
       </div>
       {% if card.schema_error %}
@@ -144,7 +144,7 @@
           </label>
           <button type="submit" class="btn btn-primary btn-sm">حفظ الربط</button>
           {% if customer_contracts %}
-          <a href="{% if project.contract_id %}/contracts/{{ project.contract_id }}/open{% else %}#{% endif %}" id="pc-open-contract" class="btn btn-secondary btn-sm" target="_blank" rel="noopener" {% if not project.contract_id %}hidden{% endif %}>فتح العقد</a>
+          <a href="{% if project.contract_id %}/contracts/{{ project.contract_id }}/open{% else %}#{% endif %}" id="pc-open-contract" class="btn btn-secondary btn-sm" {% if not project.contract_id %}hidden{% endif %}>فتح العقد</a>
           {% endif %}
         </form>
         {% if not customer_contracts %}
@@ -442,7 +442,7 @@
       </div>
       {% else %}
       <p style="font-size:13px;color:var(--text3);margin:0">
-        لم يُربط المشروع بعميل مسجّل بعد. أضف العميل في <a href="/clients" target="_blank">صفحة العملاء</a> ثم اختره عند حفظ عرض السعر.
+        لم يُربط المشروع بعميل مسجّل بعد. أضف العميل في <a href="/clients">صفحة العملاء</a> ثم اختره عند حفظ عرض السعر.
       </p>
       {% endif %}
     </div>
@@ -496,7 +496,7 @@
             <td><span class="badge badge-ok">{{ q.status }}</span></td>
             <td style="font-family:var(--font-en)">{{ '{:,.0f}'.format(q.grand_total) }} ر.س</td>
             <td style="white-space:nowrap">
-              <a href="/installation/quotes/{{ q.id }}/print" class="btn btn-secondary btn-sm" target="_blank">طباعة</a>
+              <a href="/installation/quotes/{{ q.id }}/print" class="btn btn-secondary btn-sm lc-open-tab">طباعة</a>
               <a href="#project-card" class="btn btn-secondary btn-sm">كارت المشروع</a>
               {% if project.execution_active %}
               <a href="/installation/projects/{{ project.id }}/execution" class="btn btn-primary btn-sm">تنفيذ المشروع</a>
@@ -537,7 +537,7 @@
             <td style="font-family:var(--font-en)">{{ '{:,.0f}'.format(q.grand_total or 0) }} ر.س</td>
             <td style="white-space:nowrap">
               <a href="{{ url_for('installation.project_quote', project_id=project.id, quotation_id=q.id) }}" class="btn btn-secondary btn-sm">تعديل</a>
-              <a href="/installation/quotes/{{ q.id }}/print" class="btn btn-secondary btn-sm" target="_blank">طباعة</a>
+              <a href="/installation/quotes/{{ q.id }}/print" class="btn btn-secondary btn-sm lc-open-tab">طباعة</a>
               {% if q.status in ('مُرسل', 'تفاوض') %}
               <form method="post" action="/installation/projects/{{ project.id }}/quotes/{{ q.id }}/approve" style="display:inline" onsubmit="return confirm('تسجيل موافقة العميل على هذا العرض؟')">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

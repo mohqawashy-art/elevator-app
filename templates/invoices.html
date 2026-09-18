@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 {% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LiftCore — الفواتير</title>
+<title>LiftCore — الفواتير والسندات</title>
 <link rel="stylesheet" href="/static/customer_profile.css">
 <link rel="stylesheet" href="/static/tax_calc.css">
 <script src="/static/customer_profile.js"></script>
@@ -64,6 +64,10 @@ html[dir="ltr"] .nav-item.active::before{right:auto;left:-8px}
 .btn-primary:hover{background:#1e6fe8}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .btn-secondary:hover{background:var(--bg4);color:var(--text1);border-color:var(--border2)}
+.btn-warning{background:var(--warning);color:#fff}
+.btn-warning:hover{filter:brightness(1.08)}
+.btn-danger{background:rgba(224,72,72,.15);color:var(--danger);border:1px solid rgba(224,72,72,.28)}
+.btn-danger:hover{background:rgba(224,72,72,.28);color:#fff}
 .btn-sm{padding:5px 10px;font-size:12px}
 .btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r-sm)}
 /* STATS */
@@ -117,6 +121,18 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .pagination{display:flex;gap:4px}
 .page-btn{width:30px;height:30px;border-radius:var(--r-sm);background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--trans)}
 .page-btn:hover,.page-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.lc-notice-menu-wrap{position:relative;display:inline-flex}
+.lc-notice-menu{
+  position:absolute;top:calc(100% + 6px);inset-inline-start:0;min-width:170px;
+  background:var(--bg2);border:1px solid var(--border2);border-radius:var(--r-sm);
+  box-shadow:0 12px 32px rgba(0,0,0,.35);padding:6px;z-index:120;display:none;
+}
+.lc-notice-menu.open{display:block}
+.lc-notice-menu button{
+  width:100%;text-align:start;border:none;background:none;color:var(--text1);
+  padding:9px 12px;border-radius:var(--r-sm);font-size:13px;cursor:pointer;font-family:var(--font-ar);
+}
+.lc-notice-menu button:hover{background:var(--bg3);color:var(--accent)}
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s}
 .modal-overlay.open{opacity:1;pointer-events:all}
@@ -183,7 +199,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 </nav>
 </aside>
 <div class="main">
-  {% set page_title = 'الفواتير' %}
+  {% set page_title = 'الفواتير والسندات' %}
   {% include 'partials/app_header.html' %}
 
 
@@ -214,16 +230,12 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 
     {% include 'partials/flash_messages.html' %}
     <div class="page-header">
-      <div class="page-title">الفواتير وسندات القبض <span id="invoices-count" data-i18n-skip></span></div>
+      <div class="page-title">الفواتير والسندات <span id="invoices-count" data-i18n-skip></span></div>
       <div class="page-actions">
         {% with report_url=url_for('report_invoices'), report_label='تقرير الفواتير' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
         <button class="btn btn-secondary btn-sm" onclick="exportCSV()">
           <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 10v2h10v-2M7 2v7M4.5 6.5L7 9l2.5-2.5"/></svg>
           تصدير
-        </button>
-        <button class="btn btn-primary btn-sm" onclick="openAddModal()">
-          <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><circle cx="7" cy="7" r="6"/><line x1="7" y1="4" x2="7" y2="10"/><line x1="4" y1="7" x2="10" y2="7"/></svg>
-          إضافة مستند
         </button>
       </div>
     </div>
@@ -309,28 +321,27 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 <div class="modal-overlay" id="modal-add">
   <div class="modal" style="max-width:720px">
     <div class="modal-head">
-      <span class="modal-title" id="modal-title">إضافة فاتورة جديدة</span>
+      <span class="modal-title" id="modal-title">إصدار إشعار</span>
       <button type="button" class="modal-close" onclick="closeAddModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
     </div>
     <div class="modal-body">
-      <div class="doc-type-toggle">
-        <button type="button" class="doc-type-btn active" id="mt-invoice" onclick="setDocType('فاتورة ضريبية')">فاتورة ضريبية (B2B)</button>
-        <button type="button" class="doc-type-btn" id="mt-simple" onclick="setDocType('فاتورة ضريبية مبسطة')">فاتورة مبسطة (B2C)</button>
-        <button type="button" class="doc-type-btn" id="mt-receipt" onclick="setDocType('سند قبض')">سند قبض</button>
+      <div class="doc-type-toggle notice-only">
+        <button type="button" class="doc-type-btn" id="mt-debit" onclick="setNoticeType('إشعار مدين')">إشعار مدين</button>
+        <button type="button" class="doc-type-btn active" id="mt-credit" onclick="setNoticeType('إشعار دائن')">إشعار دائن</button>
       </div>
+      <div id="notice-parent-info" class="form-full notice-only" style="display:none;margin-bottom:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);font-size:12px;color:var(--text2)"></div>
+      <div id="payment-parent-info" class="form-full payment-only" style="display:none;margin-bottom:12px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);font-size:12px;color:var(--text2)"></div>
+      <input type="hidden" id="f-modal-mode" value="notice">
+      <input type="hidden" id="f-inv-type" value="إشعار دائن">
+      <input type="hidden" id="f-parent-invoice-id" value="">
       <div class="form-grid">
         <div class="field form-full">
           <label>العميل <span>*</span></label>
-          <select id="f-customer-sel" onchange="onInvoiceCustomerChange()"><option value="">اختر العميل</option></select>
+          <select id="f-customer-sel"><option value="">اختر العميل</option></select>
         </div>
         <input type="hidden" id="f-source-type" value="">
         <input type="hidden" id="f-source-id" value="">
         <input type="hidden" id="f-contract-id" value="">
-        <div class="form-full" id="inv-billable-wrap" style="display:none;margin-bottom:12px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">عمليات جاهزة للفوترة — فاتورة بالمبلغ الكامل</div>
-          <div id="inv-billable-hint" style="font-size:11px;color:var(--warning);margin-bottom:8px"></div>
-          <div id="inv-billable-list" style="max-height:240px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"></div>
-        </div>
         <div class="field">
           <label>تاريخ الإصدار <span>*</span></label>
           <input type="date" lang="en-GB" id="f-date" style="direction:ltr">
@@ -343,9 +354,15 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <label>البيان <span>*</span></label>
           <textarea id="f-desc" placeholder="وصف الخدمة أو القطع..."></textarea>
         </div>
+        <div class="field form-full payment-only" style="display:none">
+          <label>المبلغ المراد إرجاعه <span>*</span></label>
+          <input type="number" id="f-payment-amount" step="0.01" min="0" style="direction:ltr">
+        </div>
+        <div class="notice-tax-block">
         {% with prefix='invtax', before_field_id='f-amount', total_field_id='f-total', pct_id='f-tax-pct' %}
           {% include '_tax_amount_block.html' %}
         {% endwith %}
+        </div>
         <div class="field">
           <label>طريقة الدفع</label>
           <select id="f-pay-method">
@@ -368,12 +385,11 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <label>ملاحظات</label>
           <textarea id="f-notes" placeholder="ملاحظات إضافية"></textarea>
         </div>
-        <input type="hidden" id="f-inv-type" value="فاتورة ضريبية">
       </div>
     </div>
     <div class="modal-foot">
       <button type="button" class="btn btn-secondary" onclick="closeAddModal()">إلغاء</button>
-      <button type="button" class="btn btn-primary" onclick="saveInvoice()">حفظ</button>
+      <button type="button" class="btn btn-primary" onclick="saveInvoice()">حفظ الإشعار</button>
     </div>
   </div>
 </div>
@@ -389,22 +405,6 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
       <button type="button" class="lc-wa-btn lc-wa-btn-text" id="view-wa-btn" style="display:none" onclick="LiftCoreFinancialWa.request('invoice', currentViewId)">طلب سداد واتساب</button>
       <button type="button" class="btn btn-secondary" id="view-print-btn" style="display:none" onclick="printInvoice(currentViewId)">طباعة</button>
       <button type="button" class="btn btn-secondary" onclick="closeModal('modal-view')">إغلاق</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modal-delete">
-  <div class="modal" style="max-width:400px">
-    <div class="modal-head">
-      <span class="modal-title">تأكيد الحذف</span>
-      <button type="button" class="modal-close" onclick="closeModal('modal-delete')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
-    </div>
-    <div class="modal-body"><p style="color:var(--text2)">هل أنت متأكد من حذف هذا المستند؟</p>
-      {% include 'partials/admin_delete_fields.html' %}
-    </div>
-    <div class="modal-foot">
-      <button type="button" class="btn btn-secondary" onclick="closeModal('modal-delete')">إلغاء</button>
-      <button type="button" class="btn btn-danger lc-admin-delete" onclick="confirmDelete()">حذف</button>
     </div>
   </div>
 </div>
@@ -428,7 +428,8 @@ function escHtml(s) {
 
 function invoiceTabType(row) {
   const t = (row.invoice_type || '').trim();
-  return t.indexOf('سند') >= 0 ? 'receipt' : 'invoice';
+  if (t.indexOf('قبض') >= 0 || t.indexOf('صرف') >= 0) return 'receipt';
+  return 'invoice';
 }
 
 function isPaidStatus(st) {
@@ -439,10 +440,36 @@ function invoiceHasWhatsApp(i) {
   return i && (i.invoice_type || '').indexOf('سند') < 0 && (i.status || '').indexOf('ملغ') < 0;
 }
 
+function canIssueNotice(i) {
+  const t = String(i && i.invoice_type || '').trim();
+  return t.indexOf('قبض') < 0 && t.indexOf('صرف') < 0 && t.indexOf('إشعار') < 0;
+}
+
+function isReceiptVoucherRow(i) {
+  const t = String(i && i.invoice_type || '').trim();
+  return t.indexOf('قبض') >= 0 && t.indexOf('صرف') < 0;
+}
+
+function isPaymentVoucherType(t) {
+  return String(t || '').trim().indexOf('صرف') >= 0;
+}
+
+function invoiceTypeLabel(t) {
+  return isPaymentVoucherType(t) ? 'إلغاء سند' : String(t || '');
+}
+
+function paymentVoucherForReceipt(receiptId) {
+  return INVOICES.find(function (x) {
+    return x.parent_invoice_id === receiptId && isPaymentVoucherType(x.invoice_type);
+  });
+}
+
+function canIssuePaymentVoucher(i) {
+  return isReceiptVoucherRow(i) && !paymentVoucherForReceipt(i.id);
+}
+
 let currentTab = 'all';
-let currentDeleteId = null;
 var filtered = [...INVOICES];
-let billableOps = [];
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'invoice_date',
   defaultDir: 'asc',
@@ -489,7 +516,8 @@ const STATUS_BADGE = {
   'متأخرة':'badge-expired','ملغاة':'badge-cancelled'
 };
 const TYPE_BADGE = {
-  'فاتورة':'badge-blue','فاتورة ضريبية':'badge-blue','فاتورة ضريبية مبسطة':'badge-purple','سند قبض':'badge-green','إشعار دائن':'badge-gold'
+  'فاتورة':'badge-blue','فاتورة ضريبية':'badge-blue','فاتورة ضريبية مبسطة':'badge-purple',
+  'سند قبض':'badge-green','سند صرف':'badge-red','إشعار دائن':'badge-gold','إشعار مدين':'badge-red'
 };
 
 function renderTable(data) {
@@ -518,7 +546,7 @@ function renderTable(data) {
   tbody.innerHTML = pg.rows.map(i => `
     <tr onclick="viewInvoice(${i.id})">
       <td class="td-code">${escHtml(i.code)}</td>
-      <td><span class="badge ${TYPE_BADGE[i.invoice_type]||'badge-blue'}">${escHtml(D(i.invoice_type))}</span></td>
+      <td><span class="badge ${TYPE_BADGE[i.invoice_type]||'badge-blue'}">${escHtml(D(invoiceTypeLabel(i.invoice_type)))}</span></td>
       <td>${escHtml(D(LC ? LC.name(i.customer, i.customer_name_en) : i.customer))} ${i.contract!=='—'?'/ '+escHtml(i.contract):''}</td>
       <td class="lc-date" style="direction:ltr">${escHtml(i.invoice_date)}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${escHtml(D(i.description||'—'))}</td>
@@ -532,9 +560,9 @@ function renderTable(data) {
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M3 4V2h8v2M3 10H1V6h12v4h-2M3 8h8v4H3V8z"/></svg>
           </a>
           ${invoiceHasWhatsApp(i) && window.LiftCoreFinancialWa ? LiftCoreFinancialWa.buttonHtml('invoice', i.id) : ''}
-          <button class="btn btn-secondary btn-sm btn-icon" onclick="viewInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
-          <button class="btn btn-secondary btn-sm btn-icon" onclick="editInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M9.5 2.5l2 2-7 7H2.5v-2l7-7z"/></svg></button>
-          <button class="btn btn-danger btn-sm btn-icon lc-admin-delete" onclick="deleteInvoice(${i.id})"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 4h10M5 4V2.5h4V4M3 4l.7 7.5h6.6L11 4"/></svg></button>
+          ${canIssueNotice(i) ? '<button type="button" class="btn btn-primary btn-sm" onclick="openNoticeModal(' + i.id + ')">إشعار</button>' : ''}
+          <button class="btn btn-secondary btn-sm btn-icon" onclick="viewInvoice(${i.id})" title="عرض"><svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M1 7s2-5 6-5 6 5 6 5-2 5-6 5-6-5-6-5z"/><circle cx="7" cy="7" r="2"/></svg></button>
+          ${canIssuePaymentVoucher(i) ? '<button type="button" class="btn btn-danger btn-sm" onclick="openPaymentModal(' + i.id + ')">إلغاء سند</button>' : ''}
         </div>
       </td>
     </tr>`).join('');
@@ -582,154 +610,136 @@ function clearFilters() {
   renderTable(filtered);
 }
 
-function isReceiptType(t) {
-  return (t || '').indexOf('سند') >= 0;
+function setModalMode(mode) {
+  const noticeMode = mode !== 'payment';
+  document.getElementById('f-modal-mode').value = noticeMode ? 'notice' : 'payment';
+  document.querySelectorAll('.notice-only').forEach(function (el) {
+    el.style.display = noticeMode ? '' : 'none';
+  });
+  document.querySelectorAll('.payment-only').forEach(function (el) {
+    el.style.display = noticeMode ? 'none' : '';
+  });
+  const taxWrap = document.querySelector('#modal-add .notice-tax-block');
+  if (taxWrap) taxWrap.style.display = noticeMode ? '' : 'none';
+  const saveBtn = document.querySelector('#modal-add .modal-foot .btn-primary');
+  if (saveBtn) saveBtn.textContent = noticeMode ? 'حفظ الإشعار' : 'حفظ إلغاء السند';
 }
-function isTaxInvoiceType(t) {
-  return !isReceiptType(t);
-}
-function isSimpleTaxType(t) {
-  return (t || '').indexOf('مبسطة') >= 0;
-}
-function setDocType(t) {
+
+function setNoticeType(type) {
+  const t = type || 'إشعار دائن';
   document.getElementById('f-inv-type').value = t;
-  document.getElementById('mt-invoice').classList.toggle('active', isTaxInvoiceType(t) && !isSimpleTaxType(t));
-  const ms = document.getElementById('mt-simple');
-  if (ms) ms.classList.toggle('active', isSimpleTaxType(t));
-  document.getElementById('mt-receipt').classList.toggle('active', isReceiptType(t));
+  document.getElementById('modal-title').textContent = 'إصدار ' + t;
+  const debitBtn = document.getElementById('mt-debit');
+  const creditBtn = document.getElementById('mt-credit');
+  if (debitBtn) debitBtn.classList.toggle('active', t === 'إشعار مدين');
+  if (creditBtn) creditBtn.classList.toggle('active', t === 'إشعار دائن');
 }
+
+function openNoticeModal(invoiceId) {
+  const inv = invoiceId ? INVOICES.find(x => x.id === invoiceId) : null;
+  setModalMode('notice');
+  setNoticeType('إشعار دائن');
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, inv ? inv.customer_id : '');
+  } else {
+    const sel = document.getElementById('f-customer-sel');
+    if (sel) {
+      sel.innerHTML = '<option value="">اختر العميل</option>' + CUSTOMERS.map(c =>
+        '<option value="' + c.id + '"' + (inv && c.id === inv.customer_id ? ' selected' : '') + '>' + escHtml(c.name) + '</option>'
+      ).join('');
+    }
+  }
+  ['f-desc','f-notes','f-amount','f-due-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  clearInvoiceSource();
+  const parentEl = document.getElementById('f-parent-invoice-id');
+  const parentInfo = document.getElementById('notice-parent-info');
+  if (inv) {
+    if (parentEl) parentEl.value = String(inv.id);
+    if (document.getElementById('f-contract-id')) document.getElementById('f-contract-id').value = inv.contract_id || '';
+    if (parentInfo) {
+      parentInfo.style.display = 'block';
+      parentInfo.innerHTML = 'مرجع الإشعار: <strong style="color:var(--accent)">' + escHtml(inv.code) + '</strong>'
+        + (inv.description ? ' — ' + escHtml(inv.description) : '');
+    }
+    const desc = document.getElementById('f-desc');
+    if (desc) desc.value = 'إشعار على ' + (inv.code || 'فاتورة') + (inv.description ? ' — ' + inv.description : '');
+    const notes = document.getElementById('f-notes');
+    if (notes) notes.value = 'مرتبط بالفاتورة ' + (inv.code || '');
+    const pay = document.getElementById('f-pay-method');
+    if (pay && inv.pay_method) pay.value = inv.pay_method;
+  } else {
+    if (parentEl) parentEl.value = '';
+    if (parentInfo) { parentInfo.style.display = 'none'; parentInfo.innerHTML = ''; }
+  }
+  const paymentInfo = document.getElementById('payment-parent-info');
+  if (paymentInfo) { paymentInfo.style.display = 'none'; paymentInfo.innerHTML = ''; }
+  const payAmt = document.getElementById('f-payment-amount');
+  if (payAmt) payAmt.value = '';
+  const d = document.getElementById('f-date');
+  if (d) d.value = new Date().toISOString().slice(0, 10);
+  const st = document.getElementById('f-status-sel');
+  if (st) st.value = 'غير مدفوعة';
+  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock && window.LiftCoreTaxCalc) {
+    if (inv && inv.total != null && LiftCoreTaxCalc.loadInclusiveElement) {
+      LiftCoreTaxCalc.loadInclusiveElement(taxBlock, inv.total, 15);
+    } else {
+      LiftCoreTaxCalc.resetElement(taxBlock);
+    }
+  }
+  document.getElementById('modal-add').classList.add('open');
+}
+
+function openPaymentModal(receiptId) {
+  const rec = INVOICES.find(function (x) { return x.id === receiptId; });
+  if (!rec || !canIssuePaymentVoucher(rec)) return;
+  setModalMode('payment');
+  document.getElementById('modal-title').textContent = 'إلغاء سند قبض';
+  document.getElementById('f-inv-type').value = 'سند صرف';
+  if (typeof LcClientSelect !== 'undefined') {
+    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, rec.customer_id);
+  } else {
+    const sel = document.getElementById('f-customer-sel');
+    if (sel) {
+      sel.innerHTML = CUSTOMERS.map(function (c) {
+        return '<option value="' + c.id + '"' + (c.id === rec.customer_id ? ' selected' : '') + '>' + escHtml(c.name) + '</option>';
+      }).join('');
+    }
+  }
+  const parentEl = document.getElementById('f-parent-invoice-id');
+  if (parentEl) parentEl.value = String(rec.id);
+  if (document.getElementById('f-contract-id')) document.getElementById('f-contract-id').value = rec.contract_id || '';
+  const paymentInfo = document.getElementById('payment-parent-info');
+  if (paymentInfo) {
+    paymentInfo.style.display = 'block';
+    paymentInfo.innerHTML = 'إرجاع مبلغ سند القبض: <strong style="color:var(--gold)">' + escHtml(rec.code) + '</strong>'
+      + ' — المبلغ الأصلي: <strong dir="ltr">' + Number(rec.total || 0).toLocaleString('en-US') + '</strong>';
+  }
+  const noticeInfo = document.getElementById('notice-parent-info');
+  if (noticeInfo) { noticeInfo.style.display = 'none'; noticeInfo.innerHTML = ''; }
+  const desc = document.getElementById('f-desc');
+  if (desc) desc.value = 'إرجاع مبلغ سند قبض ' + (rec.code || '');
+  const notes = document.getElementById('f-notes');
+  if (notes) notes.value = 'مرتبط بسند قبض ' + (rec.code || '');
+  const payAmt = document.getElementById('f-payment-amount');
+  if (payAmt) payAmt.value = Number(rec.total || 0).toFixed(2);
+  const pay = document.getElementById('f-pay-method');
+  if (pay && rec.pay_method) pay.value = rec.pay_method;
+  const d = document.getElementById('f-date');
+  if (d) d.value = new Date().toISOString().slice(0, 10);
+  const st = document.getElementById('f-status-sel');
+  if (st) st.value = 'مدفوعة';
+  clearInvoiceSource();
+  document.getElementById('modal-add').classList.add('open');
+}
+
+function closeAddModal() { closeModal('modal-add'); }
 
 function clearInvoiceSource() {
   ['f-source-type','f-source-id','f-contract-id'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
-  document.querySelectorAll('#inv-billable-list tr.lc-op-row').forEach(row => { row.classList.remove('selected'); });
-}
-
-function onInvoiceCustomerChange() {
-  const cid = document.getElementById('f-customer-sel')?.value;
-  const wrap = document.getElementById('inv-billable-wrap');
-  const list = document.getElementById('inv-billable-list');
-  const hint = document.getElementById('inv-billable-hint');
-  clearInvoiceSource();
-  billableOps = [];
-  if (!cid) { if (wrap) wrap.style.display = 'none'; return; }
-  if (wrap) wrap.style.display = 'block';
-  if (list) list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">جاري التحميل...</p>';
-  fetch('/api/customers/' + cid + '/billable-ops', { credentials: 'same-origin' })
-    .then(r => {
-      if (!r.ok) throw new Error(String(r.status));
-      return r.json();
-    })
-    .then(data => {
-      billableOps = data.operations || [];
-      if (hint) hint.textContent = billableOps.length
-        ? ('يوجد ' + billableOps.length + ' عملية — اختر صفاً لإصدار فاتورة بالمبلغ الكامل')
-        : 'لا توجد عمليات بدون فاتورة — أنشئ عقداً أو عملية قطع أولاً';
-      renderBillableOps();
-    })
-    .catch(() => {
-      if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل الإيرادات — حدّث الصفحة وحاول مرة أخرى</p>';
-    });
-}
-
-function renderBillableOps() {
-  const list = document.getElementById('inv-billable-list');
-  if (!list) return;
-  if (!billableOps.length) {
-    list.innerHTML = '<p style="padding:12px;font-size:12px;color:var(--text3)">لا توجد عمليات جاهزة للفوترة.</p>';
-    return;
-  }
-  list.innerHTML = `
-    <table class="lc-ops-pick-table">
-      <thead>
-        <tr>
-          <th>الكود</th>
-          <th>التاريخ</th>
-          <th>النوع / البيان</th>
-          <th>المبلغ (قبل الضريبة)</th>
-          <th>الإجمالي</th>
-          <th>محصّل</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${billableOps.map((op, idx) => `
-          <tr class="lc-op-row" data-op-idx="${idx}" onclick="selectBillableOp(${idx})">
-            <td class="lc-code">${escHtml(op.code)}</td>
-            <td class="lc-num">${escHtml(op.date)}</td>
-            <td>${escHtml(op.title)} — ${escHtml(op.description)}<div style="font-size:10px;color:var(--text3);margin-top:2px">${escHtml(op.hint || '')}</div></td>
-            <td class="lc-num">${Number(op.amount_before_tax || 0).toLocaleString('en-US')}</td>
-            <td class="lc-num" style="color:var(--success);font-weight:600">${Number(op.total || 0).toLocaleString('en-US')}</td>
-            <td class="lc-num">${Number(op.paid || 0).toLocaleString('en-US')}</td>
-          </tr>`).join('')}
-      </tbody>
-    </table>`;
-}
-
-function selectBillableOp(idx) {
-  const op = billableOps[idx];
-  if (!op) return;
-  document.getElementById('f-source-type').value = op.source_type;
-  document.getElementById('f-source-id').value = op.source_id;
-  document.getElementById('f-contract-id').value = op.contract_id || '';
-  const accountDesc = op.invoice_description || op.description || '';
-  document.getElementById('f-desc').value = accountDesc;
-  const invDate = document.getElementById('f-date');
-  if (invDate && op.date) invDate.value = op.date;
-  const inclusiveTotal = Number(op.remaining != null ? op.remaining : (op.total || 0));
-  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock && window.LiftCoreTaxCalc) {
-    if (LiftCoreTaxCalc.loadInclusiveElement) LiftCoreTaxCalc.loadInclusiveElement(taxBlock, inclusiveTotal, 15);
-    else LiftCoreTaxCalc.loadElement(taxBlock, inclusiveTotal / 1.15, 15);
-  } else {
-    const amt = document.getElementById('f-amount');
-    if (amt) amt.value = (inclusiveTotal / 1.15).toFixed(2);
-    calcTotal();
-  }
-  const st = document.getElementById('f-status-sel');
-  if (st) {
-    if (op.collected || (op.paid || 0) >= (op.total || 0) - 0.01) st.value = 'مدفوعة';
-    else if ((op.paid || 0) > 0.01) st.value = 'مدفوع جزئياً';
-    else st.value = 'غير مدفوعة';
-  }
-  const pay = document.getElementById('f-pay-method');
-  if (pay && op.payment_method) pay.value = op.payment_method;
-  const notes = document.getElementById('f-notes');
-  if (notes && !notes.value.trim() && op.code) {
-    notes.value = 'مرتبط بـ ' + op.code;
-  }
-  const hintEl = document.getElementById('inv-billable-hint');
-  if (hintEl) {
-    hintEl.textContent = op.hint || ('تم اختيار ' + (op.code || '') + ' — فاتورة بالمبلغ الكامل');
-  }
-  document.querySelectorAll('#inv-billable-list tr.lc-op-row').forEach(row => {
-    row.classList.toggle('selected', String(row.dataset.opIdx) === String(idx));
-  });
-}
-
-function closeAddModal() { closeModal('modal-add'); }
-
-function openAddModal() {
-  document.getElementById('modal-title').textContent = 'إضافة فاتورة جديدة';
-  document.getElementById('modal-add').dataset.editId = '';
-  if (typeof LcClientSelect !== 'undefined') {
-    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, '');
-  } else {
-    const sel = document.getElementById('f-customer-sel');
-    if (sel) sel.innerHTML = '<option value="">اختر العميل</option>' + CUSTOMERS.map(c => `<option value="${c.id}">${escHtml(c.name)}</option>`).join('');
-  }
-  ['f-desc','f-notes','f-amount','f-due-date'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
-  clearInvoiceSource();
-  billableOps = [];
-  const wrap = document.getElementById('inv-billable-wrap');
-  if (wrap) wrap.style.display = 'none';
-  setDocType('فاتورة ضريبية');
-  const d = document.getElementById('f-date');
-  if (d) d.value = new Date().toISOString().slice(0, 10);
-  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock && window.LiftCoreTaxCalc) LiftCoreTaxCalc.resetElement(taxBlock);
-  document.getElementById('modal-add').classList.add('open');
 }
 
 function calcTotal() {
@@ -738,52 +748,30 @@ function calcTotal() {
 }
 
 function saveInvoice() {
-  var block = document.querySelector('#modal-add .lc-tax-block');
-  if (block && block._lcTaxCalc) block._lcTaxCalc.update();
-  const editId = document.getElementById('modal-add').dataset.editId;
+  const mode = document.getElementById('f-modal-mode')?.value || 'notice';
+  if (mode === 'payment') {
+    const payAmt = parseFloat(document.getElementById('f-payment-amount')?.value || 0);
+    if (!payAmt || payAmt <= 0) { alert('أدخل مبلغ إلغاء السند'); return; }
+    const amtEl = document.getElementById('f-amount');
+    const totalEl = document.getElementById('f-total');
+    if (amtEl) amtEl.value = payAmt.toFixed(2);
+    if (totalEl) totalEl.value = payAmt.toFixed(2);
+  } else {
+    var block = document.querySelector('#modal-add .lc-tax-block');
+    if (block && block._lcTaxCalc) block._lcTaxCalc.update();
+  }
   const cust = document.getElementById('f-customer-sel');
   if (!cust || !cust.value) { alert('اختر العميل'); return; }
   if (!document.getElementById('f-date')?.value) { alert('حدد تاريخ الإصدار'); return; }
   if (!document.getElementById('f-desc')?.value.trim()) { alert('أدخل البيان'); return; }
-  if (!parseFloat(document.getElementById('f-amount')?.value || 0)) { alert('أدخل المبلغ'); return; }
+  if (mode !== 'payment' && !parseFloat(document.getElementById('f-amount')?.value || 0)) { alert('أدخل المبلغ'); return; }
   const fd = new FormData();
   [['invoice_type','f-inv-type'],['customer_id','f-customer-sel'],['invoice_date','f-date'],['due_date','f-due-date'],
    ['description','f-desc'],['amount','f-amount'],['total','f-total'],['payment_method','f-pay-method'],['status','f-status-sel'],['notes','f-notes'],
-   ['source_type','f-source-type'],['source_id','f-source-id'],['contract_id','f-contract-id']
+   ['source_type','f-source-type'],['source_id','f-source-id'],['contract_id','f-contract-id'],['parent_invoice_id','f-parent-invoice-id']
   ].forEach(([f,i]) => { const el = document.getElementById(i); if (el) fd.append(f, el.value); });
-  fetch(editId ? `/invoices/edit/${editId}` : '/invoices/add', { method:'POST', body:fd })
+  fetch('/invoices/add', { method:'POST', body:fd })
     .then(() => window.location.reload());
-}
-
-function editInvoice(id) {
-  const i = INVOICES.find(x => x.id === id);
-  if (!i) return;
-  document.getElementById('modal-title').textContent = 'تعديل المستند';
-  document.getElementById('modal-add').dataset.editId = id;
-  const sel = document.getElementById('f-customer-sel');
-  if (typeof LcClientSelect !== 'undefined') {
-    LcClientSelect.setCustomers('f-customer-sel', CUSTOMERS, i.customer_id);
-  } else if (sel) {
-    sel.innerHTML = CUSTOMERS.map(c => `<option value="${c.id}"${c.id===i.customer_id?' selected':''}>${escHtml(c.name)}</option>`).join('');
-  }
-  setDocType(i.invoice_type || 'فاتورة ضريبية');
-  const map = {
-    'f-date': i.invoice_date, 'f-due-date': i.due_date, 'f-desc': i.description,
-    'f-amount': i.amount, 'f-pay-method': i.pay_method, 'f-status-sel': i.status, 'f-notes': i.notes,
-  };
-  Object.entries(map).forEach(([k,v]) => { const el = document.getElementById(k); if (el) el.value = v || ''; });
-  clearInvoiceSource();
-  const wrap = document.getElementById('inv-billable-wrap');
-  if (wrap) wrap.style.display = 'none';
-  var taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock && window.LiftCoreTaxCalc) {
-    if (i.total != null && LiftCoreTaxCalc.loadInclusiveElement) {
-      LiftCoreTaxCalc.loadInclusiveElement(taxBlock, i.total, 15);
-    } else {
-      LiftCoreTaxCalc.loadElement(taxBlock, i.amount, 15);
-    }
-  }
-  document.getElementById('modal-add').classList.add('open');
 }
 
 let currentViewId = null;
@@ -822,13 +810,7 @@ function viewInvoice(id) {
 
 function printInvoice(id) {
   if (window.LiftCoreNav) LiftCoreNav.openTab('/invoices/' + id + '/print?print=1');
-  else window.open('/invoices/' + id + '/print?print=1&popup=1', '_blank');
-}
-
-function deleteInvoice(id) { currentDeleteId = id; document.getElementById('modal-delete').classList.add('open'); }
-function confirmDelete() {
-  if (!currentDeleteId) return;
-  LiftCoreAdminDelete.confirmFromOpenModal('/invoices/delete/' + currentDeleteId);
+  else window.location.href = '/invoices/' + id + '/print?print=1&popup=1';
 }
 
 function exportCSV() {
@@ -852,21 +834,13 @@ if (window.LiftCoreFormat && LiftCoreFormat.setHeaderDate) {
 updateStats();
 if (tableSort) tableSort.bindHeaders();
 if (typeof LcClientSelect !== 'undefined') {
-  LcClientSelect.upgradeSelect('f-customer-sel', {
-    customers: CUSTOMERS,
-    onChange: onInvoiceCustomerChange,
-  });
+  LcClientSelect.upgradeSelect('f-customer-sel', { customers: CUSTOMERS });
 }
 renderTable(INVOICES);
 window.__lcRefreshPage = function () {
   updateStats();
   renderTable(typeof filtered !== 'undefined' ? filtered : INVOICES);
 };
-const urlParams = new URLSearchParams(window.location.search);
-if (urlParams.get('action') === 'add') {
-  openAddModal();
-  history.replaceState(null, '', window.location.pathname);
-}
 </script>
 </body>
 </html>
