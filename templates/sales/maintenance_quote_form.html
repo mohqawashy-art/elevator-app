@@ -6,7 +6,9 @@
 {% set gmaps_libraries = 'places,marker' %}{% include 'partials/google_maps_head.html' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='client_location.css') }}?v=addr1">
 <style>
-.mq-wrap{display:grid;gap:14px;max-width:980px}
+.mq-wrap{display:grid;gap:14px}
+.mq-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,0.92fr);gap:16px;align-items:start}
+.mq-form-col{min-width:0}
 .mq-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px 18px 14px}
 .mq-card h2{margin:0 0 12px;font-size:15px;color:var(--text1);display:flex;align-items:center;gap:8px}
 .mq-card h2 .n{width:24px;height:24px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:var(--text2)}
@@ -40,6 +42,18 @@
 .lc-addr-suggest button{display:block;width:100%;text-align:right;background:transparent;border:0;border-bottom:1px solid var(--border);color:var(--text1);padding:8px 10px;font:inherit;font-size:12px;cursor:pointer}
 .lc-addr-suggest button:last-child{border-bottom:none}
 .lc-addr-suggest button:hover{background:var(--bg3)}
+.mq-map-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;position:sticky;top:72px}
+.mq-map-card h2{margin:0 0 6px;font-size:15px;color:var(--text1)}
+.mq-map-hint{font-size:12px;color:var(--text3);margin:0 0 10px;line-height:1.5}
+#mq-nearby-meta{font-size:12px;color:var(--text2);margin-bottom:8px}
+#mq-nearby-map{height:min(62vh,560px);min-height:320px;width:100%;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg4);overflow:hidden}
+.mq-nearby-list{display:flex;flex-direction:column;gap:4px;margin-top:10px;max-height:220px;overflow:auto}
+.mq-near-item{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;text-align:right;background:var(--bg2);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;color:var(--text1);font:inherit;cursor:pointer}
+.mq-near-item small{color:var(--text3);font-size:11px}
+.mq-near-item.on{border-color:var(--gold);background:rgba(200,160,85,.08)}
+.mq-near-item:hover{border-color:var(--accent)}
+.mq-map-pop{font-size:12px;line-height:1.5;max-width:220px}
+@media(max-width:1100px){.mq-layout{grid-template-columns:1fr}.mq-map-card{position:static}}
 @media(max-width:860px){.mq-grid,.pkg,.scope,.totals{grid-template-columns:1fr}}
 </style>
 </head>
@@ -71,6 +85,8 @@
 
     <p class="flow">المسار: تعبئة العرض → إرسال للعميل → موافقة → <b>عقد صيانة</b> في قسم العقود.</p>
 
+    <div class="mq-layout">
+    <div class="mq-form-col">
     <form method="post" class="mq-wrap" id="mq-form">
       <section class="mq-card">
         <h2><span class="n">1</span> العميل والموقع</h2>
@@ -303,6 +319,15 @@
     {% elif quote and quote.result_contract_id %}
     <div class="flash flash-success" style="margin-top:12px">تم التحويل لعقد الصيانة — <a href="/contracts">فتح العقود</a></div>
     {% endif %}
+    </div>
+    <aside class="mq-map-card" aria-label="عملاء المنطقة">
+      <h2>عملاء في المنطقة</h2>
+      <p class="mq-map-hint">أثناء تعبئة المدينة والحي يظهر العملاء المسجّلون بجوار الموقع حتى لا يتكرر عقد لنفس المبنى.</p>
+      <div id="mq-nearby-meta">اختر مدينة أو حياً لعرض العملاء القريبين</div>
+      <div id="mq-nearby-map" role="img" aria-label="خريطة العملاء"></div>
+      <div class="mq-nearby-list" id="mq-nearby-list"></div>
+    </aside>
+    </div>
   </div>
 </div>
 {% include 'partials/quick_customer_modal.html' %}
@@ -349,6 +374,7 @@
     if(c && (!c.value || c.value==='مكة المكرمة') && city) c.value = city;
     if(d && !d.value && district) d.value = district;
     if(a && !a.value && address) a.value = address;
+    if (window.LiftCoreNearbyQuoteMap) window.LiftCoreNearbyQuoteMap.refresh();
   }
   function addMonths(iso, months){
     if(!iso) return '';
@@ -430,6 +456,7 @@
           opt.setAttribute('data-address', cust.address || '');
           sel.appendChild(opt);
           sel.value = String(cust.id);
+          if (window.LiftCoreNearbyQuoteMap) window.LiftCoreNearbyQuoteMap.upsertCustomer(cust);
           sel.dispatchEvent(new Event('change'));
         }
       });
@@ -437,9 +464,22 @@
   }
   var addr = document.getElementById('address');
   if (addr && !addr.readOnly && window.LiftCoreAddressSearch) {
-    window.LiftCoreAddressSearch.bind(addr, { cityEl: 'city', districtEl: 'district', addressEl: addr });
+    window.LiftCoreAddressSearch.bind(addr, {
+      cityEl: 'city',
+      districtEl: 'district',
+      addressEl: addr,
+      onPicked: function (_parts, _formatted, extra) {
+        if (window.LiftCoreNearbyQuoteMap) {
+          window.LiftCoreNearbyQuoteMap.refresh();
+          if (extra && extra.lat && extra.lng) window.LiftCoreNearbyQuoteMap.setFocus(extra.lat, extra.lng);
+        }
+      }
+    });
   }
 })();
 </script>
+<script>window.MQ_NEARBY_CUSTOMERS = {{ (customers_map_js|default([])) | tojson }};</script>
+<script src="{{ url_for('static', filename='liftcore_map.js') }}?v=8"></script>
+<script src="{{ url_for('static', filename='mq-nearby-map.js') }}?v=1"></script>
 </body>
 </html>

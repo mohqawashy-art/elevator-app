@@ -111,8 +111,23 @@ def _maint_form_context(quote=None, *, selected_elevator_ids=None):
         .all()
     )
     survey_units = survey_units_payload(survey) if survey and survey.status == SURVEY_DONE else []
+    customers_map_js = [
+        {
+            'id': c.id,
+            'code': c.code or '',
+            'name': c.name or '',
+            'city': c.city or '',
+            'district': c.district or '',
+            'address': c.address or '',
+            'lat': c.lat or '',
+            'lng': c.lng or '',
+            'status': c.status or '',
+        }
+        for c in customers
+    ]
     return dict(
         customers=customers,
+        customers_map_js=customers_map_js,
         today=date.today().isoformat(),
         package=package,
         scope_items=scope,

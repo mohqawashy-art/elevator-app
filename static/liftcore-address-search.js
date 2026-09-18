@@ -27,7 +27,7 @@
     return out;
   }
 
-  function applyParts(opts, parts, formatted) {
+  function applyParts(opts, parts, formatted, extra) {
     var addressEl = $(opts.addressEl);
     var cityEl = $(opts.cityEl);
     var districtEl = $(opts.districtEl);
@@ -35,7 +35,7 @@
     if (addressEl && text) addressEl.value = text;
     if (cityEl && parts.city) cityEl.value = parts.city;
     if (districtEl && parts.district) districtEl.value = parts.district;
-    if (typeof opts.onPicked === 'function') opts.onPicked(parts, formatted);
+    if (typeof opts.onPicked === 'function') opts.onPicked(parts, formatted, extra || {});
   }
 
   function ensureSuggestBox(input) {
@@ -81,7 +81,10 @@
                 city: a.city || a.town || a.village || a.state || '',
                 district: a.suburb || a.neighbourhood || a.quarter || '',
                 address: row.display_name || '',
-              }, row.display_name || '');
+              }, row.display_name || '', {
+                lat: parseFloat(row.lat),
+                lng: parseFloat(row.lon),
+              });
               hideSuggest(box);
             });
             box.appendChild(btn);
@@ -115,7 +118,12 @@
       var place = ac.getPlace() || {};
       var parts = parseGoogleComponents(place.address_components || []);
       var formatted = place.formatted_address || place.name || parts.address || '';
-      applyParts(opts, parts, formatted);
+      var extra = {};
+      if (place.geometry && place.geometry.location) {
+        extra.lat = place.geometry.location.lat();
+        extra.lng = place.geometry.location.lng();
+      }
+      applyParts(opts, parts, formatted, extra);
     });
   }
 

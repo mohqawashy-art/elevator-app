@@ -250,3 +250,6 @@ def test_maintenance_quote_new_page_quick_customer_and_maps(client):
     assert 'whenGoogleMapsReady' in html
     assert 'id="address"' in html
     assert "if (!window.LiftCoreQuickCustomer) return" in html
+    assert 'mq-nearby-map' in html
+    assert 'MQ_NEARBY_CUSTOMERS' in html
+    assert 'عملاء في المنطقة' in html
