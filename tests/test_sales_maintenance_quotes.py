@@ -235,3 +235,18 @@ def test_clear_all_maintenance_quotes(client):
     assert r.status_code == 200
     with client.application.app_context():
         assert tenant_query(MaintenanceQuote).count() == 0
+
+
+def test_maintenance_quote_new_page_quick_customer_and_maps(client):
+    login_as = __import__('tests.conftest', fromlist=['login_as']).login_as
+    login_as(client, 'admin')
+    r = client.get('/sales/maintenance-quotes/new')
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert 'btnQuickCustomerMaint' in html
+    assert 'LiftCoreQuickCustomer' in html
+    assert 'liftcore-address-search.js' in html
+    assert 'qcBound' in html
+    assert 'whenGoogleMapsReady' in html
+    assert 'id="address"' in html
+    assert "if (!window.LiftCoreQuickCustomer) return" in html

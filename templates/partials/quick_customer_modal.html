@@ -10,6 +10,11 @@
 .qc-modal input,.qc-modal select{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r-sm);background:var(--bg3);color:var(--text1);font-family:inherit}
 .qc-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;justify-content:flex-end}
 .qc-err{color:var(--danger);font-size:13px;margin-top:8px;display:none}
+.qc-grid .full{position:relative}
+.lc-addr-suggest{display:none;position:absolute;right:0;left:0;top:100%;z-index:40;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);max-height:220px;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.lc-addr-suggest button{display:block;width:100%;text-align:right;background:transparent;border:0;border-bottom:1px solid var(--border);color:var(--text1);padding:8px 10px;font:inherit;font-size:12px;cursor:pointer}
+.lc-addr-suggest button:last-child{border-bottom:none}
+.lc-addr-suggest button:hover{background:var(--bg3)}
 @media(max-width:600px){.qc-grid{grid-template-columns:1fr}}
 </style>
 <div class="qc-overlay" id="qc-overlay" aria-hidden="true">
@@ -53,7 +58,7 @@
         </div>
         <div class="full">
           <label>العنوان</label>
-          <input name="address" id="qc-address">
+          <input name="address" id="qc-address" placeholder="ابحث في خرائط جوجل…" autocomplete="off">
         </div>
         <div class="full">
           <label>اسم المسؤول / جهة الاتصال</label>
@@ -68,6 +73,7 @@
     </form>
   </div>
 </div>
+<script src="{{ url_for('static', filename='liftcore-address-search.js') }}?v=1"></script>
 <script>
 window.LiftCoreQuickCustomer = (function () {
   var overlay, form, errEl, onCreatedCb, busy = false;
@@ -99,6 +105,13 @@ window.LiftCoreQuickCustomer = (function () {
     overlay.setAttribute('aria-hidden', 'false');
     var name = document.getElementById('qc-name');
     if (name) setTimeout(function () { name.focus(); }, 50);
+    if (window.LiftCoreAddressSearch) {
+      window.LiftCoreAddressSearch.bind('qc-address', {
+        cityEl: 'qc-city',
+        districtEl: 'qc-district',
+        addressEl: 'qc-address',
+      });
+    }
   }
 
   function close() {
@@ -131,10 +144,13 @@ window.LiftCoreQuickCustomer = (function () {
     var btn = document.getElementById('qc-save');
     if (btn) btn.disabled = true;
     errEl.style.display = 'none';
+    var headers = (window.LiftCoreCsrf && LiftCoreCsrf.jsonHeaders)
+      ? LiftCoreCsrf.jsonHeaders()
+      : { 'Content-Type': 'application/json', 'Accept': 'application/json' };
     fetch('/api/clients/create', {
       method: 'POST',
       credentials: 'same-origin',
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      headers: headers,
       body: JSON.stringify(payload),
     })
       .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, status: r.status, body: j }; }); })

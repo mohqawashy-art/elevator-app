@@ -3,13 +3,15 @@
 <head>
 {% set page_title = page_title|default('عرض سعر صيانة') %}
 {% include 'installation/_layout_head.html' %}
+{% set gmaps_libraries = 'places,marker' %}{% include 'partials/google_maps_head.html' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='client_location.css') }}?v=addr1">
 <style>
 .mq-wrap{display:grid;gap:14px;max-width:980px}
 .mq-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px 18px 14px}
 .mq-card h2{margin:0 0 12px;font-size:15px;color:var(--text1);display:flex;align-items:center;gap:8px}
 .mq-card h2 .n{width:24px;height:24px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:12px;color:var(--text2)}
 .mq-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.mq-grid .full{grid-column:1/-1}
+.mq-grid .full{grid-column:1/-1;position:relative}
 .field label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
 .field input,.field select,.field textarea{width:100%;padding:9px 10px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-family:inherit}
 .field .hint{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5}
@@ -34,6 +36,10 @@
 .tot .v{font-size:18px;font-family:var(--font-en);margin-top:4px;color:var(--text1)}
 .actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
 .flow{font-size:13px;color:var(--text2);line-height:1.7;margin:0 0 8px}
+.lc-addr-suggest{display:none;position:absolute;right:0;left:0;top:100%;z-index:40;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);max-height:220px;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.lc-addr-suggest button{display:block;width:100%;text-align:right;background:transparent;border:0;border-bottom:1px solid var(--border);color:var(--text1);padding:8px 10px;font:inherit;font-size:12px;cursor:pointer}
+.lc-addr-suggest button:last-child{border-bottom:none}
+.lc-addr-suggest button:hover{background:var(--bg3)}
 @media(max-width:860px){.mq-grid,.pkg,.scope,.totals{grid-template-columns:1fr}}
 </style>
 </head>
@@ -98,7 +104,8 @@
           </div>
           <div class="field full">
             <label>عنوان الموقع</label>
-            <input name="address" id="address" value="{{ quote.address or '' if quote else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+            <input name="address" id="address" placeholder="ابحث في خرائط جوجل…" autocomplete="off" value="{{ quote.address or '' if quote else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+            <div class="hint">اكتب اسم المبنى أو الشارع لاختيار العنوان من خرائط جوجل — تُعبَّأ المدينة والحي تلقائياً.</div>
           </div>
         </div>
       </section>
@@ -303,6 +310,7 @@
     {% endif %}
   </div>
 </div>
+{% include 'partials/quick_customer_modal.html' %}
 <script>
 (function(){
   var locked = {{ 'true' if quote and quote.status=='مقبول' else 'false' }};
@@ -410,8 +418,10 @@
   if(checkedPkg) markPackageSelected(checkedPkg.closest('label'));
 
   var btnQc = document.getElementById('btnQuickCustomerMaint');
-  if (btnQc && window.LiftCoreQuickCustomer) {
+  if (btnQc && !btnQc.dataset.qcBound) {
+    btnQc.dataset.qcBound = '1';
     btnQc.addEventListener('click', function () {
+      if (!window.LiftCoreQuickCustomer) return;
       window.LiftCoreQuickCustomer.open({
         onCreated: function (cust) {
           if (!cust || !cust.id) return;
@@ -430,8 +440,11 @@
       });
     });
   }
+  var addr = document.getElementById('address');
+  if (addr && !addr.readOnly && window.LiftCoreAddressSearch) {
+    window.LiftCoreAddressSearch.bind(addr, { cityEl: 'city', districtEl: 'district', addressEl: addr });
+  }
 })();
 </script>
-{% include 'partials/quick_customer_modal.html' %}
 </body>
 </html>
