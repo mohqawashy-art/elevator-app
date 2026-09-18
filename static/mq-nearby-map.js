@@ -5,6 +5,7 @@
   'use strict';
 
   var DEFAULT_CENTER = { lat: 21.4225, lng: 39.8262 };
+  var DEFAULT_CITY = 'مكة المكرمة';
   var map = null;
   var provider = null;
   var markers = [];
@@ -38,20 +39,49 @@
 
   function currentArea() {
     var sel = $('customer_id');
-    var opt = sel && sel.options[sel.selectedIndex];
     var cityEl = $('city');
     var distEl = $('district');
-    var city = (cityEl && cityEl.value) || '';
-    var district = (distEl && distEl.value) || '';
-    if (opt && opt.value) {
-      if (!city || city === 'مكة المكرمة') city = opt.getAttribute('data-city') || city;
-      if (!district) district = opt.getAttribute('data-district') || district;
-    }
+    var addrEl = $('address');
     return {
-      city: city.trim(),
-      district: district.trim(),
+      city: ((cityEl && cityEl.value) || '').trim(),
+      district: ((distEl && distEl.value) || '').trim(),
+      address: ((addrEl && addrEl.value) || '').trim(),
       selectedId: sel && sel.value ? String(sel.value) : '',
     };
+  }
+
+  function isAreaSearch(area) {
+    if (area.district) return true;
+    if (area.address) return true;
+    if (area.city && norm(area.city) !== norm(DEFAULT_CITY)) return true;
+    return false;
+  }
+
+  function placeFields(c) {
+    var out = [c.city, c.district, c.address];
+    (c.sites || []).forEach(function (s) {
+      out.push(s.city, s.district);
+    });
+    return out.map(norm).filter(Boolean);
+  }
+
+  function inArea(c, area) {
+    var fields = placeFields(c);
+    var distN = norm(area.district);
+    var cityN = norm(area.city);
+    var addrN = norm(area.address);
+    function hit(needle) {
+      if (!needle) return false;
+      return fields.some(function (f) { return areaMatch(f, needle); });
+    }
+    if (distN) return hit(distN);
+    if (addrN && addrN.length >= 4) {
+      if (hit(addrN) || areaMatch(fields.join(' '), addrN)) return true;
+      if (cityN) return hit(cityN);
+      return false;
+    }
+    if (cityN && cityN !== norm(DEFAULT_CITY)) return hit(cityN);
+    return true;
   }
 
   function customers() {
@@ -59,12 +89,10 @@
   }
 
   function matching(area) {
-    var cityN = norm(area.city);
-    var distN = norm(area.district);
-    return customers().filter(function (c) {
-      if (distN) return areaMatch(norm(c.district), distN);
-      if (cityN) return areaMatch(norm(c.city), cityN);
-      return true;
+    var all = customers();
+    if (!isAreaSearch(area)) return all;
+    return all.filter(function (c) {
+      return !!c.has_contract && inArea(c, area);
     });
   }
 
@@ -102,13 +130,16 @@
   function pinColor(c, area) {
     if (area.selectedId && String(c.id) === area.selectedId) return '#c8a055';
     if ((c.status || '') === 'غير نشط') return '#e04848';
-    return '#1fb87a';
+    if (c.has_contract) return '#1fb87a';
+    return '#8a9bb8';
   }
 
   function popupHtml(c) {
     var loc = [c.district, c.city].filter(Boolean).join(' · ');
+    var st = c.has_contract ? (c.contract_status || 'متعاقد') : 'بدون عقد';
     return '<div class="mq-map-pop"><b>' + esc(c.name) + '</b>'
       + (c.code ? '<div>' + esc(c.code) + '</div>' : '')
+      + '<div>' + esc(st) + '</div>'
       + (loc ? '<div>' + esc(loc) + '</div>' : '')
       + (c.address ? '<div>' + esc(c.address) + '</div>' : '')
       + '</div>';
@@ -205,22 +236,31 @@
   function renderList(rows, area) {
     var box = $('mq-nearby-list');
     var meta = $('mq-nearby-meta');
+    var searching = isAreaSearch(area);
     if (meta) {
-      var label = area.district || area.city || 'المنطقة';
-      if (!rows.length) meta.textContent = 'لا يوجد عملاء مسجّلون بعد في «' + label + '»';
-      else meta.textContent = rows.length + ' عميل في «' + label + '» — الدبابيس للمسجّلين على الخريطة';
+      if (!searching) {
+        meta.textContent = 'جميع العملاء على الخريطة (' + rows.length + ') — الأخضر متعاقد';
+      } else {
+        var label = area.district || area.city || 'المنطقة';
+        if (!rows.length) meta.textContent = 'لا يوجد عملاء متعاقد معهم في «' + label + '»';
+        else meta.textContent = rows.length + ' عميل متعاقد في «' + label + '»';
+      }
     }
     if (!box) return;
+    if (!searching) {
+      box.innerHTML = '';
+      return;
+    }
     if (!rows.length) {
       box.innerHTML = '';
       return;
     }
-    box.innerHTML = rows.slice(0, 12).map(function (c) {
+    box.innerHTML = rows.slice(0, 16).map(function (c) {
       var loc = [c.district, c.city].filter(Boolean).join(' · ');
       var on = area.selectedId && String(c.id) === area.selectedId ? ' on' : '';
       return '<button type="button" class="mq-near-item' + on + '" data-id="' + esc(c.id) + '">'
         + '<span>' + esc(c.name) + (c.code ? ' <small>' + esc(c.code) + '</small>' : '') + '</span>'
-        + (loc ? '<small>' + esc(loc) + '</small>' : '')
+        + '<small>' + esc(c.contract_status || 'متعاقد') + (loc ? ' · ' + esc(loc) : '') + '</small>'
         + '</button>';
     }).join('');
     box.querySelectorAll('.mq-near-item').forEach(function (btn) {
@@ -285,7 +325,7 @@
   }
 
   function bind() {
-    ['city', 'district', 'customer_id'].forEach(function (id) {
+    ['city', 'district', 'address', 'customer_id'].forEach(function (id) {
       var el = $(id);
       if (!el || el.dataset.mqNearBound) return;
       el.dataset.mqNearBound = '1';
@@ -313,6 +353,9 @@
       lat: cust.lat || '',
       lng: cust.lng || '',
       status: cust.status || 'نشط',
+      has_contract: !!cust.has_contract,
+      contract_status: cust.contract_status || 'بدون عقد',
+      sites: cust.sites || [],
     };
     if (i >= 0) list[i] = row;
     else list.push(row);

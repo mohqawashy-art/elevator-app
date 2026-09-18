@@ -97,10 +97,55 @@ def _apply_maint_quote_form(quote: MaintenanceQuote, form) -> None:
         quote.end_date = add_months(quote.start_date, quote.duration_months)
 
 
+def _customer_map_row(c) -> dict:
+    from app import _annotate_contract_renewals, contract_display_status
+
+    active_states = ('نشط', 'على وشك الانتهاء')
+    contracts = list(c.contracts or [])
+    renewed = _annotate_contract_renewals(contracts) if contracts else set()
+    sites = []
+    lat = (c.lat or '').strip()
+    lng = (c.lng or '').strip()
+    active_status = ''
+    for ct in contracts:
+        st = contract_display_status(ct, renewed_ids=renewed)
+        if st not in active_states:
+            continue
+        if not active_status:
+            active_status = st
+        sites.append({
+            'city': (ct.city or '').strip(),
+            'district': (ct.district or '').strip(),
+        })
+        if (not lat or not lng) and (ct.lat or '').strip() and (ct.lng or '').strip():
+            lat = (ct.lat or '').strip()
+            lng = (ct.lng or '').strip()
+    return {
+        'id': c.id,
+        'code': c.code or '',
+        'name': c.name or '',
+        'city': c.city or '',
+        'district': c.district or '',
+        'address': c.address or '',
+        'lat': lat,
+        'lng': lng,
+        'status': c.status or '',
+        'has_contract': bool(active_status),
+        'contract_status': active_status or 'بدون عقد',
+        'sites': sites,
+    }
+
+
 def _maint_form_context(quote=None, *, selected_elevator_ids=None):
     from models import Technician
+    from sqlalchemy.orm import selectinload
 
-    customers = tenant_query(Customer).order_by(Customer.name).all()
+    customers = (
+        tenant_query(Customer)
+        .options(selectinload(Customer.contracts))
+        .order_by(Customer.name)
+        .all()
+    )
     package, scope, notes_body = _split_maint_notes(quote.notes if quote else None)
     total_incl_tax = money_round(quote.total if quote else 0)
     survey = latest_survey_for_quote(quote.id) if quote else None
@@ -111,20 +156,7 @@ def _maint_form_context(quote=None, *, selected_elevator_ids=None):
         .all()
     )
     survey_units = survey_units_payload(survey) if survey and survey.status == SURVEY_DONE else []
-    customers_map_js = [
-        {
-            'id': c.id,
-            'code': c.code or '',
-            'name': c.name or '',
-            'city': c.city or '',
-            'district': c.district or '',
-            'address': c.address or '',
-            'lat': c.lat or '',
-            'lng': c.lng or '',
-            'status': c.status or '',
-        }
-        for c in customers
-    ]
+    customers_map_js = [_customer_map_row(c) for c in customers]
     return dict(
         customers=customers,
         customers_map_js=customers_map_js,

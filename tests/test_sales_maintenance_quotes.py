@@ -252,4 +252,6 @@ def test_maintenance_quote_new_page_quick_customer_and_maps(client):
     assert "if (!window.LiftCoreQuickCustomer) return" in html
     assert 'mq-nearby-map' in html
     assert 'MQ_NEARBY_CUSTOMERS' in html
-    assert 'عملاء في المنطقة' in html
+    assert 'عملاء على الخريطة' in html
+    assert 'جميع العملاء على الخريطة' in html
+    assert 'المتعاقد معهم' in html
