@@ -6325,7 +6325,20 @@ def api_clients_quick():
 def _parse_date(value):
     if not value:
         return None
-    return datetime.strptime(value, '%Y-%m-%d').date()
+    raw = western_digits(value).strip()
+    if not raw:
+        return None
+    iso = raw[:10]
+    for sample, fmt in (
+        (iso, '%Y-%m-%d'),
+        (raw, '%d/%m/%Y'),
+        (raw, '%d-%m-%Y'),
+    ):
+        try:
+            return datetime.strptime(sample, fmt).date()
+        except ValueError:
+            continue
+    raise ValueError('تاريخ غير صالح')
 
 
 def _parse_int(value):
@@ -8046,7 +8059,7 @@ def _apply_technician_form(t, form):
     t.national_id_expiry = _parse_date(form.get('national_id_expiry') or form.get('iqama_expiry'))
     t.license_number = (form.get('license_number') or form.get('license') or '').strip()
     t.license_expiry = _parse_date(form.get('license_expiry'))
-    exp_raw = form.get('experience_years')
+    exp_raw = western_digits(form.get('experience_years')).strip()
     if exp_raw in (None, ''):
         t.experience_years = None
     else:
@@ -8070,7 +8083,7 @@ def _apply_technician_form(t, form):
             districts = [x.strip() for x in raw.split(',') if x.strip()]
     t.districts_json = _json.dumps(districts, ensure_ascii=False) if districts else ''
     t.hire_date = _parse_date(form.get('hire_date'))
-    salary = form.get('salary')
+    salary = western_digits(form.get('salary')).replace(',', '').strip()
     try:
         t.salary = float(salary) if salary not in (None, '') else None
     except (TypeError, ValueError) as exc:
@@ -8571,9 +8584,30 @@ def api_technician_profile(tech_id):
     })
 
 
+def _technician_integrity_msg(exc) -> str:
+    text = str(getattr(exc, 'orig', None) or exc).lower()
+    if 'national_id' in text:
+        return 'رقم الإقامة مسجّل لفني آخر'
+    if 'uq_technician' in text or 'technicians_code' in text:
+        return 'كود الفني مستخدم مسبقاً — أعد المحاولة'
+    return 'تعذّر حفظ الفني بسبب تعارض في البيانات'
+
+
+def _persist_technician_uploads(t):
+    _save_technician_photo(t, request.files.get('photo'))
+    _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
+    _save_technician_documents(
+        t,
+        request.files.getlist('documents'),
+        request.form.getlist('doc_types'),
+        request.form.getlist('doc_titles'),
+    )
+
+
 @app.route('/technicians/add', methods=['POST'])
 def technician_add():
     from entitlements import assert_capacity
+    from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
     wants_json = (
         request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -8582,14 +8616,17 @@ def technician_add():
 
     def _fail(msg, code=400):
         if wants_json:
-            return jsonify({'ok': False, 'message': msg}), code
+            return jsonify({'ok': False, 'message': msg, 'error': msg}), code
         flash(msg, 'error')
         return redirect(url_for('technicians'))
 
+    create_only = (request.form.get('create_only') or '').strip() in ('1', 'true', 'yes', 'on')
     raw_code = (request.form.get('code') or '').strip()
     m_tech = re.match(r'Tech-(\d+)$', raw_code, re.I)
     existing = None
-    if m_tech:
+    if create_only:
+        raw_code = ''
+    elif m_tech:
         raw_code = f'Tech-{int(m_tech.group(1)):03d}'
         existing = tenant_query(Technician).filter_by(code=raw_code).first()
         if existing and tenant_query(Technician).filter(
@@ -8613,25 +8650,46 @@ def technician_add():
         taken2, msg2 = phone_taken(wa, technician_id=existing.id if existing else None)
         if taken2:
             return _fail(msg2)
-    t = existing or Technician(code=raw_code or next_code(Technician, 'Tech-', digits=3))
-    try:
-        _apply_technician_form(t, request.form)
-        if existing is None:
-            assign_organization(t)
-            db.session.add(t)
-            db.session.flush()
-        _save_technician_photo(t, request.files.get('photo'))
-        _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
-        _save_technician_documents(
-            t,
-            request.files.getlist('documents'),
-            request.form.getlist('doc_types'),
-            request.form.getlist('doc_titles'),
-        )
+
+    def _insert_new(code_value):
+        row = Technician(code=code_value or next_code(Technician, 'Tech-', digits=3))
+        _apply_technician_form(row, request.form)
+        assign_organization(row)
+        db.session.add(row)
+        db.session.flush()
+        _persist_technician_uploads(row)
         db.session.commit()
+        return row
+
+    try:
+        if existing is not None:
+            t = existing
+            _apply_technician_form(t, request.form)
+            _persist_technician_uploads(t)
+            db.session.commit()
+        else:
+            t = _insert_new(raw_code)
     except (ValueError, KeyError) as exc:
         db.session.rollback()
         return _fail(str(exc) or 'تعذّر حفظ الفني')
+    except IntegrityError as exc:
+        db.session.rollback()
+        if existing is None and not raw_code:
+            try:
+                bumped = next_code(Technician, 'Tech-', digits=3)
+                m_bump = re.match(r'Tech-(\d+)$', bumped, re.I)
+                if m_bump:
+                    bumped = f'Tech-{int(m_bump.group(1)) + 1:03d}'
+                t = _insert_new(bumped)
+            except Exception:
+                db.session.rollback()
+                return _fail(_technician_integrity_msg(exc))
+        else:
+            return _fail(_technician_integrity_msg(exc))
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception('technician_add failed')
+        return _fail('تعذّر حفظ الفني')
     if wants_json:
         return jsonify({'ok': True, 'id': t.id, 'code': t.code})
     flash('تم إضافة الفني بنجاح' if existing is None else 'تم تحديث بيانات الفني بنجاح', 'success')
@@ -8660,33 +8718,45 @@ def technician_update_phone(id):
 
 @app.route('/technicians/edit/<int:id>', methods=['POST'])
 def technician_edit(id):
+    from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+    wants_json = (
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        or 'application/json' in (request.headers.get('Accept') or '')
+    )
+
+    def _fail(msg, code=400):
+        if wants_json:
+            return jsonify({'ok': False, 'message': msg, 'error': msg}), code
+        flash(msg, 'error')
+        return redirect(url_for('technicians'))
+
     t = tenant_get_or_404(Technician, id)
     phone = request.form.get('phone', '')
     taken, msg = phone_taken(phone, technician_id=t.id)
     if taken:
-        flash(msg, 'error')
-        return redirect(url_for('technicians'))
+        return _fail(msg)
     wa = request.form.get('phone2', '')
     if wa and phone_key(wa) != phone_key(phone):
         taken2, msg2 = phone_taken(wa, technician_id=t.id)
         if taken2:
-            flash(msg2, 'error')
-            return redirect(url_for('technicians'))
+            return _fail(msg2)
     try:
         _apply_technician_form(t, request.form)
-        _save_technician_photo(t, request.files.get('photo'))
-        _save_technician_signature(t, request.files.get('signature'), request.form.get('sign_pin', ''))
-        _save_technician_documents(
-            t,
-            request.files.getlist('documents'),
-            request.form.getlist('doc_types'),
-            request.form.getlist('doc_titles'),
-        )
+        _persist_technician_uploads(t)
         db.session.commit()
     except (ValueError, KeyError) as exc:
         db.session.rollback()
-        flash(str(exc) or 'تعذّر تحديث الفني', 'error')
-        return redirect(url_for('technicians'))
+        return _fail(str(exc) or 'تعذّر تحديث الفني')
+    except IntegrityError as exc:
+        db.session.rollback()
+        return _fail(_technician_integrity_msg(exc))
+    except SQLAlchemyError:
+        db.session.rollback()
+        app.logger.exception('technician_edit failed')
+        return _fail('تعذّر تحديث الفني')
+    if wants_json:
+        return jsonify({'ok': True, 'id': t.id, 'code': t.code})
     flash('تم تحديث بيانات الفني بنجاح', 'success')
     return redirect(url_for('technicians'))
 

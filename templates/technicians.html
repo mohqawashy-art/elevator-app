@@ -1392,27 +1392,32 @@ function saveTech() {
     switchTechTab('signature');
     return;
   }
+  function fieldVal(id) {
+    var el = document.getElementById(id);
+    return el ? String(el.value || '').trim() : '';
+  }
   var fd = new FormData();
   fd.append('name', name);
-  fd.append('name_en', document.getElementById('f-name-en').value.trim());
-  fd.append('nationality', (document.getElementById('f-nationality') && document.getElementById('f-nationality').value || '').trim());
-  fd.append('experience_years', document.getElementById('f-exp') ? document.getElementById('f-exp').value : '');
-  fd.append('email', document.getElementById('f-email') ? document.getElementById('f-email').value.trim() : '');
+  fd.append('name_en', fieldVal('f-name-en'));
+  fd.append('nationality', fieldVal('f-nationality'));
+  fd.append('experience_years', fieldVal('f-exp'));
+  fd.append('email', fieldVal('f-email'));
   fd.append('phone', fullPhone('f-code-ph', 'f-phone'));
   fd.append('phone2', fullPhone('f-code-wa', 'f-whatsapp'));
-  fd.append('job_title', document.getElementById('f-job').value);
-  fd.append('specialization', document.getElementById('f-spec').value);
+  fd.append('job_title', fieldVal('f-job'));
+  fd.append('specialization', fieldVal('f-spec') || 'مصاعد ركاب');
   var teamEl = document.getElementById('f-team');
   fd.append('team', teamEl ? teamEl.value : 'عام');
-  fd.append('city', document.getElementById('f-city-sel').value);
-  fd.append('national_id', document.getElementById('f-iqama').value);
-  fd.append('national_id_expiry', document.getElementById('f-iqama-exp') ? document.getElementById('f-iqama-exp').value : '');
-  fd.append('license_number', document.getElementById('f-license') ? document.getElementById('f-license').value : '');
-  fd.append('license_expiry', document.getElementById('f-license-exp') ? document.getElementById('f-license-exp').value : '');
-  fd.append('hire_date', document.getElementById('f-hire').value);
-  fd.append('salary', document.getElementById('f-salary').value);
-  fd.append('status', document.getElementById('f-cur-status').value);
-  fd.append('notes', document.getElementById('f-notes').value);
+  fd.append('city', fieldVal('f-city-sel'));
+  fd.append('national_id', fieldVal('f-iqama'));
+  fd.append('national_id_expiry', fieldVal('f-iqama-exp'));
+  fd.append('license_number', fieldVal('f-license'));
+  fd.append('license_expiry', fieldVal('f-license-exp'));
+  fd.append('hire_date', fieldVal('f-hire'));
+  fd.append('salary', fieldVal('f-salary'));
+  fd.append('status', fieldVal('f-cur-status') || 'متاح');
+  fd.append('notes', fieldVal('f-notes'));
+  if (!editId) fd.append('create_only', '1');
   document.querySelectorAll('#districts-list input[name="districts"]:checked').forEach(function(cb) {
     fd.append('districts', cb.value);
   });
@@ -1437,19 +1442,42 @@ function saveTech() {
       fd.append('doc_titles', titleInp && titleInp.value ? titleInp.value : fileInp.files[0].name);
     }
   });
-  fetch(editId ? '/technicians/edit/' + editId : '/technicians/add', {method:'POST', body:fd, redirect:'follow'})
+  if (window.LiftCoreCsrf && LiftCoreCsrf.appendToFormData) LiftCoreCsrf.appendToFormData(fd);
+  var saveBtn = document.querySelector('#modal-add .modal-foot .btn-primary');
+  if (saveBtn) { saveBtn.disabled = true; }
+  var headers = (window.LiftCoreCsrf && LiftCoreCsrf.ajaxHeaders)
+    ? LiftCoreCsrf.ajaxHeaders()
+    : { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' };
+  fetch(editId ? '/technicians/edit/' + editId : '/technicians/add', {
+    method: 'POST',
+    body: fd,
+    credentials: 'same-origin',
+    headers: headers,
+    redirect: 'manual'
+  })
     .then(function(res) {
-      if (res.redirected) {
-        window.location.href = res.url;
+      var ct = (res.headers.get('content-type') || '').toLowerCase();
+      if (ct.indexOf('json') !== -1) {
+        return res.json().then(function(data) {
+          if (!res.ok || data.ok === false) {
+            alert(data.message || data.error || 'تعذّر حفظ الفني — راجع البيانات وحاول مرة أخرى');
+            return;
+          }
+          window.location.href = '/technicians';
+        });
+      }
+      if (res.ok || res.type === 'opaqueredirect' || res.status === 0 || (res.status >= 300 && res.status < 400)) {
+        window.location.href = '/technicians';
         return;
       }
-      if (!res.ok) {
-        alert('تعذّر حفظ الفني — راجع البيانات وحاول مرة أخرى');
-        return;
-      }
-      window.location.reload();
+      alert('تعذّر حفظ الفني — راجع البيانات وحاول مرة أخرى');
     })
-    .catch(function() { alert('تعذّر الاتصال بالسيرفر — تحقق من الإنترنت وحاول مرة أخرى'); });
+    .catch(function(err) {
+      alert((err && err.message) ? ('تعذّر حفظ الفني: ' + err.message) : 'تعذّر الاتصال بالسيرفر — تحقق من الإنترنت وحاول مرة أخرى');
+    })
+    .finally(function() {
+      if (saveBtn) saveBtn.disabled = false;
+    });
 }
 
 function editTech(id) {
