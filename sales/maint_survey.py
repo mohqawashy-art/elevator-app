@@ -16,6 +16,59 @@ from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 
 SURVEY_OPEN = frozenset({'مُرسَل', 'قيد الفحص'})
 SURVEY_DONE = 'مكتمل'
+SURVEY_CANCELLED = 'ملغى'
+
+
+def cancel_open_surveys_for_quote(quote_id: int) -> int:
+    """إلغاء طلبات الفحص المفتوحة عند حذف/رفض العرض."""
+    rows = (
+        tenant_query(MaintenanceQuoteSurvey)
+        .filter(
+            MaintenanceQuoteSurvey.quote_id == quote_id,
+            MaintenanceQuoteSurvey.status.in_(tuple(SURVEY_OPEN)),
+        )
+        .all()
+    )
+    now = datetime.utcnow()
+    for survey in rows:
+        survey.status = SURVEY_CANCELLED
+        if not survey.completed_at:
+            survey.completed_at = now
+    return len(rows)
+
+
+def open_surveys_for_technician(tech_id: int) -> list[MaintenanceQuoteSurvey]:
+    """طلبات فحص تظهر للفني — عرض موجود وغير مرفوض."""
+    return (
+        tenant_query(MaintenanceQuoteSurvey)
+        .join(MaintenanceQuote, MaintenanceQuote.id == MaintenanceQuoteSurvey.quote_id)
+        .filter(
+            MaintenanceQuoteSurvey.technician_id == tech_id,
+            MaintenanceQuoteSurvey.status.in_(tuple(SURVEY_OPEN)),
+            MaintenanceQuote.status != 'مرفوض',
+        )
+        .order_by(MaintenanceQuoteSurvey.requested_at.desc())
+        .all()
+    )
+
+
+def cancel_orphan_open_surveys() -> int:
+    """طلبات مفتوحة بدون عرض (بعد حذف قديم) — إلغاء تلقائي."""
+    rows = (
+        tenant_query(MaintenanceQuoteSurvey)
+        .outerjoin(MaintenanceQuote, MaintenanceQuote.id == MaintenanceQuoteSurvey.quote_id)
+        .filter(
+            MaintenanceQuoteSurvey.status.in_(tuple(SURVEY_OPEN)),
+            MaintenanceQuote.id.is_(None),
+        )
+        .all()
+    )
+    now = datetime.utcnow()
+    for survey in rows:
+        survey.status = SURVEY_CANCELLED
+        if not survey.completed_at:
+            survey.completed_at = now
+    return len(rows)
 
 
 def active_survey_for_quote(quote_id: int) -> MaintenanceQuoteSurvey | None:
@@ -118,6 +171,11 @@ def survey_field_payload(survey_id: int, *, tech_id: int, base_url: str = '') ->
     if survey.status == 'ملغى':
         raise PermissionError('طلب الفحص ملغى')
     quote = survey.quote
+    if not quote or (quote.status or '') == 'مرفوض':
+        survey.status = SURVEY_CANCELLED
+        if not survey.completed_at:
+            survey.completed_at = datetime.utcnow()
+        raise PermissionError('عرض الصيانة لم يعد متاحاً — تم إلغاء طلب الفحص')
     cust = quote.customer if quote else None
     if survey.status == 'مُرسَل':
         survey.status = 'قيد الفحص'

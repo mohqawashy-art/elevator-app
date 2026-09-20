@@ -377,3 +377,84 @@ def test_save_and_send_survey_new_quote(client):
         assert survey is not None
         assert survey.status == 'مُرسَل'
         assert survey.technician_id == tid
+
+
+def test_delete_quote_cancels_field_survey(client):
+    from operations import field_technician_payload
+    from sales.service import delete_maintenance_quote
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        cust = Customer(organization_id=oid, code='C-SVDEL', name='حذف فحص', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        tech = Technician(organization_id=oid, code='T-SVDEL', name='فني', status='متاح')
+        db.session.add(tech)
+        db.session.flush()
+        quote = _sample_quote(customer_id=cust.id)
+        db.session.add(quote)
+        db.session.flush()
+        survey = MaintenanceQuoteSurvey(
+            quote_id=quote.id,
+            code='MQS-DEL1',
+            status='مُرسَل',
+            technician_id=tech.id,
+        )
+        assign_organization(survey)
+        db.session.add(survey)
+        db.session.commit()
+        qid, tech_id, sid = quote.id, tech.id, survey.id
+
+        payload_before = field_technician_payload(tech_id, portal_kind='both')
+        assert any(s['id'] == sid for s in payload_before['maint_surveys'])
+
+        delete_maintenance_quote(quote)
+        db.session.commit()
+        assert db.session.get(MaintenanceQuoteSurvey, sid) is None
+
+        payload_after = field_technician_payload(tech_id, portal_kind='both')
+        assert not any(s['id'] == sid for s in payload_after['maint_surveys'])
+
+
+def test_reject_quote_cancels_open_survey(client):
+    from operations import field_technician_payload
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        cust = Customer(organization_id=oid, code='C-SVREJ', name='رفض', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        tech = Technician(organization_id=oid, code='T-SVREJ', name='فني', status='متاح')
+        db.session.add(tech)
+        db.session.flush()
+        quote = _sample_quote(customer_id=cust.id)
+        db.session.add(quote)
+        db.session.flush()
+        survey = MaintenanceQuoteSurvey(
+            quote_id=quote.id,
+            code='MQS-REJ1',
+            status='قيد الفحص',
+            technician_id=tech.id,
+        )
+        assign_organization(survey)
+        db.session.add(survey)
+        db.session.commit()
+        qid, tech_id, sid = quote.id, tech.id, survey.id
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+
+    r = client.post(
+        f'/sales/maintenance-quotes/{qid}/reject',
+        data={'csrf_token': 'test-csrf'},
+        follow_redirects=True,
+    )
+    assert r.status_code == 200
+
+    with client.application.app_context():
+        survey = db.session.get(MaintenanceQuoteSurvey, sid)
+        assert survey.status == 'ملغى'
+        payload = field_technician_payload(tech_id, portal_kind='both')
+        assert not any(s['id'] == sid for s in payload['maint_surveys'])

@@ -2051,19 +2051,17 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         )
         has_assigned_faults = bool(faults)
 
-    from models import MaintenanceQuoteSurvey
-    from sales.maint_survey import SURVEY_OPEN, survey_summary_for_field
     from field_external_inspection import list_open_for_technician, inspection_summary_for_field
-
-    maint_surveys = (
-        tenant_query(MaintenanceQuoteSurvey)
-        .filter(
-            MaintenanceQuoteSurvey.technician_id == tech_id,
-            MaintenanceQuoteSurvey.status.in_(tuple(SURVEY_OPEN)),
-        )
-        .order_by(MaintenanceQuoteSurvey.requested_at.desc())
-        .all()
+    from sales.maint_survey import (
+        cancel_orphan_open_surveys,
+        open_surveys_for_technician,
+        survey_summary_for_field,
     )
+
+    if cancel_orphan_open_surveys():
+        db.session.commit()
+
+    maint_surveys = open_surveys_for_technician(tech_id)
 
     ext_inspections = list_open_for_technician(tech_id)
 

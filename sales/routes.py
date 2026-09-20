@@ -683,6 +683,9 @@ def maintenance_quote_reject(quote_id):
         flash('لا يمكن رفض عرض مقبول', 'error')
         return redirect(url_for('sales.maintenance_quote_edit', quote_id=quote.id))
     quote.status = 'مرفوض'
+    from sales.maint_survey import cancel_open_surveys_for_quote
+
+    cancel_open_surveys_for_quote(quote.id)
     db.session.commit()
     flash('تم رفض العرض', 'success')
     return redirect(url_for('sales.maintenance_quotes_list'))

@@ -103,6 +103,11 @@ def delete_maintenance_quote(quote: MaintenanceQuote) -> None:
     """حذف عرض صيانة (مع الفحوصات والروابط)."""
     if quote.status == 'مقبول' and quote.result_contract_id:
         raise ValueError('لا يمكن حذف عرض مرتبط بعقد صيانة — راجع قسم العقود')
+    from sales.maint_survey import cancel_open_surveys_for_quote
+
+    cancel_open_surveys_for_quote(quote.id)
+    for survey in list(quote.surveys or []):
+        db.session.delete(survey)
     db.session.delete(quote)
 
 
