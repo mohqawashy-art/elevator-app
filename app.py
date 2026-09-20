@@ -13612,6 +13612,7 @@ def supplier_rfqs():
         project=project,
         edit_rfq=edit_rfq,
         items=items,
+        inventory_items_js=[inventory_item_js_dict(i) for i in items],
         suppliers=suppliers,
     )
 
@@ -13649,26 +13650,32 @@ def supplier_rfqs_save():
     for desc, qty, unit, specs, item_raw, price_raw in zip_longest(
         descriptions, quantities, units, specs_list, item_ids, quoted_prices, fillvalue=''
     ):
-        description = (desc or '').strip()
+        item_id = int(item_raw) if (item_raw or '').strip().isdigit() else None
+        if not item_id:
+            continue
+        inv_item = tenant_query(InventoryItem).filter_by(id=item_id).first()
+        if not inv_item:
+            continue
+        description = (desc or '').strip() or (inv_item.name or inv_item.code or '').strip()
         if not description:
             continue
         quantity = float(qty or 0)
         if quantity <= 0:
             quantity = 1
-        item_id = int(item_raw) if (item_raw or '').strip().isdigit() else None
+        line_unit = (unit or '').strip() or (inv_item.unit or 'قطعة').strip() or 'قطعة'
         quoted = float(price_raw or 0) if (price_raw or '').strip() else None
         if quoted is not None and quoted <= 0:
             quoted = None
         lines_data.append({
             'description': description,
             'quantity': quantity,
-            'unit': (unit or 'قطعة').strip() or 'قطعة',
+            'unit': line_unit,
             'specs': (specs or '').strip() or None,
             'item_id': item_id,
             'quoted_unit_price': quoted,
         })
     if not lines_data:
-        flash('أضف بنداً واحداً على الأقل', 'error')
+        flash('أضف بنداً واحداً على الأقل واختر صنفاً من المخزن', 'error')
         return redirect(url_for('supplier_rfqs', project_id=project_id_raw or None))
 
     if req_id:

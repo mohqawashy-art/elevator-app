@@ -19,10 +19,18 @@ def test_supplier_rfq_page_loads(client):
     body = r.get_data(as_text=True)
     assert 'طلب عرض سعر من مورد' in body
     assert 'rfq-form' in body
+    assert 'ابحث بالكود أو اسم الصنف' in body
 
 
 def test_supplier_rfq_save_and_print(client):
+    from models import InventoryItem, db
+
     login_as(client, role='admin')
+    with client.application.app_context():
+        item = InventoryItem(code='RFQ-T01', name='ماكينة جيرلس', category='تركيب', unit='قطعة')
+        db.session.add(item)
+        db.session.commit()
+        item_id = item.id
     with client.session_transaction() as sess:
         sess['_csrf_token'] = 'test-csrf'
     r = client.post(
@@ -34,6 +42,7 @@ def test_supplier_rfq_save_and_print(client):
             'status': 'مسودة',
             'subject': 'تسعير ماكينة',
             'description': 'ماكينة جيرلس',
+            'item_id': str(item_id),
             'quantity': '1',
             'unit': 'قطعة',
             'specs': '1000 كجم',
@@ -51,6 +60,7 @@ def test_supplier_rfq_save_and_print(client):
         assert rfq.supplier == 'مورد الاختبار'
         assert len(rfq.lines) == 1
         assert rfq.lines[0].description == 'ماكينة جيرلس'
+        assert rfq.lines[0].item_id == item_id
         rfq_id = rfq.id
 
     pr = client.get(f'/supplier-rfqs/{rfq_id}/print')

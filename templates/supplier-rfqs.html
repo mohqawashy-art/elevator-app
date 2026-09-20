@@ -46,6 +46,9 @@ th{color:var(--text3);font-size:11px;font-weight:500}
 .field label{font-size:12px;font-weight:500;color:var(--text2)}
 .field input,.field select,.field textarea{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-size:13px;outline:none;font-family:inherit;padding:9px 12px;width:100%}
 .lines-table input,.lines-table select{min-width:80px;width:100%}
+.lines-table .lc-client-select{position:relative;min-width:200px}
+.lines-table .lc-client-select-input{font-size:12px;padding:8px 10px}
+.lines-table .lc-client-select-list{z-index:500;max-height:220px;overflow-y:auto}
 .badge{display:inline-flex;padding:3px 9px;border-radius:10px;font-size:11px;font-weight:500}
 .badge-ok{background:rgba(31,184,122,.12);color:var(--success)}
 .badge-warn{background:rgba(224,144,48,.12);color:var(--warning)}
@@ -163,11 +166,10 @@ th{color:var(--text3);font-size:11px;font-weight:500}
         <table class="lines-table lc-table-inputs">
           <thead>
             <tr>
-              <th style="width:22%">الصنيف / البند</th>
-              <th style="width:18%">صنف المخزن</th>
+              <th style="width:28%">الصنف (بحث من المخزن)</th>
               <th style="width:10%">الكمية</th>
               <th style="width:10%">الوحدة</th>
-              <th style="width:18%">المواصفات</th>
+              <th style="width:22%">المواصفات</th>
               <th style="width:12%">سعر العرض</th>
               <th></th>
             </tr>
@@ -175,18 +177,12 @@ th{color:var(--text3);font-size:11px;font-weight:500}
           <tbody id="lines-body">
             {% set rfq_lines = edit_rfq.lines if edit_rfq and edit_rfq.lines else [none] %}
             {% for line in rfq_lines %}
-            <tr class="line-row">
-              <td><input type="text" name="description" placeholder="ماكينة، سكك، كبينة…" value="{{ line.description if line else '' }}" {% if not edit_rfq %}required{% endif %}></td>
-              <td>
-                <select name="item_id">
-                  <option value="">— اختياري —</option>
-                  {% for it in items %}
-                  <option value="{{ it.id }}" {% if line and line.item_id == it.id %}selected{% endif %}>{{ it.code }} — {{ it.name }}</option>
-                  {% endfor %}
-                </select>
+            <tr class="line-row" data-item-id="{{ line.item_id if line and line.item_id else '' }}">
+              <td class="rfq-item-cell">
+                <input type="hidden" name="description" class="rfq-desc" value="{{ line.description if line else '' }}">
               </td>
               <td><input type="number" name="quantity" min="0.01" step="0.01" value="{{ line.quantity if line else 1 }}"></td>
-              <td><input type="text" name="unit" value="{{ line.unit if line else 'قطعة' }}"></td>
+              <td><input type="text" name="unit" class="rfq-unit" value="{{ line.unit if line else 'قطعة' }}"></td>
               <td><input type="text" name="specs" placeholder="مواصفات" value="{{ line.specs or '' if line else '' }}"></td>
               <td><input type="number" name="quoted_unit_price" class="lc-input--money" min="0" step="0.01" placeholder="0.00" value="{{ line.quoted_unit_price if line and line.quoted_unit_price else '' }}"></td>
               <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
@@ -206,7 +202,7 @@ th{color:var(--text3);font-size:11px;font-weight:500}
           {% endif %}
         </div>
       </form>
-      <p style="font-size:11px;color:var(--text3);margin-top:10px">أرسل RFQ بدون أسعار. عند استلام عرض المورد: اضبط الحالة «مستلم»، اربط البنود بأصناف المخزن، وأدخل أسعار العرض — تُحدَّث قائمة الأسعار تلقائياً.</p>
+      <p style="font-size:11px;color:var(--text3);margin-top:10px">اختر كل بند ببحث من أصناف المخزن (الكود أو الاسم). عند استلام عرض المورد: اضبط الحالة «مستلم» وأدخل أسعار العرض — تُحدَّث قائمة الأسعار تلقائياً.</p>
     </div>
 
     <div class="panel">
@@ -241,18 +237,12 @@ th{color:var(--text3);font-size:11px;font-weight:500}
 </div>
 
 <template id="line-tpl">
-  <tr class="line-row">
-    <td><input type="text" name="description" placeholder="الصنيف / البند"></td>
-    <td>
-      <select name="item_id">
-        <option value="">— اختياري —</option>
-        {% for it in items %}
-        <option value="{{ it.id }}">{{ it.code }} — {{ it.name }}</option>
-        {% endfor %}
-      </select>
+  <tr class="line-row" data-item-id="">
+    <td class="rfq-item-cell">
+      <input type="hidden" name="description" class="rfq-desc" value="">
     </td>
     <td><input type="number" name="quantity" min="0.01" step="0.01" value="1"></td>
-    <td><input type="text" name="unit" value="قطعة"></td>
+    <td><input type="text" name="unit" class="rfq-unit" value="قطعة"></td>
     <td><input type="text" name="specs" placeholder="مواصفات"></td>
     <td><input type="number" name="quoted_unit_price" min="0" step="0.01" placeholder="بعد الرد"></td>
     <td><button type="button" class="btn btn-secondary btn-sm" onclick="removeLine(this)">حذف</button></td>
@@ -260,6 +250,88 @@ th{color:var(--text3);font-size:11px;font-weight:500}
 </template>
 
 <script>
+var INVENTORY_ITEMS = {{ inventory_items_js|default([])|tojson }};
+var rfqItemRowSeq = 0;
+
+function inventorySelectOptions() {
+  return INVENTORY_ITEMS.map(function (i) {
+    return { id: String(i.id), code: i.code || '', name: i.name || '' };
+  });
+}
+
+function findInventoryItem(itemId) {
+  for (var i = 0; i < INVENTORY_ITEMS.length; i++) {
+    if (String(INVENTORY_ITEMS[i].id) === String(itemId)) return INVENTORY_ITEMS[i];
+  }
+  return null;
+}
+
+function onRfqItemChange(tr) {
+  var hidden = tr.querySelector('input[name="item_id"]');
+  var descEl = tr.querySelector('.rfq-desc');
+  var unitEl = tr.querySelector('.rfq-unit');
+  var item = findInventoryItem(hidden ? hidden.value : '');
+  if (!item) return;
+  if (descEl) descEl.value = item.name || item.code || '';
+  if (unitEl && item.unit) unitEl.value = item.unit;
+}
+
+function mountRfqItemSelect(tr, selectedId) {
+  var cell = tr.querySelector('.rfq-item-cell');
+  if (!cell) return;
+  if (cell.dataset.rfqItemMounted === '1') return;
+  rfqItemRowSeq += 1;
+  var uid = 'rfq-item-' + rfqItemRowSeq;
+  var wrapId = uid + '-wrap';
+  var inputId = uid + '-input';
+  var listId = uid + '-list';
+  var hiddenId = uid + '-id';
+  var descEl = cell.querySelector('.rfq-desc');
+  if (descEl) cell.insertBefore(descEl, cell.firstChild);
+  var mountHost = document.createElement('div');
+  mountHost.className = 'rfq-item-mount';
+  cell.appendChild(mountHost);
+  mountHost.innerHTML =
+    '<div class="lc-client-select" id="' + wrapId + '">' +
+    '<input type="text" class="lc-client-select-input" id="' + inputId + '" placeholder="ابحث بالكود أو اسم الصنف..." autocomplete="off">' +
+    '<input type="hidden" name="item_id" id="' + hiddenId + '" value="' + (selectedId || '') + '">' +
+    '<ul class="lc-client-select-list" id="' + listId + '" hidden role="listbox"></ul>' +
+    '</div>';
+  if (typeof LcClientSelect === 'undefined') {
+    cell.dataset.rfqNeedMount = '1';
+    return;
+  }
+  cell.dataset.rfqNeedMount = '';
+  cell.dataset.rfqItemMounted = '1';
+  LcClientSelect.mount({
+    wrapId: wrapId,
+    hiddenId: hiddenId,
+    inputId: inputId,
+    listId: listId,
+    customers: inventorySelectOptions(),
+    selectedId: selectedId || '',
+    onChange: function () { onRfqItemChange(tr); },
+  });
+  if (selectedId) onRfqItemChange(tr);
+  else if (descEl && descEl.value) {
+    var inp = document.getElementById(inputId);
+    if (inp) inp.placeholder = descEl.value;
+  }
+}
+
+function mountAllRfqItemSelects() {
+  document.querySelectorAll('#lines-body .line-row').forEach(function (tr) {
+    var selectedId = tr.getAttribute('data-item-id') || '';
+    mountRfqItemSelect(tr, selectedId);
+  });
+  if (typeof LcClientSelect === 'undefined') return;
+  document.querySelectorAll('#lines-body .rfq-item-cell[data-rfq-need-mount="1"]').forEach(function (cell) {
+    var tr = cell.closest('.line-row');
+    if (!tr) return;
+    cell.dataset.rfqItemMounted = '';
+    mountRfqItemSelect(tr, tr.getAttribute('data-item-id') || '');
+  });
+}
 function syncSupplierFromSelect() {
   var sel = document.getElementById('supplier_id');
   var opt = sel && sel.selectedOptions[0];
@@ -275,21 +347,35 @@ function addLine() {
   const body = document.getElementById('lines-body');
   const row = document.getElementById('line-tpl').content.cloneNode(true).querySelector('tr');
   body.appendChild(row);
+  mountRfqItemSelect(row, '');
 }
 function removeLine(btn) {
   const body = document.getElementById('lines-body');
   if (body.querySelectorAll('.line-row').length > 1) btn.closest('tr').remove();
 }
+document.getElementById('rfq-form').addEventListener('submit', function (e) {
+  var rows = document.querySelectorAll('#lines-body .line-row');
+  var missing = false;
+  rows.forEach(function (tr) {
+    var hid = tr.querySelector('input[name="item_id"]');
+    if (!hid || !hid.value) missing = true;
+  });
+  if (missing) {
+    e.preventDefault();
+    alert('اختر صنفاً من المخزن لكل سطر');
+  }
+});
+document.addEventListener('DOMContentLoaded', function () {
+  mountAllRfqItemSelects();
+  {% if edit_rfq %}
+  var panel = document.getElementById('rfq-form-panel');
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  {% endif %}
+});
 function closeSidebar() {
   document.getElementById('sidebar').classList.remove('open');
   document.getElementById('overlay').classList.remove('open');
 }
-{% if edit_rfq %}
-document.addEventListener('DOMContentLoaded', function () {
-  var panel = document.getElementById('rfq-form-panel');
-  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-});
-{% endif %}
 </script>
 </body>
 </html>
