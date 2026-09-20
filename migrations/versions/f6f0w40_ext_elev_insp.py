@@ -1,6 +1,6 @@
 """فحص مصعد خارجي — بوابة الفني
 
-Revision ID: f6f0week40_external_elevator_inspection
+Revision ID: f6f0w40_ext_elev_insp
 Revises: e5e0week39_maint_quote_survey
 """
 from __future__ import annotations
@@ -8,7 +8,7 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = 'f6f0week40_external_elevator_inspection'
+revision = 'f6f0w40_ext_elev_insp'
 down_revision = 'e5e0week39_maint_quote_survey'
 branch_labels = None
 depends_on = None
