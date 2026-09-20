@@ -950,6 +950,45 @@ def test_field_external_inspection_create_save_complete(client):
     assert 'فحص مصعد خارجي' in r5.get_data(as_text=True)
 
 
+def test_field_external_inspection_delete_draft(client):
+    from models import ExternalElevatorInspection
+
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='T-EEID',
+            name='فني حذف',
+            phone='0500000103',
+            team='صيانة',
+            status='متاح',
+        )
+        db.session.add(tech)
+        db.session.commit()
+        tech_id = tech.id
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+
+    client.post('/field/external-inspection/new', follow_redirects=True)
+
+    with client.application.app_context():
+        row = (
+            ExternalElevatorInspection.query.filter_by(technician_id=tech_id)
+            .order_by(ExternalElevatorInspection.id.desc())
+            .first()
+        )
+        assert row is not None
+        iid = row.id
+
+    r = client.post(f'/field/external-inspection/{iid}/delete', follow_redirects=True)
+    assert r.status_code == 200
+    assert 'تم حذف' in r.get_data(as_text=True) or 'مسودة' in r.get_data(as_text=True)
+
+    with client.application.app_context():
+        assert db.session.get(ExternalElevatorInspection, iid) is None
+
+
 def test_field_external_inspection_blank_print(client):
     with client.application.app_context():
         oid = ensure_test_organization()

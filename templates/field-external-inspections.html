@@ -22,14 +22,21 @@
 {% if list.drafts|length %}
 <div class="fp-section">مسودات <span class="fp-count">{{ list.drafts|length }}</span></div>
 {% for row in list.drafts %}
-<a class="fp-card" href="{{ row.url }}">
-  <div class="fp-card-top">
-    <span class="fp-code">{{ row.code }}</span>
-    <span style="font-size:11px;color:var(--fp-muted)">{{ row.status }}</span>
-  </div>
-  <div class="fp-title">{{ row.customer }}</div>
-  <div class="fp-meta">{{ row.city }} · {{ row.inspected_at }}</div>
-</a>
+<div class="fp-card" style="display:block">
+  <a href="{{ row.url }}" style="text-decoration:none;color:inherit;display:block">
+    <div class="fp-card-top">
+      <span class="fp-code">{{ row.code }}</span>
+      <span style="font-size:11px;color:var(--fp-muted)">{{ row.status }}</span>
+    </div>
+    <div class="fp-title">{{ row.customer }}</div>
+    <div class="fp-meta">{{ row.city }} · {{ row.inspected_at }}</div>
+  </a>
+  {% if row.delete_url %}
+  <form method="post" action="{{ row.delete_url }}" style="margin-top:10px" onsubmit="return confirm('حذف هذه المسودة؟ لا يمكن التراجع.');">
+    <button type="submit" class="fp-submit" style="background:transparent;border:1px solid var(--fp-border);color:var(--fp-danger,#e04848);font-size:12px;padding:8px 12px">حذف المسودة</button>
+  </form>
+  {% endif %}
+</div>
 {% endfor %}
 {% endif %}
 

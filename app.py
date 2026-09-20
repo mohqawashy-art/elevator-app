@@ -10295,6 +10295,26 @@ def field_external_inspection_new():
     return redirect(url_for('field_external_inspection', inspection_id=row.id))
 
 
+@app.route('/field/external-inspection/<int:inspection_id>/delete', methods=['POST'])
+def field_external_inspection_delete(inspection_id):
+    from field_external_inspection import delete_draft_inspection
+
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+    if not tech_id:
+        return redirect(url_for('field_login'))
+    try:
+        delete_draft_inspection(inspection_id, tech_id=tech_id)
+        db.session.commit()
+        flash('تم حذف مسودة الفحص', 'success')
+    except PermissionError as e:
+        db.session.rollback()
+        flash(str(e), 'error')
+    except ValueError as e:
+        db.session.rollback()
+        flash(str(e), 'error')
+    return redirect(url_for('field_external_inspection_list'))
+
+
 @app.route('/field/external-inspection/<int:inspection_id>')
 def field_external_inspection(inspection_id):
     from field_external_inspection import inspection_field_payload

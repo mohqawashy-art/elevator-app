@@ -22,7 +22,7 @@
     {% if payload.external_inspections|length %}<span class="fp-count">{{ payload.external_inspections|length }}</span>{% endif %}
   </div>
   <div class="fp-title">{% if payload.external_inspections|length %}لديك {{ payload.external_inspections|length }} مسودة — {% endif %}فحص موقع بدون عقد</div>
-  <div class="fp-meta">مواصفات المصعد + قائمة فحص + رأي فني</div>
+  <div class="fp-meta">مواصفات المصعد + قائمة فحص — <strong>مستقل عن عروض الصيانة</strong> · احذف المسودة من القائمة إن لم تعد تحتاجها</div>
 </a>
 
 <div id="fp-maint-surveys-banner" {% if not payload.maint_surveys|length %}hidden{% endif %}>

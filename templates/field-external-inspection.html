@@ -80,6 +80,11 @@
   {% if not read_only %}
   <button type="button" id="ei-save" class="fp-submit" style="margin-top:12px">حفظ المسودة</button>
   <button type="button" id="ei-complete" class="fp-submit" style="margin-top:12px;background:var(--fp-success,#1a9d5c)">إكمال الفحص</button>
+  {% if insp.delete_url %}
+  <form method="post" action="{{ insp.delete_url }}" style="margin-top:10px" onsubmit="return confirm('حذف هذه المسودة؟ لا يمكن التراجع.');">
+    <button type="submit" class="fp-submit" style="background:transparent;border:1px solid var(--fp-border);color:var(--fp-danger,#e04848)">حذف المسودة</button>
+  </form>
+  {% endif %}
   {% else %}
   <div class="flash flash-success" style="margin-top:16px;padding:12px;border-radius:10px">تم إكمال هذا الفحص — للعرض فقط</div>
   {% endif %}

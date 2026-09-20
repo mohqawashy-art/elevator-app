@@ -52,23 +52,28 @@ def open_surveys_for_technician(tech_id: int) -> list[MaintenanceQuoteSurvey]:
     )
 
 
-def cancel_orphan_open_surveys() -> int:
-    """طلبات مفتوحة بدون عرض (بعد حذف قديم) — إلغاء تلقائي."""
+def reconcile_open_maintenance_surveys() -> int:
+    """إلغاء MQS مفتوح إذا حُذف العرض أو رُفض (يشمل السجلات اليتيمة)."""
     rows = (
         tenant_query(MaintenanceQuoteSurvey)
-        .outerjoin(MaintenanceQuote, MaintenanceQuote.id == MaintenanceQuoteSurvey.quote_id)
-        .filter(
-            MaintenanceQuoteSurvey.status.in_(tuple(SURVEY_OPEN)),
-            MaintenanceQuote.id.is_(None),
-        )
+        .filter(MaintenanceQuoteSurvey.status.in_(tuple(SURVEY_OPEN)))
         .all()
     )
     now = datetime.utcnow()
+    n = 0
     for survey in rows:
-        survey.status = SURVEY_CANCELLED
-        if not survey.completed_at:
-            survey.completed_at = now
-    return len(rows)
+        quote = tenant_query(MaintenanceQuote).filter_by(id=survey.quote_id).first()
+        if quote is None or (quote.status or '') == 'مرفوض':
+            survey.status = SURVEY_CANCELLED
+            if not survey.completed_at:
+                survey.completed_at = now
+            n += 1
+    return n
+
+
+def cancel_orphan_open_surveys() -> int:
+    """Alias — reconcile covers orphans."""
+    return reconcile_open_maintenance_surveys()
 
 
 def active_survey_for_quote(quote_id: int) -> MaintenanceQuoteSurvey | None:

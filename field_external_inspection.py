@@ -63,6 +63,15 @@ def create_inspection(*, tech_id: int, next_code_fn) -> ExternalElevatorInspecti
     return row
 
 
+def delete_draft_inspection(inspection_id: int, *, tech_id: int) -> None:
+    row = tenant_get_or_404(ExternalElevatorInspection, inspection_id)
+    if row.technician_id != tech_id:
+        raise PermissionError('هذا الفحص غير مخصص لك')
+    if row.status != STATUS_DRAFT:
+        raise ValueError('لا يمكن حذف فحص مكتمل')
+    db.session.delete(row)
+
+
 def _checklist_payload(row: ExternalElevatorInspection) -> dict:
     key = row.checklist_template_key or DEFAULT_TEMPLATE_KEY
     saved = parse_report_json(row.checklist_json)
@@ -80,6 +89,13 @@ def inspection_summary_for_field(row: ExternalElevatorInspection, base_url: str 
     base = base_url.rstrip('/') if base_url else ''
     url = f'{base}/field/external-inspection/{row.id}' if base else f'/field/external-inspection/{row.id}'
     label = (row.customer_name or row.building_name or 'موقع بدون اسم').strip() or 'مسودة فحص'
+    delete_url = None
+    if row.status == STATUS_DRAFT:
+        delete_url = (
+            f'{base}/field/external-inspection/{row.id}/delete'
+            if base
+            else f'/field/external-inspection/{row.id}/delete'
+        )
     return {
         'id': row.id,
         'code': row.code,
@@ -88,6 +104,7 @@ def inspection_summary_for_field(row: ExternalElevatorInspection, base_url: str 
         'city': row.city or '—',
         'inspected_at': str(row.inspected_at) if row.inspected_at else '—',
         'url': url,
+        'delete_url': delete_url,
     }
 
 
@@ -152,6 +169,9 @@ def inspection_field_payload(inspection_id: int, *, tech_id: int, base_url: str 
         else f'/api/field/external-inspection/{iid}/complete',
         'back_url': f'{base}/field/external-inspections' if base else '/field/external-inspections',
         'list_url': f'{base}/field/external-inspections' if base else '/field/external-inspections',
+        'delete_url': f'{base}/field/external-inspection/{iid}/delete'
+        if base and row.status == STATUS_DRAFT
+        else (f'/field/external-inspection/{iid}/delete' if row.status == STATUS_DRAFT else None),
     }
 
 
