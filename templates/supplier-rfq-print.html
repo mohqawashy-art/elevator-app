@@ -163,7 +163,8 @@ var RFQ = {
   code: {{ rfq.code|tojson }},
   company: {{ company_name|tojson }},
   date: {{ (rfq.request_date.isoformat() if rfq.request_date else '')|tojson }},
-  T: {{ rfq_ui|tojson }}
+  T: {{ rfq_ui|tojson }},
+  publicDocUrl: {{ public_doc_url|default('')|tojson }}
 };
 
 function whatsappDigits(phone) {
@@ -175,10 +176,17 @@ function whatsappDigits(phone) {
 }
 
 function buildMessage(pdfUrl) {
-  return [RFQ.T.wa_greeting, '',
+  var lines = [RFQ.T.wa_greeting, '',
     RFQ.T.wa_body.replace('{code}', RFQ.code) + RFQ.T.wa_date.replace('{date}', RFQ.date),
-    RFQ.T.wa_closing, '', RFQ.T.wa_link, pdfUrl, '', RFQ.T.wa_regards, RFQ.company
-  ].join('\n');
+    RFQ.T.wa_closing];
+  if (pdfUrl) {
+    lines.push('', RFQ.T.wa_link, pdfUrl);
+  }
+  if (RFQ.publicDocUrl) {
+    lines.push('', 'عرض على المتصفح (بدون دخول):', RFQ.publicDocUrl);
+  }
+  lines.push('', RFQ.T.wa_regards, RFQ.company);
+  return lines.join('\n');
 }
 
 function generateAndUploadPdf() {
