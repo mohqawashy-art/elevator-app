@@ -10355,27 +10355,46 @@ def api_field_external_inspection_complete(inspection_id):
         return jsonify({'ok': False, 'error': str(e)}), 400
 
 
+@app.route('/forms')
+def office_forms():
+    from forms_catalog import catalog_for_user, catalog_grouped
+
+    items = catalog_for_user(
+        has_perm=has_perm,
+        url_for=url_for,
+        install_enabled=install_module_enabled(),
+    )
+    return render_template(
+        'office-forms.html',
+        form_groups=catalog_grouped(items),
+    )
+
+
+@app.route('/forms/blank/<form_id>')
+def office_form_blank(form_id):
+    from forms_catalog import blank_form_payload
+
+    try:
+        payload = blank_form_payload(form_id, back_url=url_for('office_forms'))
+    except ValueError:
+        abort(404)
+    return render_template('office-form-blank-print.html', **payload)
+
+
 @app.route('/field/external-inspection/blank')
 def field_external_inspection_blank():
-    from field_external_inspection import blank_print_payload
+    from forms_catalog import blank_form_payload
 
-    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
-    payload = blank_print_payload(
-        base_url=request.url_root,
+    payload = blank_form_payload(
+        'external-inspection',
         back_url=url_for('field_external_inspection_list'),
     )
-    return render_template('external-inspection-blank-print.html', **payload)
+    return render_template('office-form-blank-print.html', **payload)
 
 
 @app.route('/external-inspection/blank')
 def office_external_inspection_blank():
-    from field_external_inspection import blank_print_payload
-
-    payload = blank_print_payload(
-        base_url=request.url_root,
-        back_url=url_for('home'),
-    )
-    return render_template('external-inspection-blank-print.html', **payload)
+    return redirect(url_for('office_form_blank', form_id='external-inspection'))
 
 
 @app.route('/field/fault/<int:fault_id>')

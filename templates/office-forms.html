@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-theme="{{ user_theme }}">
+<head>
+{% set page_title = 'النماذج' %}
+{% include 'installation/_layout_head.html' %}
+<style>
+.forms-intro{font-size:13px;color:var(--text2);margin-bottom:20px;line-height:1.7;max-width:720px}
+.forms-cat{font-size:12px;font-weight:700;color:var(--gold);margin:24px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.forms-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.form-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.form-card h3{font-size:14px;font-weight:600;color:var(--text1);margin:0}
+.form-card p{font-size:12px;color:var(--text2);line-height:1.55;margin:0;flex:1}
+.form-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.form-tag{font-size:10px;color:var(--text3);background:var(--bg3);padding:2px 8px;border-radius:10px;display:inline-block}
+.nav-item.active-forms{background:rgba(42,127,255,.12);color:var(--accent)}
+</style>
+</head>
+<body>
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-logo"><img src="{{ brand_logo_url }}" alt="LiftCore"></div>
+  <nav class="sidebar-nav">{% include 'partials/app_sidebar_nav.html' %}</nav>
+</aside>
+<div class="main">
+  {% include 'partials/app_header.html' %}
+  <div class="content">
+    <div class="page-header">
+      <div class="page-title">النماذج</div>
+    </div>
+    <p class="forms-intro">
+      كل نماذج LiftCore في مكان واحد: <strong>طباعة فارغ</strong> للتعبئة اليدوية،
+      <strong>فتح الشاشة</strong> للتعبئة في النظام، أو <strong>تحميل Excel</strong> للاستيراد.
+      مستندات مرتبطة بسجل (فاتورة، عقد، PO…) تُطبع بعد إنشاء السجل من الرابط المقابل.
+    </p>
+
+    {% if not form_groups %}
+    <div class="panel">لا توجد نماذج متاحة لصلاحيات حسابك.</div>
+    {% endif %}
+
+    {% for category, items in form_groups %}
+    <div class="forms-cat">{{ category }}</div>
+    <div class="forms-grid">
+      {% for f in items %}
+      <article class="form-card">
+        <h3>{{ f.title }}</h3>
+        <p>{{ f.description }}</p>
+        {% if f.field_note %}<span class="form-tag">بوابة الفني /field</span>{% endif %}
+        <div class="form-actions">
+          {% if f.blank_url %}
+          <a class="btn btn-primary btn-sm lc-open-tab" href="{{ f.blank_url }}" target="_blank" rel="noopener">🖨️ نموذج فارغ</a>
+          {% endif %}
+          {% if f.open_href %}
+          <a class="btn btn-secondary btn-sm" href="{{ f.open_href }}">{{ f.open_label|default('فتح') }}</a>
+          {% endif %}
+          {% if f.download_href %}
+          <a class="btn btn-secondary btn-sm" href="{{ f.download_href }}">{{ f.download_label|default('تحميل') }}</a>
+          {% endif %}
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+<script>
+(function(){
+  var link = document.querySelector('.sidebar-nav a[href="/forms"]');
+  if (link) link.classList.add('active');
+})();
+</script>
+</body>
+</html>

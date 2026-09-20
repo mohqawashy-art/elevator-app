@@ -232,23 +232,3 @@ def complete_inspection(inspection_id: int, *, tech_id: int, body: dict) -> Exte
     if not row.inspected_at:
         row.inspected_at = date.today()
     return row
-
-
-def blank_print_payload(*, base_url: str = '', back_url: str | None = None) -> dict:
-    """نموذج فارغ للطباعة — قائمة الفحص الخارجي + حقول يدوية."""
-    from models import Settings
-    from operations import _report_brand_logo_url
-    from tenant_scope import tenant_query
-
-    template = get_template(DEFAULT_TEMPLATE_KEY)
-    settings = tenant_query(Settings).first()
-    company = (getattr(settings, 'company_name', None) or 'LiftCore') if settings else 'LiftCore'
-    base = base_url.rstrip('/') if base_url else ''
-    return {
-        'title_ar': 'فحص مصعد خارجي',
-        'title_en': 'External elevator site inspection',
-        'company_name': company,
-        'logo_url': _report_brand_logo_url(),
-        'checklist_template': template,
-        'back_url': back_url or (f'{base}/field/external-inspections' if base else '/field/external-inspections'),
-    }
