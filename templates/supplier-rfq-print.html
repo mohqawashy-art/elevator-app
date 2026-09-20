@@ -55,12 +55,15 @@ html[dir="ltr"] .head-doc{text-align:right}
 <div class="toolbar no-print">
   <div class="toolbar-title">
     <span>{{ ui.toolbar_title }} {{ rfq.code }}</span>
+    {% if not public_view %}
     {% if not en_only %}
     <a href="{{ url_for('supplier_rfq_print_en', request_id=rfq.id) }}" class="btn-back" style="font-size:11px;padding:4px 10px">English</a>
     {% else %}
     <a href="{{ url_for('supplier_rfq_print', request_id=rfq.id) }}" class="btn-back" style="font-size:11px;padding:4px 10px">عربي</a>
     {% endif %}
+    {% endif %}
   </div>
+  {% if not public_view %}
   <form method="post" action="{{ url_for('supplier_rfq_update_contact', request_id=rfq.id) }}" style="display:contents" id="contact-form">
     {% if en_only %}<input type="hidden" name="en_only" value="1">{% endif %}
     <div class="field">
@@ -79,6 +82,11 @@ html[dir="ltr"] .head-doc{text-align:right}
     <button type="submit" form="contact-form" class="btn-save">{{ ui.save_contact }}</button>
     <a href="{{ url_for('supplier_rfqs') }}" class="btn-back">{{ ui.back }}</a>
   </div>
+  {% else %}
+  <div style="display:flex;gap:6px;flex-wrap:wrap">
+    <button type="button" class="btn-print" onclick="window.print()">{{ ui.print_pdf }}</button>
+  </div>
+  {% endif %}
 </div>
 
 <div class="doc" id="rfq-document">

@@ -195,11 +195,13 @@ body.page-a5 .qr-side img{width:85px;height:85px}
 <div class="toolbar">
   <span>{{ doc_title }} — {{ irn }}</span>
   <div>
-    {% if show_whatsapp_payment %}
+    {% if show_whatsapp_payment and not public_view %}
     <button type="button" class="btn-wa lc-wa-btn lc-wa-btn-text" onclick="LiftCoreFinancialWa.request('invoice', {{ invoice_id }})">طلب سداد واتساب</button>
     {% endif %}
     <button type="button" class="print" onclick="window.print()">طباعة</button>
+    {% if not public_view %}
     <a class="back" href="/invoices">إغلاق</a>
+    {% endif %}
   </div>
 </div>
 

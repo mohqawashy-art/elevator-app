@@ -231,8 +231,10 @@ PUBLIC_ENDPOINTS = frozenset({
     'attendance_adms.iclock_registry',
     'attendance.api_punch',
     'public_visit_report',
+    'public_document_share',
+    'public_document_file',
 })
-PUBLIC_PATH_PREFIXES = ('/static', '/r/visit/')
+PUBLIC_PATH_PREFIXES = ('/static', '/r/')
 STATIC_UPLOADS_PREFIX = '/static/uploads'
 
 
@@ -10015,6 +10017,130 @@ def public_visit_report(token):
     return render_template('visit-report.html', **payload)
 
 
+def _public_link_expired_html() -> tuple[str, int, dict]:
+    return (
+        '<!DOCTYPE html><html dir="rtl" lang="ar"><meta charset="utf-8">'
+        '<body style="font-family:Tahoma,sans-serif;padding:40px;text-align:center">'
+        '<h2>انتهت صلاحية الرابط أو غير صالح</h2>'
+        '<p style="color:#666">اطلب من المرسل إرسال رابط جديد.</p>'
+        '</body></html>',
+        410,
+        {'Content-Type': 'text/html; charset=utf-8'},
+    )
+
+
+def _bind_public_organization(organization_id: int):
+    from demo_provisioning import organization_access_allowed
+    from models import Organization
+
+    org = db.session.get(Organization, int(organization_id))
+    if not org or not organization_access_allowed(org):
+        abort(404)
+    g.organization = org
+    g.organization_id = org.id
+
+
+@app.route('/r/d/<token>')
+def public_document_share(token):
+    """مستند (طباعة/عرض) للعميل أو المورد — بدون تسجيل دخول."""
+    from document_share import load_document_share_token
+
+    data = load_document_share_token(token)
+    if not data:
+        return _public_link_expired_html()
+    _bind_public_organization(data['organization_id'])
+    kind = data['kind']
+    doc_id = data['doc_id']
+    public_kw = {'public_view': True}
+
+    if kind in ('rfq', 'rfq_en'):
+        from supplier_rfq_schema import ensure_supplier_rfq_schema
+        ensure_supplier_rfq_schema()
+        rfq = tenant_query(SupplierQuoteRequest).filter_by(id=doc_id).first()
+        if not rfq:
+            abort(404)
+        en_only = kind == 'rfq_en'
+        ctx = _supplier_rfq_print_context(rfq, en_only=en_only)
+        return render_template('supplier-rfq-print.html', **ctx, **public_kw)
+    if kind in ('po', 'po_en'):
+        order = tenant_query(PurchaseOrder).filter_by(id=doc_id).first()
+        if not order:
+            abort(404)
+        en_only = kind == 'po_en'
+        return render_template(
+            'purchase-order-print.html',
+            **_purchase_order_print_context(order, en_only=en_only),
+            **public_kw,
+        )
+    if kind == 'invoice':
+        from invoice_print import invoice_print_payload
+        invo = tenant_query(Invoice).filter_by(id=doc_id).first()
+        if not invo:
+            abort(404)
+        return render_template(
+            'invoice-print.html',
+            **invoice_print_payload(invo, base_url=request.url_root),
+            **public_kw,
+        )
+    if kind == 'contract':
+        from contract_print import contract_print_payload
+        if not tenant_query(Contract).filter_by(id=doc_id).first():
+            abort(404)
+        return render_template('contract-print.html', **contract_print_payload(doc_id), **public_kw)
+    if kind == 'iq':
+        from installation.routes import quote_print
+        return quote_print(doc_id)
+    if kind == 'mq':
+        from sales.routes import maintenance_quote_print
+        return maintenance_quote_print(doc_id)
+    abort(404)
+
+
+@app.route('/r/f/<token>')
+def public_document_file(token):
+    """PDF مرفوع لمستند — بدون تسجيل دخول."""
+    from document_share import load_document_file_token
+    from urllib.parse import quote
+
+    data = load_document_file_token(token)
+    if not data:
+        return _public_link_expired_html()
+    _bind_public_organization(data['organization_id'])
+    kind = data['kind']
+    doc_id = data['doc_id']
+    rel_path = ''
+    if kind == 'rfq_pdf':
+        rfq = tenant_query(SupplierQuoteRequest).filter_by(id=doc_id).first()
+        if not rfq or not (rfq.pdf_path or '').strip():
+            abort(404)
+        rel_path = rfq.pdf_path.replace('\\', '/')
+    elif kind == 'po_pdf':
+        order = tenant_query(PurchaseOrder).filter_by(id=doc_id).first()
+        if not order or not (order.pdf_path or '').strip():
+            abort(404)
+        rel_path = order.pdf_path.replace('\\', '/')
+    else:
+        abort(404)
+    if rel_path.startswith('static/'):
+        rel_path = rel_path[len('static/'):]
+    if not rel_path.startswith('uploads/'):
+        abort(404)
+    subpath = rel_path[len('uploads/'):]
+    directory = os.path.join(app.root_path, 'static', 'uploads')
+    full = os.path.normpath(os.path.join(directory, subpath))
+    if not full.startswith(os.path.normpath(directory)) or not os.path.isfile(full):
+        abort(404)
+    mime = _guess_upload_mimetype(full)
+    download_name = _upload_download_name(os.path.basename(full))
+    resp = send_from_directory(directory, subpath, mimetype=mime, as_attachment=False, download_name=download_name)
+    ascii_name = download_name.encode('ascii', 'ignore').decode('ascii') or 'document.pdf'
+    resp.headers['Content-Disposition'] = (
+        f"inline; filename=\"{ascii_name}\"; filename*=UTF-8''{quote(download_name)}"
+    )
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    return resp
+
+
 @app.route('/api/maintenance-visits/<int:visit_id>/customer-report-send', methods=['POST'])
 def api_visit_report_customer_send(visit_id):
     from operations import visit_report_customer_whatsapp
@@ -13449,7 +13575,9 @@ def purchase_order_upload_pdf(order_id):
     upload.save(os.path.join(folder, filename))
     order.pdf_path = f'uploads/purchase_orders/{order_id}/{filename}'
     db.session.commit()
-    pdf_url = url_for('static', filename=order.pdf_path, _external=True)
+    from document_share import document_file_share_url
+    oid = int(getattr(order, 'organization_id', None) or getattr(g, 'organization_id', None) or 0)
+    pdf_url = document_file_share_url('po_pdf', order.id, oid, request.url_root)
     return jsonify(ok=True, url=pdf_url)
 
 
@@ -13730,6 +13858,10 @@ def _supplier_rfq_print_context(rfq, *, en_only=False):
     rfq_en = RFQ_PRINT_LABELS['en']
     rfq_ui = rfq_en if en_only else (rfq_en if lang == 'en' else rfq_ar)
     company_name = (s.company_name if s and s.company_name else 'LiftCore')
+    from document_share import document_share_url
+    oid = int(getattr(rfq, 'organization_id', None) or getattr(g, 'organization_id', None) or 0)
+    share_kind = 'rfq_en' if en_only else 'rfq'
+    public_doc_url = document_share_url(share_kind, rfq.id, oid, request.url_root) if oid else ''
     return dict(
         rfq=rfq,
         logo_width=logo_w,
@@ -13743,6 +13875,7 @@ def _supplier_rfq_print_context(rfq, *, en_only=False):
         company_name=company_name,
         brand_logo_url=brand_logo_url(s),
         status_en=RFQ_STATUS_EN.get(rfq.status or '', rfq.status or ''),
+        public_doc_url=public_doc_url,
     )
 
 
@@ -13784,7 +13917,9 @@ def supplier_rfq_upload_pdf(request_id):
     upload.save(os.path.join(folder, filename))
     rfq.pdf_path = f'uploads/supplier_rfqs/{request_id}/{filename}'
     db.session.commit()
-    pdf_url = url_for('static', filename=rfq.pdf_path, _external=True)
+    from document_share import document_file_share_url
+    oid = int(getattr(rfq, 'organization_id', None) or getattr(g, 'organization_id', None) or 0)
+    pdf_url = document_file_share_url('rfq_pdf', rfq.id, oid, request.url_root)
     return jsonify(ok=True, url=pdf_url)
 
 

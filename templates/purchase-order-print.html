@@ -338,14 +338,17 @@ html[dir="ltr"] .head-doc{text-align:right}
   <div class="toolbar-title">
 
     <span>{{ po_ui.toolbar_title }} {{ order.code }} <span style="opacity:.6;font-size:11px">({% if en_only %}EN v1{% else %}v2.9{% endif %})</span></span>
+    {% if not public_view %}
     {% if not en_only %}
     <a href="{{ url_for('purchase_order_print_en', order_id=order.id) }}" class="btn btn-secondary btn-sm lc-open-tab" style="font-size:11px;padding:4px 10px">English only</a>
     {% else %}
     <a href="{{ url_for('purchase_order_print', order_id=order.id) }}" class="btn btn-secondary btn-sm" style="font-size:11px;padding:4px 10px">Bilingual AR+EN</a>
     {% endif %}
+    {% endif %}
 
   </div>
 
+  {% if not public_view %}
   <form method="post" action="{{ url_for('purchase_order_update_contact', order_id=order.id) }}" style="display:contents" id="contact-form">
 
     {% if en_only %}<input type="hidden" name="en_only" value="1">{% endif %}
@@ -385,6 +388,11 @@ html[dir="ltr"] .head-doc{text-align:right}
     <a href="{{ url_for('purchase_orders') }}" class="btn-back">{{ po_ui.back }}</a>
 
   </div>
+  {% else %}
+  <div class="actions">
+    <button type="button" class="btn-print" onclick="window.print()">{{ po_ui.print_pdf }}</button>
+  </div>
+  {% endif %}
 
 </div>
 

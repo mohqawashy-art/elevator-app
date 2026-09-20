@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from flask import flash, redirect, render_template, request, url_for
+from flask import flash, g, redirect, render_template, request, url_for
 
 from models import Customer, MaintenanceQuote, MaintenanceQuoteSurvey, Technician, db
 from sales import sales_bp
@@ -309,7 +309,9 @@ def install_quote_deliver(quotation_id, channel):
         return redirect(url_for('sales.quotes_inbox', kind='install'))
 
     q = tenant_get_or_404(InstallQuotation, quotation_id)
-    print_url = url_for('installation.quote_print', quotation_id=q.id, _external=True)
+    from document_share import document_share_url
+    oid = int(getattr(q, 'organization_id', None) or getattr(g, 'organization_id', None) or 0)
+    print_url = document_share_url('iq', q.id, oid, request.url_root)
     settings = tenant_query(Settings).first()
     links = delivery_links_for_install_quote(q, print_url=print_url, settings=settings)
     target = links['whatsapp_url'] if channel == 'whatsapp' else links['mailto_url']
@@ -342,7 +344,9 @@ def maintenance_quote_deliver(quote_id, channel):
         return redirect(url_for('sales.maintenance_quotes_list'))
 
     quote = tenant_get_or_404(MaintenanceQuote, quote_id)
-    print_url = url_for('sales.maintenance_quote_print', quote_id=quote.id, _external=True)
+    from document_share import document_share_url
+    oid = int(getattr(quote, 'organization_id', None) or getattr(g, 'organization_id', None) or 0)
+    print_url = document_share_url('mq', quote.id, oid, request.url_root)
     settings = tenant_query(Settings).first()
     links = delivery_links_for_maint_quote(quote, print_url=print_url, settings=settings)
     target = links['whatsapp_url'] if channel == 'whatsapp' else links['mailto_url']

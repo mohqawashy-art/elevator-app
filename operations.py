@@ -350,8 +350,14 @@ def build_invoice_payment_whatsapp(invoice, base_url: str = '') -> str:
     if desc:
         lines.append(f'البيان: {desc}')
     if base_url:
-        lines.append('')
-        lines.append(f'🔗 عرض الفاتورة:\n{base_url.rstrip("/")}/invoices/{invoice.id}/print')
+        from document_share import document_share_url
+        oid = int(getattr(invoice, 'organization_id', None) or 0)
+        if oid:
+            lines.append('')
+            lines.append(
+                '🔗 عرض الفاتورة:\n'
+                + document_share_url('invoice', invoice.id, oid, base_url)
+            )
     if not paid:
         _append_bank_details(lines, settings)
     lines.append('')
