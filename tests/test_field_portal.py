@@ -883,3 +883,68 @@ def test_save_visit_report_without_photos_key_preserves_existing_photos(client):
         assert data['items']['5_3']['status'] == 'ok'
         assert len(data.get('photos') or []) == 1
         assert data['photos'][0]['caption'] == 'قديمة'
+
+
+def test_field_external_inspection_create_save_complete(client):
+    from models import ExternalElevatorInspection
+
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='T-EEI',
+            name='فني فحص خارجي',
+            phone='0500000101',
+            team='صيانة',
+            status='متاح',
+        )
+        db.session.add(tech)
+        db.session.commit()
+        tech_id = tech.id
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+
+    r = client.post('/field/external-inspection/new', follow_redirects=True)
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert 'EEI-' in html or 'فحص خارجي' in html
+
+    with client.application.app_context():
+        row = (
+            ExternalElevatorInspection.query.filter_by(technician_id=tech_id)
+            .order_by(ExternalElevatorInspection.id.desc())
+            .first()
+        )
+        assert row is not None
+        assert row.status == 'مسودة'
+        iid = row.id
+
+    save_body = {
+        'customer_name': 'عميل خارجي',
+        'technical_opinion': 'المصعد يعمل بحالة مقبولة',
+        'city': 'الرياض',
+        'checklist': {'items': {'e1_0': {'status': 'ok', 'note': ''}}},
+    }
+    r3 = client.post(
+        f'/api/field/external-inspection/{iid}',
+        json=save_body,
+    )
+    assert r3.status_code == 200
+    assert (r3.get_json() or {}).get('ok') is True
+
+    r4 = client.post(
+        f'/api/field/external-inspection/{iid}/complete',
+        json=save_body,
+    )
+    assert r4.status_code == 200
+
+    with client.application.app_context():
+        row = db.session.get(ExternalElevatorInspection, iid)
+        assert row.status == 'مكتمل'
+        assert row.customer_name == 'عميل خارجي'
+        assert row.completed_at is not None
+
+    r5 = client.get('/field')
+    assert r5.status_code == 200
+    assert 'فحص مصعد خارجي' in r5.get_data(as_text=True)

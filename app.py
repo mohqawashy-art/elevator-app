@@ -10275,6 +10275,86 @@ def field_maint_quote_survey_complete(survey_id):
     return redirect(url_for('field_home'))
 
 
+@app.route('/field/external-inspections')
+def field_external_inspection_list():
+    from field_external_inspection import inspection_list_payload
+
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+    lst = inspection_list_payload(tech_id=tech_id, base_url=request.url_root)
+    ctx = _field_portal_context(tech_id)
+    return render_template('field-external-inspections.html', list=lst, **ctx)
+
+
+@app.route('/field/external-inspection/new', methods=['GET', 'POST'])
+def field_external_inspection_new():
+    from field_external_inspection import create_inspection
+
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+    row = create_inspection(tech_id=tech_id, next_code_fn=next_code)
+    db.session.commit()
+    return redirect(url_for('field_external_inspection', inspection_id=row.id))
+
+
+@app.route('/field/external-inspection/<int:inspection_id>')
+def field_external_inspection(inspection_id):
+    from field_external_inspection import inspection_field_payload
+
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+    try:
+        detail = inspection_field_payload(inspection_id, tech_id=tech_id, base_url=request.url_root)
+    except PermissionError as e:
+        ctx = _field_portal_context(tech_id) if tech_id else {}
+        return render_template('field.html', error=str(e), payload=None, **ctx), 403
+    ctx = _field_portal_context(tech_id)
+    read_only = detail.get('status') == 'مكتمل'
+    return render_template(
+        'field-external-inspection.html',
+        insp=detail,
+        read_only=read_only,
+        **ctx,
+    )
+
+
+@app.route('/api/field/external-inspection/<int:inspection_id>', methods=['POST'])
+def api_field_external_inspection_save(inspection_id):
+    from field_external_inspection import save_inspection
+
+    tech_id = getattr(g, 'field_tech_id', None)
+    if not tech_id:
+        return jsonify({'ok': False, 'error': 'غير مصرح'}), 401
+    data = request.get_json(silent=True) or {}
+    try:
+        save_inspection(inspection_id, tech_id=tech_id, body=data)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'تم حفظ المسودة'})
+    except PermissionError as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 403
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 400
+
+
+@app.route('/api/field/external-inspection/<int:inspection_id>/complete', methods=['POST'])
+def api_field_external_inspection_complete(inspection_id):
+    from field_external_inspection import complete_inspection
+
+    tech_id = getattr(g, 'field_tech_id', None)
+    if not tech_id:
+        return jsonify({'ok': False, 'error': 'غير مصرح'}), 401
+    data = request.get_json(silent=True) or {}
+    try:
+        complete_inspection(inspection_id, tech_id=tech_id, body=data)
+        db.session.commit()
+        return jsonify({'ok': True, 'message': 'تم إكمال الفحص'})
+    except PermissionError as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 403
+    except ValueError as e:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': str(e)}), 400
+
+
 @app.route('/field/fault/<int:fault_id>')
 def field_fault(fault_id):
     from operations import field_fault_detail

@@ -1172,6 +1172,46 @@ class MaintenanceQuoteSurveyUnit(TenantMixin, db.Model):
     elevator = db.relationship('Elevator', foreign_keys=[elevator_id], uselist=False)
 
 
+class ExternalElevatorInspection(TenantMixin, db.Model):
+    """فحص مصعد خارجي — يعبّئه الفني في الموقع (بدون عقد/زيارة)."""
+    __tablename__ = 'external_elevator_inspections'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'code', name='uq_ext_elev_insp_org_code'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.String(30), default='مسودة')  # مسودة / مكتمل
+    technician_id = db.Column(db.Integer, db.ForeignKey('technicians.id'), nullable=False, index=True)
+    customer_name = db.Column(db.String(200))
+    customer_phone = db.Column(db.String(30))
+    city = db.Column(db.String(100))
+    district = db.Column(db.String(100))
+    address = db.Column(db.String(300))
+    building_name = db.Column(db.String(200))
+    elev_type = db.Column(db.String(100))
+    brand = db.Column(db.String(100))
+    model = db.Column(db.String(100))
+    capacity_kg = db.Column(db.Integer)
+    capacity_persons = db.Column(db.Integer)
+    floors = db.Column(db.Integer)
+    stops = db.Column(db.Integer)
+    serial_number = db.Column(db.String(100))
+    machine_type = db.Column(db.String(100))
+    door_type = db.Column(db.String(100))
+    control_type = db.Column(db.String(100))
+    condition_status = db.Column(db.String(80))
+    technical_opinion = db.Column(db.Text)
+    recommendations = db.Column(db.Text)
+    checklist_template_key = db.Column(db.String(50), default='external_elevator_v1')
+    checklist_json = db.Column(db.Text)
+    inspected_at = db.Column(db.Date)
+    completed_at = db.Column(db.DateTime)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    technician = db.relationship('Technician', foreign_keys=[technician_id], uselist=False)
+
+
 # =============================================
 # 12ج. تقدير تكلفة إنشاء مصعد
 # =============================================

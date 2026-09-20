@@ -16,6 +16,15 @@
   زيارات <strong>اليوم وغداً</strong> فقط — {{ payload.today }} / {{ payload.tomorrow }}
 </p>
 
+<a href="{{ payload.external_inspections_url }}" class="fp-card" style="border-color:rgba(26,157,92,.45);background:rgba(26,157,92,.08);margin-bottom:12px;text-decoration:none">
+  <div class="fp-card-top">
+    <span class="fp-code" style="color:var(--fp-success,#1a9d5c)">فحص مصعد خارجي</span>
+    {% if payload.external_inspections|length %}<span class="fp-count">{{ payload.external_inspections|length }}</span>{% endif %}
+  </div>
+  <div class="fp-title">{% if payload.external_inspections|length %}لديك {{ payload.external_inspections|length }} مسودة — {% endif %}فحص موقع بدون عقد</div>
+  <div class="fp-meta">مواصفات المصعد + قائمة فحص + رأي فني</div>
+</a>
+
 <div id="fp-maint-surveys-banner" {% if not payload.maint_surveys|length %}hidden{% endif %}>
 {% if payload.maint_surveys|length %}
 <a href="{{ payload.maint_surveys[0].url }}" class="fp-card" style="border-color:rgba(48,120,224,.45);background:rgba(48,120,224,.08);margin-bottom:12px;text-decoration:none">

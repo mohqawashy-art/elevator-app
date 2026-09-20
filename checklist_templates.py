@@ -92,6 +92,55 @@ TEMPLATES: dict[str, dict[str, Any]] = {
             },
         ],
     },
+    'external_elevator_v1': {
+        'key': 'external_elevator_v1',
+        'version': 1,
+        'name_ar': 'فحص مصعد خارجي — موقع',
+        'name_en': 'External elevator site inspection',
+        'sections': [
+            {
+                'id': 1,
+                'title_ar': 'الموقع والوصول',
+                'title_en': 'Site access',
+                'items': [
+                    {'id': 'e1_0', 'ar': 'سلامة مدخل المبنى ومسار الوصول للمصعد', 'en': 'Building access and path to elevator'},
+                    {'id': 'e1_1', 'ar': 'توفر كهرباء وإضاءة كافية في مناطق الفحص', 'en': 'Power and lighting adequate for inspection'},
+                    {'id': 'e1_2', 'ar': 'غرفة الماكينة/البئر قابلة للدخول بأمان', 'en': 'Machine room / shaft access safe'},
+                ],
+            },
+            {
+                'id': 2,
+                'title_ar': 'المعدات الرئيسية',
+                'title_en': 'Main equipment',
+                'items': [
+                    {'id': 'e2_0', 'ar': 'حالة المحرك/الماكينة وعلامات تسريب أو ضوضاء', 'en': 'Motor / machine condition, leaks, noise'},
+                    {'id': 'e2_1', 'ar': 'حبال الجر/السلاسل والبكرات', 'en': 'Ropes/chains and sheaves'},
+                    {'id': 'e2_2', 'ar': 'نظام الفرامل', 'en': 'Brake system'},
+                    {'id': 'e2_3', 'ar': 'منظم السرعة وأجهزة الأمان', 'en': 'Governor and safety devices'},
+                ],
+            },
+            {
+                'id': 3,
+                'title_ar': 'الكابينة والأبواب',
+                'title_en': 'Car and doors',
+                'items': [
+                    {'id': 'e3_0', 'ar': 'تشغيل الأبواب (فتح/إغلاق) بدون عطل ظاهر', 'en': 'Door operation without obvious fault'},
+                    {'id': 'e3_1', 'ar': 'أزرار التحكم والإنارة والإنتركوم', 'en': 'Buttons, lighting, intercom'},
+                    {'id': 'e3_2', 'ar': 'سلامة الكابينة (أرضية، حواجز، مرآة)', 'en': 'Car safety (floor, handrails, mirror)'},
+                ],
+            },
+            {
+                'id': 4,
+                'title_ar': 'البئر والحفرة',
+                'title_en': 'Shaft and pit',
+                'items': [
+                    {'id': 'e4_0', 'ar': 'نظافة الحفرة وعدم تجمع مياه', 'en': 'Pit clean, no water accumulation'},
+                    {'id': 'e4_1', 'ar': 'أدلة السير والتزييت', 'en': 'Guide rails and lubrication'},
+                    {'id': 'e4_2', 'ar': 'قواطع نهاية المشوار', 'en': 'Limit switches'},
+                ],
+            },
+        ],
+    },
 }
 
 

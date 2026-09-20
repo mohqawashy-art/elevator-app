@@ -2053,6 +2053,7 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
 
     from models import MaintenanceQuoteSurvey
     from sales.maint_survey import SURVEY_OPEN, survey_summary_for_field
+    from field_external_inspection import list_open_for_technician, inspection_summary_for_field
 
     maint_surveys = (
         tenant_query(MaintenanceQuoteSurvey)
@@ -2063,6 +2064,8 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         .order_by(MaintenanceQuoteSurvey.requested_at.desc())
         .all()
     )
+
+    ext_inspections = list_open_for_technician(tech_id)
 
     return {
         'technician': {
@@ -2082,12 +2085,18 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
         'show_faults': show_faults or bool(faults),
         'has_assigned_faults': has_assigned_faults,
         'maint_surveys': [survey_summary_for_field(s, base_url) for s in maint_surveys],
-        'alert_stamp': _field_alert_stamp(visits, faults, maint_surveys),
+        'external_inspections': [
+            inspection_summary_for_field(r, base_url) for r in ext_inspections
+        ],
+        'external_inspections_url': f'{base_url.rstrip("/")}/field/external-inspections'
+        if base_url
+        else '/field/external-inspections',
+        'alert_stamp': _field_alert_stamp(visits, faults, maint_surveys, ext_inspections),
         'geofence': field_geofence_config(),
     }
 
 
-def _field_alert_stamp(visits: list, faults: list, surveys: list | None = None) -> str:
+def _field_alert_stamp(visits: list, faults: list, surveys: list | None = None, ext_insp: list | None = None) -> str:
     """بصمة مهام الفني لاكتشاف الإرسال الجديد على الجوال."""
     parts = []
     for v in visits:
@@ -2101,6 +2110,10 @@ def _field_alert_stamp(visits: list, faults: list, surveys: list | None = None) 
     for s in surveys or []:
         parts.append(
             f"m{s.id}:{s.status}:{s.requested_at.isoformat() if s.requested_at else ''}"
+        )
+    for e in ext_insp or []:
+        parts.append(
+            f"e{e.id}:{e.status}:{e.created_at.isoformat() if e.created_at else ''}"
         )
     return '|'.join(sorted(parts))
 

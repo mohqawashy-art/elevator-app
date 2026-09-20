@@ -1,0 +1,166 @@
+{% extends 'field_base.html' %}
+{% set fp_nav = 'home' %}
+{% set show_bottom_nav = false %}
+{% block fp_title %}{{ insp.code }} — فحص خارجي{% endblock %}
+
+{% block fp_head %}
+<style>
+.ei-cl{margin:0 0 12px}
+.ei-cl .cl-header{background:var(--fp-accent,#3078e0);color:#fff;font-size:11px;font-weight:700;padding:8px 10px;border-radius:8px 8px 0 0}
+.ei-cl .cl-table{width:100%;border-collapse:collapse;font-size:11px;border:1px solid var(--fp-border);border-top:none;background:var(--fp-card)}
+.ei-cl .cl-table td{padding:6px 8px;border-bottom:1px solid var(--fp-border);vertical-align:middle}
+.ei-cl .cl-table td.cell-en{display:none}
+.ei-cl .status-btn{display:inline-block;padding:6px 10px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid var(--fp-border);background:var(--fp-bg);margin:2px}
+.ei-cl .status-btn.is-selected.status-ok{background:#27ae60;border-color:#1e8449;color:#fff}
+.ei-cl .status-btn.is-selected.status-repair{background:#c0392b;border-color:#922b21;color:#fff}
+.ei-cl .status-btn.is-selected.status-na{background:#7f8c8d;border-color:#566573;color:#fff}
+.ei-cl .cl-note-input{width:100%;font-size:11px;padding:4px 6px;border:1px solid var(--fp-border);border-radius:6px;background:var(--fp-bg)}
+.ei-progress{font-size:11px;color:var(--fp-muted);margin-bottom:10px}
+</style>
+{% endblock %}
+
+{% block fp_content %}
+<a class="fp-back" href="{{ insp.back_url }}">← قائمة الفحوص</a>
+
+<div class="fp-title" style="font-size:17px;margin-bottom:4px">{{ insp.code }}</div>
+<p style="font-size:12px;color:var(--fp-muted);margin-bottom:10px">فحص مصعد خارجي · {{ insp.status }}</p>
+<div class="ei-progress" id="ei-progress">{{ insp.checklist_stats.filled }}/{{ insp.checklist_stats.total }} بند</div>
+
+<div id="ei-msg" class="fp-err" hidden style="margin-bottom:10px"></div>
+<div id="ei-ok" class="flash flash-success" hidden style="margin-bottom:10px;padding:10px;border-radius:8px"></div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for cat, msg in messages %}
+  <div class="flash flash-{{ 'error' if cat == 'error' else 'success' }}" style="margin-bottom:10px;padding:10px;border-radius:8px">{{ msg }}</div>
+  {% endfor %}
+{% endwith %}
+
+<form id="ei-form" {% if read_only %}data-readonly="1"{% endif %}>
+  <div class="fp-section">العميل والموقع</div>
+  <div class="fp-field"><label>اسم العميل / الجهة *</label><input name="customer_name" value="{{ insp.customer_name }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>جوال</label><input name="customer_phone" type="tel" value="{{ insp.customer_phone }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>المدينة</label><input name="city" value="{{ insp.city }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>الحي</label><input name="district" value="{{ insp.district }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>العنوان</label><input name="address" value="{{ insp.address }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>المبنى / البرج</label><input name="building_name" value="{{ insp.building_name }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>تاريخ الفحص</label><input name="inspected_at" type="date" lang="en-GB" style="direction:ltr" value="{{ insp.inspected_at }}" {% if read_only %}readonly{% endif %}></div>
+
+  <div class="fp-section" style="margin-top:12px">مواصفات المصعد</div>
+  <div class="fp-field"><label>نوع المصعد</label><input name="elev_type" value="{{ insp.elev_type }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>الشركة المصنعة</label><input name="brand" value="{{ insp.brand }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>الموديل</label><input name="model" value="{{ insp.model }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>الحمولة (كجم)</label><input name="capacity_kg" type="number" value="{{ insp.capacity_kg }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>الأشخاص</label><input name="capacity_persons" type="number" value="{{ insp.capacity_persons }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>الطوابق</label><input name="floors" type="number" value="{{ insp.floors }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>التوقفات</label><input name="stops" type="number" value="{{ insp.stops }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>الرقم التسلسلي</label><input name="serial_number" value="{{ insp.serial_number }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>نوع الماكينة</label>
+    <select name="machine_type" {% if read_only %}disabled{% endif %}>
+      {% for opt in ['','MR','MRL','هيدروليك'] %}
+      <option value="{{ opt }}"{% if insp.machine_type == opt %} selected{% endif %}>{{ opt or '—' }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="fp-field"><label>نوع الباب</label><input name="door_type" value="{{ insp.door_type }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>نظام التحكم</label><input name="control_type" value="{{ insp.control_type }}" {% if read_only %}readonly{% endif %}></div>
+  <div class="fp-field"><label>الحالة العامة</label>
+    <select name="condition_status" {% if read_only %}disabled{% endif %}>
+      {% for opt in ['','جيد','مقبول','يحتاج متابعة','غير آمن'] %}
+      <option value="{{ opt }}"{% if insp.condition_status == opt %} selected{% endif %}>{{ opt or '—' }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="fp-section" style="margin-top:12px">قائمة الفحص</div>
+  <div class="ei-cl" id="checklist-root"></div>
+
+  <div class="fp-field"><label>الرأي الفني *</label><textarea name="technical_opinion" rows="3" {% if read_only %}readonly{% endif %}>{{ insp.technical_opinion }}</textarea></div>
+  <div class="fp-field"><label>التوصيات</label><textarea name="recommendations" rows="2" {% if read_only %}readonly{% endif %}>{{ insp.recommendations }}</textarea></div>
+
+  {% if not read_only %}
+  <button type="button" id="ei-save" class="fp-submit" style="margin-top:12px">حفظ المسودة</button>
+  <button type="button" id="ei-complete" class="fp-submit" style="margin-top:12px;background:var(--fp-success,#1a9d5c)">إكمال الفحص</button>
+  {% else %}
+  <div class="flash flash-success" style="margin-top:16px;padding:12px;border-radius:10px">تم إكمال هذا الفحص — للعرض فقط</div>
+  {% endif %}
+</form>
+{% endblock %}
+
+{% block fp_scripts %}
+<script src="{{ url_for('static', filename='maintenance-checklist.js') }}?v=9"></script>
+<script>
+(function(){
+  var INSP = {{ insp|tojson }};
+  var READ_ONLY = {{ 'true' if read_only else 'false' }};
+  var TEMPLATE = INSP.checklist_template;
+  var REPORT = INSP.checklist_data;
+  var CL = window.LiftCoreChecklist;
+
+  function showErr(msg){
+    var el = document.getElementById('ei-msg');
+    el.textContent = msg || '';
+    el.hidden = !msg;
+  }
+  function showOk(msg){
+    var el = document.getElementById('ei-ok');
+    el.textContent = msg || '';
+    el.hidden = !msg;
+  }
+
+  function headerPayload(){
+    var form = document.getElementById('ei-form');
+    var data = {};
+    form.querySelectorAll('input[name], textarea[name], select[name]').forEach(function(el){
+      if (!el.name) return;
+      data[el.name] = el.value;
+    });
+    return data;
+  }
+
+  function fullPayload(){
+    var body = headerPayload();
+    body.checklist = CL.collectReportData(TEMPLATE);
+    return body;
+  }
+
+  function updateProgress(){
+    var d = CL.collectReportData(TEMPLATE);
+    var total = (TEMPLATE.sections || []).reduce(function(n,s){ return n + (s.items||[]).length; }, 0);
+    var filled = Object.values(d.items || {}).filter(function(i){ return i && i.status; }).length;
+    document.getElementById('ei-progress').textContent = filled + '/' + total + ' بند';
+  }
+
+  CL.buildChecklistTables(TEMPLATE, '#checklist-root', !READ_ONLY);
+  CL.applyReportData(REPORT, TEMPLATE);
+  CL.initStatusGroups(document.getElementById('checklist-root'), updateProgress);
+  updateProgress();
+
+  function post(url, done){
+    showErr('');
+    fetch(url, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+      body: JSON.stringify(fullPayload())
+    }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(res){
+        if (!res.ok) throw new Error((res.j && res.j.error) || 'فشل الحفظ');
+        showOk(res.j.message || 'تم الحفظ');
+        if (done) done(res.j);
+      })
+      .catch(function(e){ showErr(e.message || 'خطأ'); });
+  }
+
+  if (!READ_ONLY) {
+    document.getElementById('ei-save').addEventListener('click', function(){
+      post(INSP.save_url);
+    });
+    document.getElementById('ei-complete').addEventListener('click', function(){
+      if (!confirm('إكمال الفحص؟ لن يمكن التعديل بعد الإكمال.')) return;
+      post(INSP.complete_url, function(){
+        window.location.href = INSP.list_url;
+      });
+    });
+  }
+})();
+</script>
+{% endblock %}

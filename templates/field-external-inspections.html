@@ -1,0 +1,48 @@
+{% extends 'field_base.html' %}
+{% set fp_nav = 'home' %}
+{% block fp_title %}فحص مصعد خارجي{% endblock %}
+
+{% block fp_content %}
+<a class="fp-back" href="{{ list.back_url }}">← مهامي</a>
+
+<div class="fp-title" style="font-size:17px;margin-bottom:6px">فحص مصعد خارجي</div>
+<p style="font-size:12px;color:var(--fp-muted);margin-bottom:14px">
+  توثيق موقع ومصعد بدون عقد صيانة — للزيارات الاستكشافية والعروض.
+</p>
+
+<form method="post" action="{{ url_for('field_external_inspection_new') }}" style="margin-bottom:16px">
+  <button type="submit" class="fp-submit" style="background:var(--fp-success,#1a9d5c)">+ فحص جديد</button>
+</form>
+
+{% if list.drafts|length %}
+<div class="fp-section">مسودات <span class="fp-count">{{ list.drafts|length }}</span></div>
+{% for row in list.drafts %}
+<a class="fp-card" href="{{ row.url }}">
+  <div class="fp-card-top">
+    <span class="fp-code">{{ row.code }}</span>
+    <span style="font-size:11px;color:var(--fp-muted)">{{ row.status }}</span>
+  </div>
+  <div class="fp-title">{{ row.customer }}</div>
+  <div class="fp-meta">{{ row.city }} · {{ row.inspected_at }}</div>
+</a>
+{% endfor %}
+{% endif %}
+
+{% if list.completed|length %}
+<div class="fp-section" style="margin-top:12px">مكتملة <span class="fp-count">{{ list.completed|length }}</span></div>
+{% for row in list.completed %}
+<a class="fp-card" href="{{ row.url }}">
+  <div class="fp-card-top">
+    <span class="fp-code">{{ row.code }}</span>
+    <span style="font-size:11px;color:var(--fp-muted)">{{ row.status }}</span>
+  </div>
+  <div class="fp-title">{{ row.customer }}</div>
+  <div class="fp-meta">{{ row.city }} · {{ row.inspected_at }}</div>
+</a>
+{% endfor %}
+{% endif %}
+
+{% if not list.drafts|length and not list.completed|length %}
+<div class="fp-empty">لا توجد فحوصات بعد — ابدأ بفحص جديد</div>
+{% endif %}
+{% endblock %}
