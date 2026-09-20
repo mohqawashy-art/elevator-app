@@ -948,3 +948,25 @@ def test_field_external_inspection_create_save_complete(client):
     r5 = client.get('/field')
     assert r5.status_code == 200
     assert 'فحص مصعد خارجي' in r5.get_data(as_text=True)
+
+
+def test_field_external_inspection_blank_print(client):
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='T-EEI2',
+            name='فني',
+            phone='0500000102',
+            team='صيانة',
+        )
+        db.session.add(tech)
+        db.session.commit()
+        tech_id = tech.id
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+    r = client.get('/field/external-inspection/blank')
+    assert r.status_code == 200
+    html = r.get_data(as_text=True)
+    assert 'نموذج فارغ' in html
+    assert 'قائمة الفحص' in html

@@ -14,6 +14,11 @@
   <button type="submit" class="fp-submit" style="background:var(--fp-success,#1a9d5c)">+ فحص جديد</button>
 </form>
 
+<a href="{{ url_for('field_external_inspection_blank') }}" class="fp-card" style="margin-bottom:16px;text-decoration:none;display:block">
+  <div class="fp-title">🖨️ طباعة نموذج فارغ</div>
+  <div class="fp-meta">للتعبئة اليدوية في الموقع — طباعة أو حفظ PDF</div>
+</a>
+
 {% if list.drafts|length %}
 <div class="fp-section">مسودات <span class="fp-count">{{ list.drafts|length }}</span></div>
 {% for row in list.drafts %}

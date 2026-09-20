@@ -10355,6 +10355,29 @@ def api_field_external_inspection_complete(inspection_id):
         return jsonify({'ok': False, 'error': str(e)}), 400
 
 
+@app.route('/field/external-inspection/blank')
+def field_external_inspection_blank():
+    from field_external_inspection import blank_print_payload
+
+    tech_id = getattr(g, 'field_tech_id', None) or _resolve_field_technician_id()
+    payload = blank_print_payload(
+        base_url=request.url_root,
+        back_url=url_for('field_external_inspection_list'),
+    )
+    return render_template('external-inspection-blank-print.html', **payload)
+
+
+@app.route('/external-inspection/blank')
+def office_external_inspection_blank():
+    from field_external_inspection import blank_print_payload
+
+    payload = blank_print_payload(
+        base_url=request.url_root,
+        back_url=url_for('home'),
+    )
+    return render_template('external-inspection-blank-print.html', **payload)
+
+
 @app.route('/field/fault/<int:fault_id>')
 def field_fault(fault_id):
     from operations import field_fault_detail
