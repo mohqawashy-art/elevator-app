@@ -1445,13 +1445,41 @@ function saveElevator() {
   fd.append('lat', (document.getElementById('f-lat') || {}).value || '');
   fd.append('lng', (document.getElementById('f-lng') || {}).value || '');
   fd.append('maps_url', (document.getElementById('f-maps-url') || {}).value || '');
-  fetch(editId ? '/elevators/edit/' + editId : '/elevators/add', {method: 'POST', body: fd, credentials: 'same-origin'})
+  var elevReturnTo = (new URLSearchParams(window.location.search).get('return_to') || '').trim();
+  if (elevReturnTo) fd.append('return_to', elevReturnTo);
+  fetch(editId ? '/elevators/edit/' + editId : '/elevators/add', {
+    method: 'POST',
+    body: fd,
+    credentials: 'same-origin',
+    headers: {
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': 'application/json',
+    },
+  })
     .then(function(res) {
-      if (res.redirected || res.ok) {
-        window.location.href = res.url || '/elevators';
+      return res.json().then(function(data) {
+        return { ok: res.ok, data: data };
+      }).catch(function() {
+        if (res.redirected) {
+          return { ok: true, data: { redirect: res.url } };
+        }
+        return { ok: res.ok, data: {} };
+      });
+    })
+    .then(function(res) {
+      if (!res.ok || !res.data || res.data.ok === false) {
+        alert((res.data && res.data.error) || 'فشل حفظ المصعد — تحقق من البيانات وحاول مجدداً');
         return;
       }
-      alert('فشل حفظ المصعد — تحقق من البيانات وحاول مجدداً');
+      if (elevReturnTo === 'contracts' && res.data.id) {
+        window.location.href = '/contracts?resume_contract=1&elevator_id=' + encodeURIComponent(res.data.id);
+        return;
+      }
+      if (res.data.redirect) {
+        window.location.href = res.data.redirect;
+        return;
+      }
+      window.location.href = '/elevators';
     })
     .catch(function() { alert('فشل الاتصال بالخادم'); });
 }

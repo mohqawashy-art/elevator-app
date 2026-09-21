@@ -1800,6 +1800,7 @@ function openAddModal(customerId) {
   document.getElementById('modal-add').dataset.clientChangeUnlocked = '';
   contractClientChangePassword = '';
   setContractClientChangeButton(false);
+  clearContractFormDraft();
   resetContractForm();
   var cid = customerId ? parseInt(customerId, 10) : null;
   fillClientSelect(cid || null, { editable: true });
@@ -2091,11 +2092,13 @@ function postContractSave(editId, fd, saveBtn, saveBtnHtml) {
           if (!res.ok || (data && data.ok === false)) {
             throw new Error((data && data.message) || 'فشل حفظ العقد');
           }
+          clearContractFormDraft();
           window.location.href = (data && data.redirect) || '/contracts';
           return null;
         });
       }
       if (res.redirected || res.ok) {
+        clearContractFormDraft();
         window.location.href = res.url || '/contracts';
         return null;
       }
@@ -2571,13 +2574,124 @@ function getAllowedContractElevatorId() {
 }
 
 function elevatorAddLinkHtml(customerId) {
-  var href = '/elevators?action=add' + (customerId ? ('&customer_id=' + encodeURIComponent(customerId)) : '');
-  return '<a class="btn btn-primary btn-sm" href="' + href + '">' +
+  return '<button type="button" class="btn btn-primary btn-sm" onclick="goAddElevatorFromContract(' +
+    (customerId ? String(parseInt(customerId, 10)) : 'null') + ')">' +
       '<svg width="12" height="12" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-left:4px"><path d="M7 2v10M2 7h10"/></svg>' +
       'إضافة مصعد' +
-    '</a>' +
-    '<span class="field-hint" style="margin:0">يفتح في تبويب جديد — حدّث القائمة بعد الحفظ</span>' +
+    '</button>' +
+    '<span class="field-hint" style="margin:0">بعد الحفظ تعود لنفس نموذج العقد مع المصعد الجديد</span>' +
     '<button type="button" class="btn btn-secondary btn-sm" onclick="loadClientElevators()">تحديث المصاعد</button>';
+}
+
+var CONTRACT_DRAFT_STORAGE_KEY = 'liftcore_contract_form_draft_v1';
+
+function captureContractFormDraft() {
+  var modal = document.getElementById('modal-add');
+  if (!modal || !modal.classList.contains('open')) return null;
+  var clientSel = document.getElementById('f-client-sel');
+  if (!clientSel || !clientSel.value) return null;
+  var fields = {};
+  [
+    'f-type-sel', 'f-code', 'f-start', 'f-end', 'f-duration', 'f-reminder', 'f-due-date',
+    'f-maint-freq', 'f-visits-month', 'f-payment-terms', 'f-status-sel', 'f-notes',
+    'f-contract-city', 'f-contract-district', 'f-contract-address',
+    'f-contract-lat', 'f-contract-lng', 'f-contract-maps-url', 'contract-map-search',
+    'f-value', 'f-total', 'f-tax-pct', 'ctax-input',
+  ].forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el) fields[id] = el.value;
+  });
+  return {
+    v: 1,
+    savedAt: Date.now(),
+    editId: modal.dataset.editId || '',
+    renewFromId: modal.dataset.renewFromId || '',
+    customer_id: clientSel.value,
+    fields: fields,
+    elevator_ids: getSelectedElevatorIds(),
+  };
+}
+
+function saveContractFormDraft() {
+  var draft = captureContractFormDraft();
+  if (!draft) return false;
+  try {
+    sessionStorage.setItem(CONTRACT_DRAFT_STORAGE_KEY, JSON.stringify(draft));
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function clearContractFormDraft() {
+  try { sessionStorage.removeItem(CONTRACT_DRAFT_STORAGE_KEY); } catch (e) { /* ignore */ }
+}
+
+function goAddElevatorFromContract(customerId) {
+  if (!customerId) {
+    alert('اختر العميل أولاً');
+    return;
+  }
+  if (!saveContractFormDraft()) {
+    alert('تعذّر حفظ مسودة العقد — أكمل اختيار العميل ثم حاول مجدداً');
+    return;
+  }
+  window.location.href = '/elevators?action=add&return_to=contracts&customer_id=' + encodeURIComponent(customerId);
+}
+
+function applyContractFormDraft(draft, extraElevatorId) {
+  if (!draft || !draft.customer_id) return;
+  var modal = document.getElementById('modal-add');
+  modal.dataset.editId = draft.editId || '';
+  modal.dataset.renewFromId = draft.renewFromId || '';
+  document.getElementById('modal-title').textContent = draft.editId
+    ? 'تعديل العقد'
+    : (draft.renewFromId ? 'تجديد العقد' : 'إضافة عقد جديد');
+  fillClientSelect(parseInt(draft.customer_id, 10), { editable: !draft.editId });
+  renderContractClientSummary(getCustomerById(parseInt(draft.customer_id, 10)));
+  var f = draft.fields || {};
+  Object.keys(f).forEach(function (id) {
+    var el = document.getElementById(id);
+    if (el && f[id] != null) el.value = f[id];
+  });
+  if (f['f-duration']) setContractDurationSelect(parseInt(f['f-duration'], 10));
+  var taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  if (taxBlock && window.LiftCoreTaxCalc) {
+    var totalNum = parseFloat(f['f-total']);
+    var valueNum = parseFloat(f['f-value']);
+    if (isFinite(totalNum) && LiftCoreTaxCalc.loadInclusiveElement) {
+      LiftCoreTaxCalc.loadInclusiveElement(taxBlock, totalNum, parseFloat(f['f-tax-pct']) || 15);
+    } else if (isFinite(valueNum)) {
+      LiftCoreTaxCalc.loadElement(taxBlock, valueNum, parseFloat(f['f-tax-pct']) || 15);
+    }
+  }
+  var ids = (draft.elevator_ids || []).slice();
+  if (extraElevatorId) {
+    var eid = parseInt(extraElevatorId, 10);
+    if (eid && ids.indexOf(eid) < 0 && ids.indexOf(String(eid)) < 0) ids.push(eid);
+  }
+  var allowId = draft.editId ? parseInt(draft.editId, 10) : (draft.renewFromId ? parseInt(draft.renewFromId, 10) : null);
+  loadClientElevators(ids, { allowContractId: allowId });
+  calcTotalVisits();
+  openContractFormModal(function () {
+    applyContractClientData({ silent: true });
+    if (draft.fields && draft.fields['contract-map-search']) {
+      setContractMapSearchQuery(draft.fields['contract-map-search']);
+    }
+  });
+}
+
+function tryRestoreContractFormDraftFromElevator() {
+  var params = new URLSearchParams(window.location.search);
+  if (params.get('resume_contract') !== '1') return;
+  var raw;
+  try { raw = sessionStorage.getItem(CONTRACT_DRAFT_STORAGE_KEY); } catch (e) { raw = null; }
+  if (!raw) return;
+  var draft;
+  try { draft = JSON.parse(raw); } catch (e) { return; }
+  var extraElev = params.get('elevator_id');
+  applyContractFormDraft(draft, extraElev);
+  history.replaceState(null, '', window.location.pathname);
 }
 
 function setElevatorsActions(customerId, show) {
@@ -3540,7 +3654,9 @@ window.__lcRefreshPage = function () {
   if (typeof updateStats === 'function') updateStats();
 };
 var bootParams = new URLSearchParams(window.location.search);
-if (bootParams.get('action') === 'add') {
+if (bootParams.get('resume_contract') === '1') {
+  tryRestoreContractFormDraftFromElevator();
+} else if (bootParams.get('action') === 'add') {
   openAddModal(bootParams.get('customer_id'));
   history.replaceState(null, '', window.location.pathname);
 }
