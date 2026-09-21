@@ -808,11 +808,21 @@ function hookReportPagination(reset) {
       var exp = d.expiring_contracts_list || [];
       expBody.innerHTML = exp.length ? exp.map(function (c) {
         var badge = c.days_left <= 30 ? 'badge-red' : 'badge-gold';
+        var fileCell = '—';
+        if (c.file_url) {
+          fileCell = '<a href="' + esc(c.file_url) + '" target="_blank" rel="noopener" class="lc-link">' + esc(c.file_name || 'عرض') + '</a>';
+        }
+        var waBtn = (c.id && c.wa_scene && window.LiftCoreCustomerContact)
+          ? LiftCoreCustomerContact.buttonHtml(c.wa_scene, c.id, { text: 'واتساب' })
+          : '—';
         return '<tr><td class="td-code">' + esc(c.code) + '</td><td class="td-name">' + esc(c.customer) + '</td>' +
+          '<td dir="ltr" style="font-family:var(--font-en)">' + esc(c.phone || '—') + '</td>' +
           '<td class="td-num">' + esc(c.end_date) + '</td><td><span class="badge ' + badge + '">' + fmtNum(c.days_left) + ' يوم</span></td>' +
           '<td class="td-num">' + fmtNum(c.value) + ' <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>' +
-          '<td><span class="badge ' + badgeClass(c.inv_status) + '">' + esc(c.inv_status) + '</span></td></tr>';
-      }).join('') : '<tr><td colspan="6" style="text-align:center;padding:16px;color:var(--text3)">لا عقود تنتهي قريباً</td></tr>';
+          '<td>' + fileCell + '</td>' +
+          '<td><span class="badge ' + badgeClass(c.inv_status) + '">' + esc(c.inv_status) + '</span></td>' +
+          '<td>' + waBtn + '</td></tr>';
+      }).join('') : '<tr><td colspan="9" style="text-align:center;padding:16px;color:var(--text3)">لا عقود تنتهي قريباً</td></tr>';
     }
 
     var downBody = document.querySelector('#dash-down-elevators tbody');

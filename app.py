@@ -4929,11 +4929,101 @@ PAID_INVOICE_STATUSES = ['مدفوعة', 'مدفوع', 'محصّل']
 OPEN_FAULT_STATUSES = ['مفتوح', 'قيد المعالجة']
 
 
-def _drill_row(cells, *, wa_type=None, wa_id=None):
+def _drill_row(cells, *, wa_type=None, wa_id=None, wa_alert=None):
     row = {'cells': cells}
     if wa_type and wa_id:
         row['wa'] = {'type': wa_type, 'id': wa_id}
+    if wa_alert:
+        row['wa_alert'] = wa_alert
     return row
+
+
+def _fmt_drill_sar(amount) -> str:
+    try:
+        v = float(amount or 0)
+    except (TypeError, ValueError):
+        return '—'
+    if v <= 0:
+        return '—'
+    return f'{v:,.0f} \u20c1'
+
+
+def _contract_file_cell_html(c) -> str:
+    from markupsafe import escape
+
+    url = _contract_js_primary_url(c)
+    if not url:
+        return '—'
+    label = escape(_contract_js_primary_name(c) or 'عرض العقد')
+    safe_url = escape(url, quote=True)
+    return (
+        f'<a href="{safe_url}" target="_blank" rel="noopener noreferrer" '
+        f'class="lc-link" onclick="event.stopPropagation()">{label}</a>'
+    )
+
+
+def _contract_alert_drill_cells(c, core_cells, *, wa_scene: str):
+    from operations import customer_phones_display
+
+    return _drill_row(
+        core_cells
+        + [
+            customer_phones_display(c.customer),
+            _fmt_drill_sar(c.total or c.value),
+            _contract_file_cell_html(c),
+        ],
+        wa_alert={'scene': wa_scene, 'id': c.id},
+    )
+
+
+def _customer_alert_drill_cells(core_cells, customer, *, wa_scene: str, wa_id: int):
+    from operations import customer_phones_display
+
+    return _drill_row(
+        core_cells + [customer_phones_display(customer)],
+        wa_alert={'scene': wa_scene, 'id': wa_id},
+    )
+
+
+def _visit_drill_rows(visits, *, date_cell):
+    rows = []
+    for v in visits:
+        cust = v.elevator.customer if v.elevator else None
+        core = [
+            v.code,
+            cust.name if cust else '—',
+            v.elevator.code if v.elevator else '—',
+            date_cell(v),
+            v.visit_type or '—',
+            v.technician.name if v.technician else '—',
+            v.status,
+        ]
+        rows.append(_customer_alert_drill_cells(core, cust, wa_scene='visit', wa_id=v.id))
+    return rows
+
+
+def _fault_drill_rows(faults, *, tech_default='غير مكلف', extra_reported_col=False):
+    rows = []
+    for f in faults:
+        cust = f.elevator.customer if f.elevator else None
+        core = [
+            f.code,
+            cust.name if cust else '—',
+            f.elevator.code if f.elevator else '—',
+            f.fault_type or '—',
+            f.priority or '—',
+            f.technician.name if f.technician else tech_default,
+            f.status,
+        ]
+        if extra_reported_col:
+            core.append(f.reported_at.strftime('%Y-%m-%d %H:%M') if f.reported_at else '—')
+        rows.append(_customer_alert_drill_cells(core, cust, wa_scene='fault', wa_id=f.id))
+    return rows
+
+
+CUSTOMER_ALERT_WA_COL = 'واتساب'
+CONTRACT_ALERT_EXTRA_COLS = ['جوال العميل', 'قيمة العقد', 'ملف العقد', CUSTOMER_ALERT_WA_COL]
+CUSTOMER_CONTACT_COLS = ['جوال العميل', CUSTOMER_ALERT_WA_COL]
 
 
 def _invoice_drill_wa(i):
@@ -4995,43 +5085,52 @@ def api_dashboard_drill(card_type):
     elif card_type == 'expired_contracts':
         all_c = tenant_query(Contract).order_by(Contract.end_date.desc()).all()
         renewed_ids = _annotate_contract_renewals(all_c)
-        rows = [
-            [c.code, c.customer.name if c.customer else '—', c.contract_type or '—',
-             str(c.start_date), str(c.end_date),
-             contract_display_status(c, renewed_ids=renewed_ids)]
-            for c in all_c
-            if contract_display_status(c, renewed_ids=renewed_ids) == 'منتهي'
-        ]
+        rows = []
+        for c in all_c:
+            if contract_display_status(c, renewed_ids=renewed_ids) != 'منتهي':
+                continue
+            core = [
+                c.code,
+                c.customer.name if c.customer else '—',
+                c.contract_type or '—',
+                str(c.start_date),
+                str(c.end_date),
+                contract_display_status(c, renewed_ids=renewed_ids),
+            ]
+            rows.append(_contract_alert_drill_cells(c, core, wa_scene='contract_expired'))
         payload = {
             'title': 'العقود المنتهية', 'link': '/contracts',
-            'columns': ['الكود', 'العميل', 'النوع', 'البداية', 'النهاية', 'الحالة'],
+            'columns': ['الكود', 'العميل', 'النوع', 'البداية', 'النهاية', 'الحالة']
+            + CONTRACT_ALERT_EXTRA_COLS,
             'rows': rows,
         }
     elif card_type == 'visits_today':
-        rows = [
-            [v.code, v.elevator.customer.name, v.elevator.code,
-             v.visit_type or '—', v.visit_time or '—',
-             v.technician.name if v.technician else '—', v.status]
-            for v in tenant_query(MaintenanceVisit).filter_by(visit_date=today)
-            .order_by(MaintenanceVisit.visit_time).all()
-        ]
+        rows = []
+        for v in tenant_query(MaintenanceVisit).filter_by(visit_date=today).order_by(MaintenanceVisit.visit_time).all():
+            cust = v.elevator.customer if v.elevator else None
+            core = [
+                v.code,
+                cust.name if cust else '—',
+                v.elevator.code if v.elevator else '—',
+                v.visit_type or '—',
+                v.visit_time or '—',
+                v.technician.name if v.technician else '—',
+                v.status,
+            ]
+            rows.append(_customer_alert_drill_cells(core, cust, wa_scene='visit', wa_id=v.id))
         payload = {
             'title': 'زيارات اليوم', 'link': '/maintenance-visits',
-            'columns': ['الكود', 'العميل', 'المصعد', 'النوع', 'الوقت', 'الفني', 'الحالة'],
+            'columns': ['الكود', 'العميل', 'المصعد', 'النوع', 'الوقت', 'الفني', 'الحالة']
+            + CUSTOMER_CONTACT_COLS,
             'rows': rows,
         }
     elif card_type == 'faults_open':
-        rows = [
-            [f.code, f.elevator.customer.name, f.elevator.code,
-             f.fault_type or '—', f.priority or '—',
-             f.technician.name if f.technician else 'غير مكلف', f.status]
-            for f in tenant_query(Fault).filter(Fault.status.in_(OPEN_FAULT_STATUSES))
-            .order_by(Fault.reported_at.desc()).all()
-        ]
+        faults = tenant_query(Fault).filter(Fault.status.in_(OPEN_FAULT_STATUSES)).order_by(Fault.reported_at.desc()).all()
         payload = {
             'title': 'الأعطال المفتوحة', 'link': '/faults',
-            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة'],
-            'rows': rows,
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة']
+            + CUSTOMER_CONTACT_COLS,
+            'rows': _fault_drill_rows(faults),
         }
     elif card_type == 'unpaid_invoices':
         invs = (
@@ -5044,15 +5143,17 @@ def api_dashboard_drill(card_type):
         rows = []
         for i, cust in invs:
             wa_type, wa_id = _invoice_drill_wa(i)
+            from operations import customer_phones_display
             rows.append(_drill_row(
                 [i.code, (cust.name if cust else '—'),
                  str(i.invoice_date), str(i.due_date or '—'),
-                 f'{i.total:,.0f} \u20c1' if i.total else '—', i.status],
+                 f'{i.total:,.0f} \u20c1' if i.total else '—', i.status,
+                 customer_phones_display(cust)],
                 wa_type=wa_type, wa_id=wa_id,
             ))
         payload = {
             'title': 'الفواتير غير المدفوعة', 'link': '/invoices',
-            'columns': ['الكود', 'العميل', 'التاريخ', 'الاستحقاق', 'الإجمالي', 'الحالة', 'واتساب'],
+            'columns': ['الكود', 'العميل', 'التاريخ', 'الاستحقاق', 'الإجمالي', 'الحالة', 'جوال العميل', 'واتساب'],
             'rows': rows,
         }
     elif card_type == 'outstanding_collectible':
@@ -5060,7 +5161,11 @@ def api_dashboard_drill(card_type):
         data = tenant_outstanding_collectible(today=today)
         rows = []
         for r in data['rows'][:100]:
-            rows.append([
+            cust = None
+            cid = r.get('customer_id')
+            if cid:
+                cust = tenant_query(Customer).filter_by(id=cid).first()
+            core = [
                 r['kind'],
                 r['code'],
                 r['customer'],
@@ -5069,11 +5174,32 @@ def api_dashboard_drill(card_type):
                 f"{r['paid']:,.0f} \u20c1",
                 f"{r['remaining']:,.0f} \u20c1",
                 r['status'],
-            ])
+            ]
+            wa_type, wa_id = None, None
+            if r['kind'] == 'عقد':
+                c_row = tenant_query(Contract).filter_by(code=r['code']).first()
+                if c_row:
+                    wa_type, wa_id = 'contract', c_row.id
+            elif r['kind'] == 'فاتورة':
+                inv = tenant_query(Invoice).filter_by(code=r['code']).first()
+                if inv:
+                    wa_type, wa_id = _invoice_drill_wa(inv)
+            elif r['kind'] == 'قطع غيار':
+                from models import PartsBilling
+                p_row = tenant_query(PartsBilling).filter_by(code=r['code']).first()
+                if p_row:
+                    wa_type, wa_id = 'parts', p_row.id
+            from operations import customer_phones_display
+            cells = core + [customer_phones_display(cust)]
+            if wa_type and wa_id:
+                rows.append(_drill_row(cells, wa_type=wa_type, wa_id=wa_id))
+            else:
+                rows.append(_drill_row(cells))
         payload = {
             'title': f"مستحق التحصيل — {data['total']:,.0f} ⃁",
             'link': '/contracts',
-            'columns': ['النوع', 'الكود', 'العميل', 'الاستحقاق', 'الإجمالي', 'المدفوع', 'المتبقي', 'الحالة'],
+            'columns': ['النوع', 'الكود', 'العميل', 'الاستحقاق', 'الإجمالي', 'المدفوع', 'المتبقي', 'الحالة']
+            + CUSTOMER_CONTACT_COLS,
             'rows': rows,
         }
     elif card_type == 'technicians':
@@ -5089,15 +5215,21 @@ def api_dashboard_drill(card_type):
         }
     elif card_type == 'expiring_contracts':
         expiring = _contracts_expiring_display_status(today)
-        rows = [
-            [c.code, c.customer.name, c.contract_type or '—',
-             str(c.end_date), f'{(c.end_date - today).days} يوم',
-             contract_display_status(c)]
-            for c in expiring
-        ]
+        rows = []
+        for c in expiring:
+            core = [
+                c.code,
+                c.customer.name,
+                c.contract_type or '—',
+                str(c.end_date),
+                f'{(c.end_date - today).days} يوم',
+                contract_display_status(c),
+            ]
+            rows.append(_contract_alert_drill_cells(c, core, wa_scene='contract_renewal'))
         payload = {
             'title': 'عقود تنتهي خلال 30 يوم', 'link': '/contracts?scope=maintenance',
-            'columns': ['الكود', 'العميل', 'النوع', 'تاريخ الانتهاء', 'المتبقي', 'الحالة'],
+            'columns': ['الكود', 'العميل', 'النوع', 'تاريخ الانتهاء', 'المتبقي', 'الحالة']
+            + CONTRACT_ALERT_EXTRA_COLS,
             'rows': rows,
         }
     elif card_type == 'low_stock':
@@ -5120,18 +5252,11 @@ def api_dashboard_drill(card_type):
             MaintenanceVisit.visit_date < today,
             ~MaintenanceVisit.status.in_(VISIT_DONE),
         ).order_by(MaintenanceVisit.visit_date).all()
-        rows = [
-            [v.code,
-             v.elevator.customer.name if v.elevator and v.elevator.customer else '—',
-             v.elevator.code if v.elevator else '—',
-             str(v.visit_date), v.visit_type or '—',
-             v.technician.name if v.technician else '—', v.status]
-            for v in visits
-        ]
         payload = {
             'title': 'زيارات متأخرة', 'link': '/maintenance-visits',
-            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة'],
-            'rows': rows,
+            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة']
+            + CUSTOMER_CONTACT_COLS,
+            'rows': _visit_drill_rows(visits, date_cell=lambda v: str(v.visit_date)),
         }
     elif card_type == 'visits_critical':
         from operations import exclude_fault_visits, VISIT_DONE
@@ -5139,18 +5264,11 @@ def api_dashboard_drill(card_type):
             MaintenanceVisit.priority == 'حرجة',
             ~MaintenanceVisit.status.in_(VISIT_DONE),
         ).order_by(MaintenanceVisit.visit_date).all()
-        rows = [
-            [v.code,
-             v.elevator.customer.name if v.elevator and v.elevator.customer else '—',
-             v.elevator.code if v.elevator else '—',
-             str(v.visit_date), v.visit_type or '—',
-             v.technician.name if v.technician else '—', v.status]
-            for v in visits
-        ]
         payload = {
             'title': 'زيارات حرجة لم تُكتمل', 'link': '/maintenance-visits',
-            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة'],
-            'rows': rows,
+            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة']
+            + CUSTOMER_CONTACT_COLS,
+            'rows': _visit_drill_rows(visits, date_cell=lambda v: str(v.visit_date)),
         }
     elif card_type == 'visits_tomorrow':
         from operations import exclude_fault_visits
@@ -5158,18 +5276,11 @@ def api_dashboard_drill(card_type):
             MaintenanceVisit.visit_date == today + timedelta(days=1),
             MaintenanceVisit.status == 'مجدولة',
         ).order_by(MaintenanceVisit.visit_time).all()
-        rows = [
-            [v.code,
-             v.elevator.customer.name if v.elevator and v.elevator.customer else '—',
-             v.elevator.code if v.elevator else '—',
-             str(v.visit_date), v.visit_type or '—',
-             v.technician.name if v.technician else '—', v.status]
-            for v in visits
-        ]
         payload = {
             'title': 'زيارات مجدولة غداً', 'link': '/maintenance-visits',
-            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة'],
-            'rows': rows,
+            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة']
+            + CUSTOMER_CONTACT_COLS,
+            'rows': _visit_drill_rows(visits, date_cell=lambda v: str(v.visit_date)),
         }
     elif card_type == 'faults_critical':
         from operations import FAULT_OPEN
@@ -5177,29 +5288,19 @@ def api_dashboard_drill(card_type):
             Fault.priority == 'حرجة',
             Fault.status.in_(FAULT_OPEN),
         ).order_by(Fault.reported_at.desc()).all()
-        rows = [
-            [f.code, f.elevator.customer.name, f.elevator.code,
-             f.fault_type or '—', f.priority or '—',
-             f.technician.name if f.technician else 'غير مكلف', f.status]
-            for f in faults
-        ]
         payload = {
             'title': 'أعطال حرجة', 'link': '/faults',
-            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة'],
-            'rows': rows,
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة']
+            + CUSTOMER_CONTACT_COLS,
+            'rows': _fault_drill_rows(faults),
         }
     elif card_type == 'faults_waiting_parts':
         faults = tenant_query(Fault).filter_by(status='انتظار قطع').order_by(Fault.reported_at.desc()).all()
-        rows = [
-            [f.code, f.elevator.customer.name, f.elevator.code,
-             f.fault_type or '—', f.priority or '—',
-             f.technician.name if f.technician else '—', f.status]
-            for f in faults
-        ]
         payload = {
             'title': 'أعطال بانتظار قطع الغيار', 'link': '/faults',
-            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة'],
-            'rows': rows,
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة']
+            + CUSTOMER_CONTACT_COLS,
+            'rows': _fault_drill_rows(faults, tech_default='—'),
         }
     elif card_type == 'faults_old':
         from operations import FAULT_OPEN
@@ -5208,62 +5309,74 @@ def api_dashboard_drill(card_type):
             Fault.status.in_(FAULT_OPEN),
             Fault.reported_at < cutoff,
         ).order_by(Fault.reported_at).all()
-        rows = [
-            [f.code, f.elevator.customer.name, f.elevator.code,
-             f.fault_type or '—', f.priority or '—',
-             f.technician.name if f.technician else '—', f.status,
-             f.reported_at.strftime('%Y-%m-%d %H:%M') if f.reported_at else '—']
-            for f in faults
-        ]
         payload = {
             'title': 'أعطال تجاوزت 48 ساعة بدون إغلاق', 'link': '/faults',
-            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة', 'تاريخ البلاغ'],
-            'rows': rows,
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الفني', 'الحالة', 'تاريخ البلاغ']
+            + CUSTOMER_CONTACT_COLS,
+            'rows': _fault_drill_rows(faults, tech_default='—', extra_reported_col=True),
         }
     elif card_type == 'faults_unassigned':
         faults = tenant_query(Fault).filter(
             Fault.technician_id.is_(None),
             Fault.status.in_(OPEN_FAULT_STATUSES),
         ).order_by(Fault.reported_at.desc()).all()
-        rows = [
-            [f.code, f.elevator.customer.name, f.elevator.code,
-             f.fault_type or '—', f.priority or '—', f.status]
-            for f in faults
-        ]
+        rows = []
+        for f in faults:
+            cust = f.elevator.customer if f.elevator else None
+            core = [
+                f.code,
+                cust.name if cust else '—',
+                f.elevator.code if f.elevator else '—',
+                f.fault_type or '—',
+                f.priority or '—',
+                f.status,
+            ]
+            rows.append(_customer_alert_drill_cells(core, cust, wa_scene='fault', wa_id=f.id))
         payload = {
             'title': 'أعطال بدون فني', 'link': '/faults',
-            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الحالة'],
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الأولوية', 'الحالة']
+            + CUSTOMER_CONTACT_COLS,
             'rows': rows,
         }
     elif card_type == 'parts_waiting_faults':
         faults = tenant_query(Fault).filter_by(status='انتظار قطع').order_by(Fault.reported_at.desc()).all()
-        rows = [
-            [f.code,
-             f.elevator.customer.name if f.elevator and f.elevator.customer else '—',
-             f.elevator.code if f.elevator else '—',
-             f.fault_type or '—',
-             f.technician.name if f.technician else '—', f.status]
-            for f in faults
-        ]
+        rows = []
+        for f in faults:
+            cust = f.elevator.customer if f.elevator else None
+            core = [
+                f.code,
+                cust.name if cust else '—',
+                f.elevator.code if f.elevator else '—',
+                f.fault_type or '—',
+                f.technician.name if f.technician else '—',
+                f.status,
+            ]
+            rows.append(_customer_alert_drill_cells(core, cust, wa_scene='fault', wa_id=f.id))
         payload = {
             'title': 'طلبات قطع غيار من الفنيين', 'link': '/parts-billing',
-            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الفني', 'الحالة'],
+            'columns': ['الكود', 'العميل', 'المصعد', 'نوع العطل', 'الفني', 'الحالة']
+            + CUSTOMER_CONTACT_COLS,
             'rows': rows,
         }
     elif card_type == 'parts_awaiting_client':
+        from operations import customer_phones_display
         parts = tenant_query(PartsBilling).filter_by(status='بانتظار موافقة العميل').order_by(PartsBilling.billing_date.desc()).all()
-        rows = [
-            [p.code,
-             p.customer.name if p.customer else '—',
-             str(p.billing_date or '—'),
-             p.description or '—',
-             f'{p.sell_price:,.0f} \u20c1' if p.sell_price else '—',
-             p.status]
-            for p in parts
-        ]
+        rows = []
+        for p in parts:
+            cust = p.customer
+            core = [
+                p.code,
+                cust.name if cust else '—',
+                str(p.billing_date or '—'),
+                p.description or '—',
+                f'{p.sell_price:,.0f} \u20c1' if p.sell_price else '—',
+                p.status,
+                customer_phones_display(cust),
+            ]
+            rows.append(_drill_row(core, wa_type='parts', wa_id=p.id))
         payload = {
             'title': 'عروض أسعار بانتظار موافقة العميل', 'link': '/parts-billing',
-            'columns': ['الكود', 'العميل', 'التاريخ', 'البيان', 'المطلوب', 'الحالة'],
+            'columns': ['الكود', 'العميل', 'التاريخ', 'البيان', 'المطلوب', 'الحالة', 'جوال العميل', 'واتساب'],
             'rows': rows,
         }
     elif card_type == 'tech_emergency_unavailable':
@@ -12410,6 +12523,16 @@ def api_financial_whatsapp(doc_type, doc_id):
     return jsonify({'whatsapp_url': url})
 
 
+@app.route('/api/alerts/customer-whatsapp/<scene>/<int:entity_id>')
+def api_alert_customer_whatsapp(scene, entity_id):
+    from operations import alert_customer_whatsapp_url
+
+    url, err = alert_customer_whatsapp_url(scene, entity_id, request.url_root)
+    if not url:
+        return jsonify({'error': err or 'تعذّر تجهيز رسالة واتساب', 'whatsapp_url': ''}), 400
+    return jsonify({'whatsapp_url': url})
+
+
 @app.route('/invoices/delete/<int:id>', methods=['POST'])
 def invoice_delete(id):
     err = enforce_admin_delete()
@@ -16087,13 +16210,20 @@ def api_dashboard():
     expiring_contracts_rows = []
     for c in expiring_list:
         days_left = (c.end_date - today).days if c.end_date else 0
+        cust = c.customer
+        from operations import customer_phones_display
         expiring_contracts_rows.append({
+            'id': c.id,
             'code': c.code,
-            'customer': c.customer.name if c.customer else '—',
+            'customer': cust.name if cust else '—',
+            'phone': customer_phones_display(cust),
             'end_date': str(c.end_date or ''),
             'days_left': days_left,
             'value': c.total or c.value or 0,
             'inv_status': c.invoice_status or '—',
+            'file_url': _contract_js_primary_url(c),
+            'file_name': _contract_js_primary_name(c) or '',
+            'wa_scene': 'contract_renewal',
         })
 
     down_elevators = tenant_query(Elevator).filter(

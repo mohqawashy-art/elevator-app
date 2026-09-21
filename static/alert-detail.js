@@ -25,18 +25,25 @@
 
   function buildRowHtml(columns, row) {
     var cells = Array.isArray(row) ? row.slice() : (row.cells || []).slice();
-    var wa = row && row.wa;
-    if (wa && global.LiftCoreFinancialWa) {
-      cells.push(global.LiftCoreFinancialWa.buttonHtml(wa.type, wa.id));
-    } else if (columns[columns.length - 1] === 'واتساب') {
-      cells.push('—');
+    if (global.LiftCoreCustomerContact && global.LiftCoreCustomerContact.appendWaCell) {
+      global.LiftCoreCustomerContact.appendWaCell(cells, row, columns);
+    } else {
+      var wa = row && row.wa;
+      if (wa && global.LiftCoreFinancialWa) {
+        cells.push(global.LiftCoreFinancialWa.buttonHtml(wa.type, wa.id));
+      } else if (columns[columns.length - 1] === 'واتساب') {
+        cells.push('—');
+      }
     }
+    var render = (global.LiftCoreCustomerContact && global.LiftCoreCustomerContact.renderCellHtml)
+      ? global.LiftCoreCustomerContact.renderCellHtml
+      : function (cell) {
+          return (typeof cell === 'string' && cell.indexOf('<button') >= 0) ? cell : esc(String(cell == null ? '—' : cell));
+        };
     return cells.map(function (cell, i) {
-      var cls = i === 1 ? ' class="td-name"' : '';
       var sty = i === 0 ? ' class="td-code"' : '';
       var attr = i === 1 ? ' class="td-name"' : sty;
-      var html = (typeof cell === 'string' && cell.indexOf('<button') >= 0) ? cell : esc(String(cell == null ? '—' : cell));
-      return '<td' + attr + '>' + html + '</td>';
+      return '<td' + attr + '>' + render(cell) + '</td>';
     }).join('');
   }
 

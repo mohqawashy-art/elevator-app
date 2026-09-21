@@ -123,3 +123,56 @@ def test_build_fault_whatsapp_puts_urls_on_clean_lines(client):
             if s.startswith('http') and '/field/fault/' in s:
                 assert s.endswith(f'/field/fault/{fault.id}')
         assert text.rstrip().endswith(f'/field/fault/{fault.id}')
+
+
+def test_alert_contract_renewal_whatsapp(client):
+    from models import Contract
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        from tests.conftest import ensure_test_organization
+
+        oid = ensure_test_organization()
+        cust = Customer(
+            organization_id=oid,
+            code='C-REN',
+            name='عميل تجديد',
+            phone='0501234567',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        c = Contract(
+            organization_id=oid,
+            code='CN-REN01',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date.today().replace(year=date.today().year - 1),
+            end_date=date.today(),
+            total=12000,
+            status='نشط',
+        )
+        db.session.add(c)
+        db.session.commit()
+        cid = c.id
+
+    r = client.get(f'/api/alerts/customer-whatsapp/contract_renewal/{cid}')
+    assert r.status_code == 200
+    url = (r.get_json() or {}).get('whatsapp_url') or ''
+    assert url.startswith('https://wa.me/')
+    assert 'CN-REN01' in url or 'text=' in url
+
+
+def test_drill_expiring_contracts_includes_phone_and_wa(client):
+    login_as(client, 'admin')
+    r = client.get('/api/dashboard/drill/expiring_contracts')
+    assert r.status_code == 200
+    data = r.get_json() or {}
+    cols = data.get('columns') or []
+    assert 'جوال العميل' in cols
+    assert 'قيمة العقد' in cols
+    assert 'ملف العقد' in cols
+    assert 'واتساب' in cols
+    if data.get('rows'):
+        row = data['rows'][0]
+        assert row.get('wa_alert') or row.get('cells')

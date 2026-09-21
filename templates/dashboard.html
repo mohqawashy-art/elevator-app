@@ -908,17 +908,23 @@ async function openDrill(type, cardEl) {
     } else {
       body.innerHTML = data.rows.map(function(row) {
         var cells = Array.isArray(row) ? row.slice() : (row.cells || []).slice();
-        var wa = row && row.wa;
-        if (wa && window.LiftCoreFinancialWa) {
-          cells.push(LiftCoreFinancialWa.buttonHtml(wa.type, wa.id));
+        if (window.LiftCoreCustomerContact && LiftCoreCustomerContact.appendWaCell) {
+          LiftCoreCustomerContact.appendWaCell(cells, row, data.columns);
+        } else if (row && row.wa && window.LiftCoreFinancialWa) {
+          cells.push(LiftCoreFinancialWa.buttonHtml(row.wa.type, row.wa.id));
         } else if (data.columns[data.columns.length - 1] === 'واتساب') {
           cells.push('—');
         }
+        var renderCell = (window.LiftCoreCustomerContact && LiftCoreCustomerContact.renderCellHtml)
+          ? LiftCoreCustomerContact.renderCellHtml.bind(LiftCoreCustomerContact)
+          : function(cell) {
+              return (typeof cell === 'string' && (cell.indexOf('<button') >= 0 || cell.indexOf('<a ') >= 0))
+                ? cell : escHtml(String(cell == null ? '—' : cell));
+            };
         return '<tr>' + cells.map(function(cell, i) {
           var cls = i === 1 ? ' class="td-name"' : '';
           var sty = (i === 0) ? ' style="font-family:var(--font-en);color:var(--accent)"' : '';
-          var html = (typeof cell === 'string' && cell.indexOf('<button') >= 0) ? cell : escHtml(String(cell == null ? '—' : cell));
-          return '<td' + cls + sty + '>' + html + '</td>';
+          return '<td' + cls + sty + '>' + renderCell(cell) + '</td>';
         }).join('') + '</tr>';
       }).join('');
     }

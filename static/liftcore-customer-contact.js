@@ -1,0 +1,78 @@
+/**
+ * واتساب العميل من تنبيهات المكتب (تجديد عقد، متابعة زيارة، …).
+ */
+(function (global) {
+  'use strict';
+
+  var ICON = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/></svg>';
+
+  function msg(ar, en) {
+    return global.__LC_LANG === 'en' ? en : ar;
+  }
+
+  function request(scene, id) {
+    if (!scene || !id) return Promise.reject();
+    return fetch('/api/alerts/customer-whatsapp/' + encodeURIComponent(scene) + '/' + id, {
+      credentials: 'same-origin',
+    })
+      .then(function (res) {
+        return res.json().then(function (data) {
+          return { ok: res.ok, data: data };
+        });
+      })
+      .then(function (res) {
+        if (!res.ok || !res.data.whatsapp_url) {
+          alert(res.data.error || msg('تعذّر تجهيز رسالة واتساب', 'Could not prepare WhatsApp'));
+          return Promise.reject(res.data);
+        }
+        global.open(res.data.whatsapp_url, '_blank');
+        return res.data;
+      });
+  }
+
+  function buttonHtml(scene, id, opts) {
+    opts = opts || {};
+    var title = opts.title || msg('مراسلة العميل واتساب', 'WhatsApp customer');
+    var cls = 'lc-wa-btn' + (opts.text ? ' lc-wa-btn-text' : '');
+    var label = opts.text ? escHtml(opts.text) : ICON;
+    return '<button type="button" class="' + cls + '" title="' + escAttr(title) + '" onclick="event.stopPropagation();LiftCoreCustomerContact.request(\'' + escAttr(scene) + '\',' + Number(id) + ')">' + label + '</button>';
+  }
+
+  function appendWaCell(cells, row, columns) {
+    var wa = row && row.wa;
+    var waAlert = row && row.wa_alert;
+    if (wa && global.LiftCoreFinancialWa) {
+      cells.push(global.LiftCoreFinancialWa.buttonHtml(wa.type, wa.id));
+    } else if (waAlert) {
+      cells.push(buttonHtml(waAlert.scene, waAlert.id));
+    } else if (columns && columns[columns.length - 1] === 'واتساب') {
+      cells.push('—');
+    }
+    return cells;
+  }
+
+  function renderCellHtml(cell) {
+    if (typeof cell === 'string' && (cell.indexOf('<button') >= 0 || cell.indexOf('<a ') >= 0)) {
+      return cell;
+    }
+    return escHtml(String(cell == null ? '—' : cell));
+  }
+
+  function escHtml(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  function escAttr(s) {
+    return escHtml(s).replace(/"/g, '&quot;');
+  }
+
+  global.LiftCoreCustomerContact = {
+    request: request,
+    buttonHtml: buttonHtml,
+    appendWaCell: appendWaCell,
+    renderCellHtml: renderCellHtml,
+  };
+})(window);

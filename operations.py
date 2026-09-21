@@ -519,6 +519,163 @@ def financial_whatsapp_url(doc_type: str, doc_id: int, base_url: str = '') -> tu
     return '', 'نوع المستند غير مدعوم'
 
 
+def customer_phones_display(customer: Customer | None) -> str:
+    """أرقام التواصل للعرض في التنبيهات — الجوال ثم واتساب إن اختلف."""
+    if not customer:
+        return '—'
+    parts: list[str] = []
+    for raw in (customer.phone, customer.phone2):
+        s = (raw or '').strip()
+        if s and s not in parts:
+            parts.append(s)
+    return ' · '.join(parts) if parts else '—'
+
+
+def build_contract_renewal_whatsapp(contract, *, expired: bool = False) -> str:
+    """رسالة تجديد/انتهاء عقد — للتواصل مع العميل (ليست طلب سداد)."""
+    if not contract or not contract.customer:
+        return ''
+    if _is_cancelled_status(contract.status):
+        return ''
+    cust = contract.customer
+    phone = customer_whatsapp_phone(cust)
+    if not phone:
+        phone = (cust.phone or cust.phone2 or '').strip()
+    if not phone:
+        return ''
+    settings = tenant_query(Settings).first()
+    company_name = (settings.company_name if settings else '') or 'LiftCore'
+    lines = [_payment_greeting(cust), '']
+    if expired:
+        lines.append(f'نود التنسيق معكم بخصوص عقد الصيانة رقم {contract.code} الذي انتهى.')
+    else:
+        lines.append(f'نود التنسيق معكم بخصوص تجديد عقد الصيانة رقم {contract.code}.')
+    if contract.end_date:
+        lines.append(f'تاريخ نهاية العقد: {contract.end_date.strftime("%d/%m/%Y")}')
+    total = float(contract.total or contract.value or 0)
+    if total > 0:
+        lines.append(f'قيمة العقد: {total:,.2f} ر.س')
+    lines.append('يرجى التواصل معنا لتأكيد التجديد أو أي استفسار.')
+    lines.append('')
+    lines.append(f'مع التحية،\n{company_name}')
+    return whatsapp_url(phone, '\n'.join(lines))
+
+
+def build_alert_customer_whatsapp(
+    *,
+    customer: Customer | None,
+    subject: str,
+    details: list[str] | None = None,
+) -> str:
+    phone = customer_whatsapp_phone(customer)
+    if not phone and customer:
+        phone = (customer.phone or customer.phone2 or '').strip()
+    if not phone:
+        return ''
+    settings = tenant_query(Settings).first()
+    company_name = (settings.company_name if settings else '') or 'LiftCore'
+    lines = [_payment_greeting(customer), '', subject.strip()]
+    for line in details or []:
+        t = (line or '').strip()
+        if t:
+            lines.append(t)
+    lines.append('')
+    lines.append(f'مع التحية،\n{company_name}')
+    return whatsapp_url(phone, '\n'.join(lines))
+
+
+def alert_customer_whatsapp_url(scene: str, entity_id: int, base_url: str = '') -> tuple[str, str]:
+    """واتساب عام للتنبيهات — تجديد عقد، زيارة، عطل، …"""
+    scene = (scene or '').strip().lower()
+    eid = int(entity_id or 0)
+    if eid <= 0:
+        return '', 'معرّف غير صالح'
+
+    if scene in ('contract_renewal', 'contract_expiring', 'expiring_contracts'):
+        row = tenant_query(Contract).filter_by(id=eid).first()
+        if not row:
+            return '', 'العقد غير موجود'
+        url = build_contract_renewal_whatsapp(row, expired=False)
+        if not url:
+            return '', 'لا يوجد رقم جوال/واتساب للعميل — أضفه من بيانات العميل'
+        return url, ''
+
+    if scene in ('contract_expired', 'expired_contracts'):
+        row = tenant_query(Contract).filter_by(id=eid).first()
+        if not row:
+            return '', 'العقد غير موجود'
+        url = build_contract_renewal_whatsapp(row, expired=True)
+        if not url:
+            return '', 'لا يوجد رقم جوال/واتساب للعميل — أضفه من بيانات العميل'
+        return url, ''
+
+    if scene == 'visit':
+        from models import MaintenanceVisit
+
+        v = tenant_query(MaintenanceVisit).filter_by(id=eid).first()
+        if not v or not v.elevator or not v.elevator.customer:
+            return '', 'الزيارة غير موجودة'
+        cust = v.elevator.customer
+        url = build_alert_customer_whatsapp(
+            customer=cust,
+            subject=f'متابعة زيارة الصيانة {v.code}',
+            details=[
+                f'التاريخ: {v.visit_date}' if v.visit_date else '',
+                f'نوع الزيارة: {v.visit_type or "—"}',
+                f'المصعد: {v.elevator.code if v.elevator else "—"}',
+            ],
+        )
+        if not url:
+            return '', 'لا يوجد رقم جوال/واتساب للعميل'
+        return url, ''
+
+    if scene == 'fault':
+        from models import Fault
+
+        f = tenant_query(Fault).filter_by(id=eid).first()
+        if not f or not f.elevator or not f.elevator.customer:
+            return '', 'العطل غير موجود'
+        cust = f.elevator.customer
+        url = build_alert_customer_whatsapp(
+            customer=cust,
+            subject=f'متابعة بلاغ العطل {f.code}',
+            details=[
+                f'نوع العطل: {f.fault_type or "—"}',
+                f'الحالة: {f.status or "—"}',
+                f'المصعد: {f.elevator.code if f.elevator else "—"}',
+            ],
+        )
+        if not url:
+            return '', 'لا يوجد رقم جوال/واتساب للعميل'
+        return url, ''
+
+    if scene in ('parts', 'parts_billing'):
+        from models import PartsBilling
+
+        p = tenant_query(PartsBilling).filter_by(id=eid).first()
+        if not p:
+            return '', 'الفاتورة غير موجودة'
+        url = build_parts_payment_whatsapp(p, base_url)
+        if not url:
+            return '', 'لا يوجد رقم واتساب أو الفاتورة غير مناسبة للإرسال'
+        return url, ''
+
+    if scene == 'customer':
+        cust = tenant_query(Customer).filter_by(id=eid).first()
+        if not cust:
+            return '', 'العميل غير موجود'
+        url = build_alert_customer_whatsapp(
+            customer=cust,
+            subject='نتواصل معكم من شركة الصيانة',
+            details=['نرجو التواصل معنا في أقرب وقت.'],
+        )
+        if not url:
+            return '', 'لا يوجد رقم جوال/واتساب للعميل'
+        return url, ''
+
+    return '', 'نوع التنبيه غير مدعوم'
+
+
 def customer_maps_link(customer: Customer) -> str:
     if customer and customer.maps_url:
         return customer.maps_url
