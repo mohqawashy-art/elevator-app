@@ -322,8 +322,8 @@
     </div>
     <aside class="mq-map-card" aria-label="عملاء المنطقة">
       <h2>عملاء على الخريطة</h2>
-      <p class="mq-map-hint">الخريطة تعرض كل العملاء. عند البحث عن حي أو عنوان تظهر فقط العملاء المتعاقد معهم في نفس المنطقة.</p>
-      <div id="mq-nearby-meta">جميع العملاء على الخريطة</div>
+      <p class="mq-map-hint">الخريطة تعرض <strong>نقاط العملاء فقط</strong> (بدون أماكن/محلات جوجل). الأخضر = متعاقد، الرمادي = بدون عقد. عند تحديد حي أو عنوان تُصفَّى القائمة للمتعاقدين في المنطقة.</p>
+      <div id="mq-nearby-meta">جاري تحميل العملاء…</div>
       <div id="mq-nearby-map" role="img" aria-label="خريطة العملاء"></div>
       <div class="mq-nearby-list" id="mq-nearby-list"></div>
     </aside>
@@ -480,6 +480,6 @@
 </script>
 <script>window.MQ_NEARBY_CUSTOMERS = {{ (customers_map_js|default([])) | tojson }};</script>
 <script src="{{ url_for('static', filename='liftcore_map.js') }}?v=8"></script>
-<script src="{{ url_for('static', filename='mq-nearby-map.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='mq-nearby-map.js') }}?v=3"></script>
 </body>
 </html>

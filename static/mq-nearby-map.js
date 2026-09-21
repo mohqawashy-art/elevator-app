@@ -6,10 +6,15 @@
 
   var DEFAULT_CENTER = { lat: 21.4225, lng: 39.8262 };
   var DEFAULT_CITY = 'مكة المكرمة';
+  /** إخفاء محلات/أماكن جوجل — تبقى نقاط العملاء فقط */
+  var GOOGLE_MAP_CLEAN_STYLES = [
+    { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+    { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+    { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  ];
   var map = null;
   var provider = null;
   var markers = [];
-  var focusMarker = null;
   var googleInfo = null;
   var ready = false;
   var refreshTimer = null;
@@ -96,11 +101,17 @@
     });
   }
 
+  function isPlaceholderPin(lat, lng) {
+    return Math.abs(lat - DEFAULT_CENTER.lat) < 0.0012
+      && Math.abs(lng - DEFAULT_CENTER.lng) < 0.0012;
+  }
+
   function coordsOf(c) {
     var lat = num(c.lat);
     var lng = num(c.lng);
     if (lat == null || lng == null) return null;
     if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+    if (isPlaceholderPin(lat, lng)) return null;
     return { lat: lat, lng: lng };
   }
 
@@ -118,13 +129,6 @@
       } catch (e) { /* ignore */ }
     });
     markers = [];
-    if (focusMarker) {
-      try {
-        if (provider === 'google') focusMarker.setMap(null);
-        else if (map && map.removeLayer) map.removeLayer(focusMarker);
-      } catch (e) { /* ignore */ }
-      focusMarker = null;
-    }
   }
 
   function pinColor(c, area) {
@@ -208,27 +212,11 @@
   function setFocus(lat, lng) {
     var pos = { lat: num(lat), lng: num(lng) };
     if (pos.lat == null || pos.lng == null || !map) return;
-    if (focusMarker) {
-      try {
-        if (provider === 'google') focusMarker.setMap(null);
-        else if (map.removeLayer) map.removeLayer(focusMarker);
-      } catch (e) { /* ignore */ }
-      focusMarker = null;
-    }
+    if (isPlaceholderPin(pos.lat, pos.lng)) return;
     if (provider === 'google') {
-      focusMarker = new google.maps.Marker({
-        map: map,
-        position: pos,
-        title: 'موقع العرض',
-        zIndex: 999,
-        icon: (global.LiftCoreMap && LiftCoreMap.makePinIcon)
-          ? LiftCoreMap.makePinIcon('#2a7fff', 1.5)
-          : undefined,
-      });
       map.panTo(pos);
       if (map.getZoom() < 14) map.setZoom(15);
     } else if (window.L) {
-      focusMarker = L.marker([pos.lat, pos.lng]).addTo(map);
       map.setView([pos.lat, pos.lng], Math.max(map.getZoom() || 13, 15));
     }
   }
@@ -238,12 +226,13 @@
     var meta = $('mq-nearby-meta');
     var searching = isAreaSearch(area);
     if (meta) {
+      var withPin = rows.filter(function (c) { return !!coordsOf(c); }).length;
       if (!searching) {
-        meta.textContent = 'جميع العملاء على الخريطة (' + rows.length + ') — الأخضر متعاقد';
+        meta.textContent = withPin + ' عميل على الخريطة — الأخضر متعاقد';
       } else {
         var label = area.district || area.city || 'المنطقة';
-        if (!rows.length) meta.textContent = 'لا يوجد عملاء متعاقد معهم في «' + label + '»';
-        else meta.textContent = rows.length + ' عميل متعاقد في «' + label + '»';
+        if (!withPin) meta.textContent = 'لا يوجد عملاء بموقع GPS في «' + label + '»';
+        else meta.textContent = withPin + ' عميل متعاقد في «' + label + '» على الخريطة';
       }
     }
     if (!box) return;
@@ -302,6 +291,8 @@
         streetViewControl: false,
         fullscreenControl: true,
         gestureHandling: 'greedy',
+        clickableIcons: false,
+        styles: GOOGLE_MAP_CLEAN_STYLES,
       });
     } else if (global.L) {
       provider = 'leaflet';
