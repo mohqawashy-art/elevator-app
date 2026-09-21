@@ -43,6 +43,32 @@ def test_expiring_from_end_date_even_if_status_active():
     assert contract_display_status(c, renewed_ids=set()) == 'على وشك الانتهاء'
 
 
+def test_contract_file_cell_html_with_attachment(client):
+    from types import SimpleNamespace
+
+    from app import _contract_file_cell_html
+
+    c = SimpleNamespace(
+        file_path='uploads/contracts/1/test.pdf',
+    )
+    with client.application.app_context():
+        html = _contract_file_cell_html(c)
+    assert html != '—'
+    assert '<a href=' in html
+
+
+def test_drill_expired_contracts_api_ok(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    r = client.get('/api/dashboard/drill/expired_contracts')
+    assert r.status_code == 200
+    assert r.is_json
+    data = r.get_json()
+    assert 'columns' in data
+    assert 'rows' in data
+
+
 def test_install_contract_excluded_from_expiring_alert(client):
     from datetime import date as date_cls
 

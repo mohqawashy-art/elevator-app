@@ -160,6 +160,6 @@ function openSidebar(){document.getElementById('sidebar').classList.add('open');
 function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('open');}
 function setLang(l){if(window.LiftCoreI18n&&window.LiftCoreI18n.setLang){window.LiftCoreI18n.setLang(l);return;}document.documentElement.setAttribute('lang',l);document.documentElement.setAttribute('dir',l==='ar'?'rtl':'ltr');}
 </script>
-<script src="{{ url_for('static', filename='alert-detail.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='alert-detail.js') }}?v=4"></script>
 </body>
 </html>

@@ -4955,7 +4955,7 @@ def _contract_file_cell_html(c) -> str:
     if not url:
         return '—'
     label = escape(_contract_js_primary_name(c) or 'عرض العقد')
-    safe_url = escape(url, quote=True)
+    safe_url = escape(url)
     return (
         f'<a href="{safe_url}" target="_blank" rel="noopener noreferrer" '
         f'class="lc-link" onclick="event.stopPropagation()">{label}</a>'

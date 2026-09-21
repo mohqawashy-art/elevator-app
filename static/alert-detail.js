@@ -71,6 +71,10 @@
     setLoading('جاري تحميل البيانات...');
     try {
       var res = await fetch('/api/dashboard/drill/' + encodeURIComponent(id), { credentials: 'same-origin' });
+      var ct = (res.headers.get('content-type') || '');
+      if (ct.indexOf('application/json') < 0) {
+        throw new Error('HTTP ' + res.status);
+      }
       var data = await res.json();
       if (!res.ok) throw new Error(data.error || 'خطأ في التحميل');
 
@@ -103,7 +107,8 @@
       renderTable(data.columns, data.rows || [], 'print-head', 'print-body', true);
       renderTable(data.columns, data.rows || [], 'screen-head', 'screen-body', false);
     } catch (e) {
-      setLoading('تعذّر تحميل البيانات');
+      var errMsg = (e && e.message) ? e.message : '';
+      setLoading('تعذّر تحميل البيانات' + (errMsg ? ' — ' + errMsg : ''));
       var st = document.getElementById('screen-title');
       if (st) st.textContent = 'خطأ في التحميل';
     }
