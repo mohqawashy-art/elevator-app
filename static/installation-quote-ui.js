@@ -1039,6 +1039,32 @@ document.addEventListener('DOMContentLoaded', function () {
     recalc();
   }
 
+  function customerQuoteElevStops() {
+    if (currentMode === 'extend') {
+      var ext = getExtendSpec();
+      return { count: ext.elevator_count || 1, stops: ext.stops };
+    }
+    if (currentMode === 'upgrade') {
+      return {
+        count: P.num(el('uElevCount') ? el('uElevCount').value : 1) || 1,
+        stops: P.num(el('uStops').value),
+      };
+    }
+    var nw = getNewSpec();
+    return { count: nw.elevator_count || 1, stops: nw.stops };
+  }
+
+  function customerQuoteLineLabel(es) {
+    es = es || customerQuoteElevStops();
+    if (currentMode === 'upgrade') {
+      return 'تحديث مصعد قائم — عدد ' + es.count + ' — ' + es.stops + ' وقفات';
+    }
+    if (currentMode === 'extend') {
+      return 'إضافة أدوار لمصعد قائم — عدد ' + es.count + ' — ' + es.stops + ' وقفات';
+    }
+    return 'توريد وتركيب مصعد — عدد ' + es.count + ' — ' + es.stops + ' وقفات';
+  }
+
   function buildQuote() {
     var rows = collectRows();
     if (!rows.length) { alert('ابنِ قائمة البنود أولاً'); return; }
@@ -1056,45 +1082,25 @@ document.addEventListener('DOMContentLoaded', function () {
     var other = P.num(el('sumOther').value);
     var pp = P.num(el('sumProfitP').value);
     var factor = 1 + pp / 100;
-    var detailed = el('qDetailed').checked;
     var isUpg = currentMode === 'upgrade';
-    var i, stageSums = {}, stagesOrder = [], itemsByStage = {};
+    var i, stageSums = {}, stagesOrder = [];
     for (i = 0; i < rows.length; i++) {
       var r = rows[i];
       var sell = r.qty * r.price * factor;
-      if (!stageSums[r.stage]) { stageSums[r.stage] = 0; stagesOrder.push(r.stage); itemsByStage[r.stage] = []; }
+      if (!stageSums[r.stage]) { stageSums[r.stage] = 0; stagesOrder.push(r.stage); }
       stageSums[r.stage] += sell;
-      itemsByStage[r.stage].push({ name: r.name, qty: r.qty, total: sell });
     }
     var laborSell = (labor + trans + other) * factor;
     var before = 0;
     for (i = 0; i < stagesOrder.length; i++) { before += stageSums[stagesOrder[i]]; }
     before += laborSell;
-    var vat = before * 0.15;
-    var grand = before + vat;
     var dateStr = new Date().toLocaleDateString('ar-SA');
     var validDays = P.num(el('cValid').value) || 30;
-    var materialsTotal = 0;
-    for (i = 0; i < stagesOrder.length; i++) {
-      materialsTotal += stageSums[stagesOrder[i]] || 0;
-    }
-    var tbl = '<table class="q-tbl"><thead><tr><th style="width:55%">البيان</th><th>الكمية</th><th>الإجمالي (ر.س)</th></tr></thead><tbody>';
-    if (detailed) {
-      var st2, k, its;
-      for (i = 0; i < stagesOrder.length; i++) {
-        st2 = stagesOrder[i];
-        its = itemsByStage[st2];
-        for (k = 0; k < its.length; k++) {
-          tbl += '<tr><td>' + its[k].name + '</td><td>' + its[k].qty + '</td><td>' + fmt(its[k].total) + '</td></tr>';
-        }
-      }
-    } else if (materialsTotal > 0) {
-      tbl += '<tr><td>توريد المعدات والمكونات</td><td></td><td>' + fmt(materialsTotal) + '</td></tr>';
-    }
-    if (laborSell > 0) {
-      tbl += '<tr><td>أعمال التركيب والتشغيل والتسليم</td><td></td><td>' + fmt(laborSell) + '</td></tr>';
-    }
-    tbl += '</tbody></table>';
+    var elevStops = customerQuoteElevStops();
+    var lineLabel = customerQuoteLineLabel(elevStops);
+    var tbl = '<table class="q-tbl"><thead><tr><th style="width:55%">البيان</th><th>الكمية</th><th>الإجمالي (ر.س)</th></tr></thead><tbody>'
+      + '<tr><td>' + lineLabel + '</td><td>' + elevStops.count + '</td><td>' + fmt(before) + '</td></tr>'
+      + '</tbody></table>';
     var specs = '';
     var quoteTitle = 'توريد وتركيب مصعد جديد';
     if (currentMode === 'upgrade') quoteTitle = 'تحديث مصعد قائم';
@@ -1201,11 +1207,9 @@ document.addEventListener('DOMContentLoaded', function () {
       + (custCode ? '<b>كود العميل:</b> ' + custCode + ' &nbsp; ' : '')
       + '<b>الاسم:</b> ' + (el('cName').value || '—') + ' &nbsp; <b>الجوال:</b> ' + (el('cPhone').value || '—') + ' &nbsp; <b>الموقع:</b> ' + (el('cAddr').value || '—') + '</div></div>'
       + specs + '<div class="q-sec"><h3>بنود العرض</h3>' + tbl + '</div>'
-      + '<div class="q-totals"><div class="r"><span>الإجمالي قبل الضريبة</span><b>' + fmt(before) + '</b></div>'
-      + '<div class="r"><span>ضريبة القيمة المضافة 15%</span><b>' + fmt(vat) + '</b></div>'
-      + '<div class="g"><span>الإجمالي شامل الضريبة</span><span>' + fmt(grand) + '</span></div></div>'
+      + '<div class="q-totals"><div class="g"><span>الإجمالي (بدون ضريبة)</span><span>' + fmt(before) + '</span></div></div>'
       + '<div class="q-sec"><h3>الشروط</h3><div class="q-terms">'
-      + paymentTermsText(getPaymentPcts(), grand) + '<br>'
+      + paymentTermsText(getPaymentPcts(), before) + '<br>'
       + '<b>الضمان:</b> سنة على أعمال التركيب + صيانة مجانية 12 شهراً.'
       + '</div></div>'
       + '<div class="q-sign"><div class="s">'
@@ -1462,7 +1466,7 @@ document.addEventListener('DOMContentLoaded', function () {
   el('saveBtn').addEventListener('click', saveQuote);
   el('printBtn').addEventListener('click', function () { window.print(); });
   el('closeQuoteBtn').addEventListener('click', function () { el('quoteOverlay').classList.remove('open'); });
-  el('qDetailed').addEventListener('change', buildQuote);
+  if (el('qDetailed')) el('qDetailed').addEventListener('change', buildQuote);
   ['sumLabor', 'sumTrans', 'sumOther', 'sumProfitP'].forEach(function (id) {
     if (el(id)) el(id).addEventListener('input', recalc);
   });
