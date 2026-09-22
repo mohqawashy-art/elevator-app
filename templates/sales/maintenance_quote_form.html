@@ -46,7 +46,12 @@
 .mq-map-search{margin-bottom:10px}
 .mq-map-search label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
 .mq-map-search input{width:100%;padding:9px 10px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-family:inherit}
-.mq-map-search .hint{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.45}
+.mq-map-legend{display:flex;flex-wrap:wrap;gap:10px 14px;font-size:11px;color:var(--text3);margin:0 0 8px}
+.mq-map-legend span{display:inline-flex;align-items:center;gap:5px}
+.mq-map-legend .dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.15)}
+.mq-map-legend .dot-site{background:#2563eb;width:12px;height:12px}
+.mq-map-legend .dot-contract{background:#1fb87a}
+.mq-map-legend .dot-client{background:#9333ea}
 .pac-container{z-index:10050!important}
 .mq-map-actions .btn.active{background:rgba(42,127,255,.15);border-color:rgba(42,127,255,.45);color:var(--accent)}
 .mq-map-hint{font-size:12px;color:var(--text3);margin:0 0 10px;line-height:1.5}
@@ -329,7 +334,12 @@
       <div class="mq-map-search field">
         <label for="address">عنوان الموقع — بحث Google Maps</label>
         <input form="mq-form" name="address" id="address" placeholder="ابحث: مبنى، شارع، حي…" autocomplete="off" value="{{ quote.address or '' if quote else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
-        <div class="hint">اختر نتيجة من القائمة — لا تكتفِ بالكتابة دون اختيار.</div>
+        <div class="hint">اختر نتيجة من القائمة — يظهر <strong style="color:#2563eb">دبوس أزرق كبير</strong> على الخريطة.</div>
+      </div>
+      <div class="mq-map-legend" aria-hidden="true">
+        <span><i class="dot dot-site"></i> موقع البحث (العنوان أعلاه)</span>
+        <span><i class="dot dot-contract"></i> عميل متعاقد</span>
+        <span><i class="dot dot-client"></i> العميل المختار</span>
       </div>
       <div id="mq-nearby-meta">جاري تحميل العملاء…</div>
       <div class="mq-map-actions">
@@ -481,11 +491,10 @@
       addressEl: addr,
       onPicked: function (_parts, _formatted, extra) {
         if (window.LiftCoreNearbyQuoteMap) {
-          window.LiftCoreNearbyQuoteMap.refresh();
           if (extra && extra.lat != null && extra.lng != null) {
             window.LiftCoreNearbyQuoteMap.setSitePin(extra.lat, extra.lng);
-            window.LiftCoreNearbyQuoteMap.setFocus(extra.lat, extra.lng);
           }
+          window.LiftCoreNearbyQuoteMap.refresh();
         }
       }
     });
@@ -494,6 +503,6 @@
 </script>
 <script>window.MQ_NEARBY_CUSTOMERS = {{ (customers_map_js|default([])) | tojson }};</script>
 <script src="{{ url_for('static', filename='liftcore_map.js') }}?v=8"></script>
-<script src="{{ url_for('static', filename='mq-nearby-map.js') }}?v=5"></script>
+<script src="{{ url_for('static', filename='mq-nearby-map.js') }}?v=6"></script>
 </body>
 </html>

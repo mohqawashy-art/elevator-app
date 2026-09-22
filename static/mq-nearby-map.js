@@ -22,6 +22,10 @@
   var leafletBaseLayer = null;
   var leafletSatLayer = null;
   var siteMarker = null;
+  var siteInfoWindow = null;
+  var sitePinPos = null;
+  var pendingSitePin = null;
+  var SITE_PIN_COLOR = '#2563eb';
 
   function $(id) { return document.getElementById(id); }
 
@@ -136,7 +140,7 @@
   }
 
   function pinColor(c, area) {
-    if (area.selectedId && String(c.id) === area.selectedId) return '#c8a055';
+    if (area.selectedId && String(c.id) === area.selectedId) return '#9333ea';
     if ((c.status || '') === 'غير نشط') return '#e04848';
     if (c.has_contract) return '#1fb87a';
     return '#8a9bb8';
@@ -155,7 +159,7 @@
 
   function addGoogleMarker(c, pos, color) {
     var icon = (global.LiftCoreMap && LiftCoreMap.makePinIcon)
-      ? LiftCoreMap.makePinIcon(color, color === '#c8a055' ? 1.45 : 1.15)
+      ? LiftCoreMap.makePinIcon(color, color === '#9333ea' ? 1.45 : 1.15)
       : { path: google.maps.SymbolPath.CIRCLE, fillColor: color, fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 8 };
     var marker = new google.maps.Marker({
       map: map,
@@ -174,7 +178,7 @@
 
   function addLeafletMarker(c, pos, color) {
     var marker = L.circleMarker([pos.lat, pos.lng], {
-      radius: color === '#c8a055' ? 10 : 8,
+      radius: color === '#9333ea' ? 10 : 8,
       color: '#fff',
       weight: 2,
       fillColor: color,
@@ -213,7 +217,25 @@
     else map.fitBounds(latlngs, { padding: [28, 28] });
   }
 
+  function sitePinLabelHtml() {
+    var addrEl = $('address');
+    var line = addrEl ? String(addrEl.value || '').trim() : '';
+    return '<div class="mq-map-pop"><b style="color:' + SITE_PIN_COLOR + '">● موقع البحث</b>'
+      + (line ? '<div style="margin-top:4px">' + esc(line) + '</div>' : '')
+      + '<div style="font-size:11px;color:#6b7a90;margin-top:4px">هذا الدبوس الأزرق الكبير — ليس عميلاً</div></div>';
+  }
+
+  function openSiteInfo() {
+    if (!siteMarker || !map || provider !== 'google') return;
+    if (!siteInfoWindow) siteInfoWindow = new google.maps.InfoWindow({ disableAutoPan: false });
+    siteInfoWindow.setContent(sitePinLabelHtml());
+    siteInfoWindow.open({ map: map, anchor: siteMarker });
+  }
+
   function clearSiteMarker() {
+    if (siteInfoWindow) {
+      try { siteInfoWindow.close(); } catch (e) { /* ignore */ }
+    }
     if (!siteMarker) return;
     try {
       if (provider === 'google') siteMarker.setMap(null);
@@ -222,31 +244,56 @@
     siteMarker = null;
   }
 
-  function setSitePin(lat, lng) {
-    var pos = { lat: num(lat), lng: num(lng) };
-    if (pos.lat == null || pos.lng == null || !map) return;
-    if (isPlaceholderPin(pos.lat, pos.lng)) return;
+  function clearSitePinAll() {
     clearSiteMarker();
+    sitePinPos = null;
+    pendingSitePin = null;
+  }
+
+  function drawSiteMarker(pos) {
     if (provider === 'google') {
       var icon = (global.LiftCoreMap && LiftCoreMap.makePinIcon)
-        ? LiftCoreMap.makePinIcon('#c8a055', 1.5)
-        : { path: google.maps.SymbolPath.CIRCLE, fillColor: '#c8a055', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 10 };
+        ? LiftCoreMap.makePinIcon(SITE_PIN_COLOR, 2.25)
+        : {
+          path: google.maps.SymbolPath.CIRCLE,
+          fillColor: SITE_PIN_COLOR,
+          fillOpacity: 1,
+          strokeColor: '#fff',
+          strokeWeight: 3,
+          scale: 14,
+        };
       siteMarker = new google.maps.Marker({
         map: map,
         position: pos,
-        title: 'موقع العرض',
+        title: 'موقع البحث',
         icon: icon,
-        zIndex: 9999,
+        zIndex: (google.maps.Marker.MAX_ZINDEX || 1000000) + 10,
+        animation: google.maps.Animation ? google.maps.Animation.DROP : undefined,
       });
+      openSiteInfo();
     } else if (global.L) {
       siteMarker = L.circleMarker([pos.lat, pos.lng], {
-        radius: 11,
+        radius: 14,
         color: '#fff',
-        weight: 3,
-        fillColor: '#c8a055',
+        weight: 4,
+        fillColor: SITE_PIN_COLOR,
         fillOpacity: 1,
       }).addTo(map);
+      siteMarker.bindPopup(sitePinLabelHtml()).openPopup();
     }
+  }
+
+  function setSitePin(lat, lng) {
+    var pos = { lat: num(lat), lng: num(lng) };
+    if (pos.lat == null || pos.lng == null) return;
+    if (isPlaceholderPin(pos.lat, pos.lng)) return;
+    pendingSitePin = pos;
+    if (!map) return;
+    pendingSitePin = null;
+    sitePinPos = pos;
+    clearSiteMarker();
+    sitePinPos = pos;
+    drawSiteMarker(pos);
     setFocus(pos.lat, pos.lng);
   }
 
@@ -269,7 +316,7 @@
     if (meta) {
       var withPin = rows.filter(function (c) { return !!coordsOf(c); }).length;
       if (!searching) {
-        meta.textContent = withPin + ' عميل على الخريطة — الأخضر متعاقد';
+        meta.textContent = withPin + ' عميل على الخريطة — الأخضر متعاقد، الأزرق موقع البحث';
       } else {
         var label = area.district || area.city || 'المنطقة';
         if (!withPin) meta.textContent = 'لا يوجد عملاء بموقع GPS في «' + label + '»';
@@ -312,7 +359,10 @@
       if (provider === 'google') addGoogleMarker(c, pos, pinColor(c, area));
       else addLeafletMarker(c, pos, pinColor(c, area));
     });
+    if (sitePinPos) points.push(sitePinPos);
     if (points.length) fitPoints(points);
+    else if (sitePinPos) setFocus(sitePinPos.lat, sitePinPos.lng);
+    if (sitePinPos && siteMarker && provider === 'google') openSiteInfo();
   }
 
   function setSatelliteButtonState() {
@@ -400,6 +450,7 @@
     ready = true;
     bindSatelliteButton();
     setSatelliteButtonState();
+    if (pendingSitePin) setSitePin(pendingSitePin.lat, pendingSitePin.lng);
     setTimeout(function () {
       try {
         if (provider === 'google' && google.maps.event) google.maps.event.trigger(map, 'resize');
@@ -452,7 +503,7 @@
     refresh: scheduleRefresh,
     setFocus: setFocus,
     setSitePin: setSitePin,
-    clearSitePin: clearSiteMarker,
+    clearSitePin: clearSitePinAll,
     upsertCustomer: upsertCustomer,
   };
 
