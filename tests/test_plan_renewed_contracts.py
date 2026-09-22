@@ -87,8 +87,8 @@ def test_two_elevators_early_renewal_september(client):
         assert preview.get('elevators_in_scope') == 2
 
 
-def test_renewed_contract_uses_customer_district_for_planning(client):
-    """عقد قديم بحيّ عنوان مختلف — التخطيط يتبع حيّ العميل."""
+def test_renewed_contract_uses_contract_district_for_planning(client):
+    """عقد قديم بحيّ خدمة مختلف — التخطيط يتبع موقع العقد وليس عنوان العميل."""
     with client.application.app_context():
         org = Organization.query.filter_by(slug='default').first()
         cust, elevs = _seed_customer_with_elevators(org, 'C', 1)
@@ -100,6 +100,9 @@ def test_renewed_contract_uses_customer_district_for_planning(client):
         old.district = 'حي وادي جليل'
         db.session.commit()
         _add_contract(org, cust, elev, 'CN-RN-DIST-2026', date(2026, 10, 1), date(2028, 10, 1))
-        cand = plan_candidates_for_district('2026-09', 'شارع الحج')
+        cand = plan_candidates_for_district('2026-09', 'حي وادي جليل')
         codes = [r.get('elevator_code') for r in cand.get('candidates') or []]
         assert elev.code in codes
+        other = plan_candidates_for_district('2026-09', 'شارع الحج')
+        other_codes = [r.get('elevator_code') for r in other.get('candidates') or []]
+        assert elev.code not in other_codes

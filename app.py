@@ -7275,6 +7275,35 @@ def _sync_customer_location_from_contract_form(customer_id, form):
     return
 
 
+def _sync_contract_service_site_to_linked_elevators(contract):
+    """نسخ موقع الخدمة من العقد إلى مصاعده — ليتوافق تخطيط الزيارات مع تعديل العقد."""
+    from models import ContractElevator, Elevator
+
+    if not contract or not getattr(contract, 'id', None):
+        return
+    links = tenant_query(ContractElevator).filter_by(contract_id=contract.id).all()
+    if links:
+        ids = [lk.elevator_id for lk in links]
+        elevs = tenant_query(Elevator).filter(Elevator.id.in_(ids)).all()
+    else:
+        elevs = tenant_query(Elevator).filter_by(customer_id=contract.customer_id).all()
+    dist = (contract.district or '').strip()
+    city = (contract.city or '').strip()
+    addr = (contract.address or '').strip()
+    lat = (getattr(contract, 'lat', None) or '').strip()
+    lng = (getattr(contract, 'lng', None) or '').strip()
+    maps_url = (getattr(contract, 'maps_url', None) or '').strip()
+    for e in elevs:
+        e.district = dist
+        e.city = city
+        e.address = addr
+        if lat and lng:
+            e.lat = lat
+            e.lng = lng
+        if maps_url:
+            e.maps_url = maps_url[:500]
+
+
 def _fin_proof_js_items(row) -> list[dict]:
     from attachment_paths import attachment_items
     return attachment_items(
@@ -7742,6 +7771,7 @@ def contract_edit(id):
             flash(msg, 'error')
             return redirect(url_for('contracts'))
         _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
+        _sync_contract_service_site_to_linked_elevators(c)
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
@@ -7845,6 +7875,7 @@ def contract_add():
             renew_src.status = 'تم تجديده'
         _add_contract_files(c, request.files.getlist('contract_file'))
         _sync_contract_elevators(c.id, request.form.getlist('elevator_ids'))
+        _sync_contract_service_site_to_linked_elevators(c)
         db.session.commit()
     except Exception as exc:
         db.session.rollback()

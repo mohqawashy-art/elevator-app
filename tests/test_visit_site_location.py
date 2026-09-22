@@ -246,8 +246,62 @@ def test_list_districts_from_contract_not_customer(client):
             status='نشط',
         )
         db.session.add(contract)
+        db.session.flush()
+        elev = Elevator(
+            organization_id=org.id,
+            customer_id=cust.id,
+            code='EL-PLAN-01',
+            building_name='مبنى',
+            status='نشط',
+        )
+        db.session.add(elev)
+        db.session.flush()
+        db.session.add(ContractElevator(contract_id=contract.id, elevator_id=elev.id))
         db.session.commit()
 
         districts = list_districts('2026-06')
         assert 'حي العقد' in districts
         assert 'حي العميل' not in districts
+
+
+def test_planning_uses_elevator_district_when_contract_empty(client):
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-PLAN-02',
+            name='عميل مصعد',
+            district='حي العميل',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(
+            organization_id=org.id,
+            customer_id=cust.id,
+            code='EL-PLAN-02',
+            district='حي المصعد',
+            status='نشط',
+        )
+        db.session.add(elev)
+        db.session.flush()
+        contract = Contract(
+            organization_id=org.id,
+            code='CN-PLAN-02',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date(2026, 1, 1),
+            end_date=date(2027, 1, 1),
+            status='نشط',
+        )
+        db.session.add(contract)
+        db.session.flush()
+        db.session.add(ContractElevator(contract_id=contract.id, elevator_id=elev.id))
+        db.session.commit()
+
+        from operations import plan_candidates_for_district
+
+        cand = plan_candidates_for_district('2026-06', 'حي المصعد')
+        codes = {row.get('elevator_code') for row in cand.get('candidates') or []}
+        assert 'EL-PLAN-02' in codes
+        assert 'حي العميل' not in (list_districts('2026-06') or [])

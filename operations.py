@@ -841,8 +841,10 @@ def _collect_planning_flat_items(
             continue
         customer = contract.customer
         for elev in _elevators_for_maintenance_plan(contract):
-            dist_name = _planning_site_district(contract, elev, customer)
-            if district_filter and dist_name != district_filter:
+            dist_name = _planning_district_label(
+                _planning_site_district(contract, elev, customer)
+            )
+            if district_filter and not _planning_districts_equal(dist_name, district_filter):
                 continue
             item = {
                 'contract': contract,
@@ -1318,13 +1320,18 @@ def _visit_site_district(contract=None, elev=None, cust=None) -> str:
 
 
 def _planning_site_district(contract=None, elev=None, cust=None) -> str:
-    """منطقة تخطيط الزيارات — حيّ العميل أولاً (منصة الأقسام)، ثم موقع العقد."""
-    if cust is None and contract is not None:
-        cust = contract.customer
-    cd = (getattr(cust, 'district', None) or '').strip() if cust else ''
-    if cd:
-        return cd
+    """منطقة تخطيط الزيارات — موقع الخدمة من العقد ثم المصعد (وليس عنوان العميل)."""
     return _visit_site_district(contract, elev, cust)
+
+
+def _planning_district_label(name: str) -> str:
+    import re
+    s = re.sub(r'\s+', ' ', (name or '').strip())
+    return s or 'غير محدد'
+
+
+def _planning_districts_equal(a: str, b: str) -> bool:
+    return _planning_district_label(a) == _planning_district_label(b)
 
 
 def visit_district_name(v: MaintenanceVisit) -> str:
@@ -1348,14 +1355,12 @@ def _active_contract_month_bounds(plan_month: str | None = None) -> tuple[date, 
 
 
 def list_districts(plan_month: str | None = None) -> list[str]:
-    """مناطق تخطيط الشهر — من عقود الصيانة النشطة (وليس عنوان العميل)."""
+    """مناطق تخطيط الشهر — من موقع الخدمة (عقد/مصعد) لعقود الصيانة الفعّالة."""
     start, end = _active_contract_month_bounds(plan_month)
     contracts = _planning_contracts_for_month(start, end)
     districts: set[str] = set()
-    for contract in contracts:
-        if not _is_maintenance_contract(contract):
-            continue
-        d = _planning_site_district(contract, None, contract.customer)
+    for item in _collect_planning_flat_items(contracts):
+        d = _planning_district_label(item.get('district') or '')
         if d and d != 'غير محدد':
             districts.add(d)
     return sorted(districts) if districts else ['غير محدد']
