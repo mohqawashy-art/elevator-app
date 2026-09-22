@@ -43,7 +43,11 @@
 .lc-addr-suggest button:last-child{border-bottom:none}
 .lc-addr-suggest button:hover{background:var(--bg3)}
 .mq-map-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px;position:sticky;top:72px}
-.mq-map-actions{display:flex;justify-content:flex-end;margin-bottom:8px;gap:8px}
+.mq-map-search{margin-bottom:10px}
+.mq-map-search label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.mq-map-search input{width:100%;padding:9px 10px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-family:inherit}
+.mq-map-search .hint{font-size:11px;color:var(--text3);margin-top:4px;line-height:1.45}
+.pac-container{z-index:10050!important}
 .mq-map-actions .btn.active{background:rgba(42,127,255,.15);border-color:rgba(42,127,255,.45);color:var(--accent)}
 .mq-map-hint{font-size:12px;color:var(--text3);margin:0 0 10px;line-height:1.5}
 #mq-nearby-meta{font-size:12px;color:var(--text2);margin-bottom:8px}
@@ -120,9 +124,7 @@
             <input name="district" id="district" value="{{ quote.district or '' if quote else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
           </div>
           <div class="field full">
-            <label>عنوان الموقع</label>
-            <input name="address" id="address" placeholder="ابحث في خرائط جوجل…" autocomplete="off" value="{{ quote.address or '' if quote else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
-            <div class="hint">اكتب اسم المبنى أو الشارع لاختيار العنوان من خرائط جوجل — تُعبَّأ المدينة والحي تلقائياً.</div>
+            <div class="hint">عنوان الموقع: ابحث من خانة Google Maps فوق الخريطة — تُحدَّث المدينة والحي وتتحرك الخريطة للموقع.</div>
           </div>
         </div>
       </section>
@@ -323,7 +325,12 @@
     </div>
     <aside class="mq-map-card" aria-label="عملاء المنطقة">
       <h2>عملاء على الخريطة</h2>
-      <p class="mq-map-hint">الخريطة تعرض <strong>نقاط العملاء فقط</strong> (بدون أماكن/محلات جوجل). الأخضر = متعاقد، الرمادي = بدون عقد. عند تحديد حي أو عنوان تُصفَّى القائمة للمتعاقدين في المنطقة.</p>
+      <p class="mq-map-hint">ابحث عن <strong>عنوان الموقع</strong> أدناه (Google Maps) — تُحدَّث المدينة والحي في النموذج وتظهر نقطة على الخريطة. النقاط الأخرى = عملاء (أخضر متعاقد).</p>
+      <div class="mq-map-search field">
+        <label for="address">عنوان الموقع — بحث Google Maps</label>
+        <input form="mq-form" name="address" id="address" placeholder="ابحث: مبنى، شارع، حي…" autocomplete="off" value="{{ quote.address or '' if quote else '' }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+        <div class="hint">اختر نتيجة من القائمة — لا تكتفِ بالكتابة دون اختيار.</div>
+      </div>
       <div id="mq-nearby-meta">جاري تحميل العملاء…</div>
       <div class="mq-map-actions">
         <button type="button" class="btn btn-secondary btn-sm" id="mq-map-satellite-btn" aria-pressed="false">قمر صناعي</button>
@@ -475,7 +482,10 @@
       onPicked: function (_parts, _formatted, extra) {
         if (window.LiftCoreNearbyQuoteMap) {
           window.LiftCoreNearbyQuoteMap.refresh();
-          if (extra && extra.lat && extra.lng) window.LiftCoreNearbyQuoteMap.setFocus(extra.lat, extra.lng);
+          if (extra && extra.lat != null && extra.lng != null) {
+            window.LiftCoreNearbyQuoteMap.setSitePin(extra.lat, extra.lng);
+            window.LiftCoreNearbyQuoteMap.setFocus(extra.lat, extra.lng);
+          }
         }
       }
     });
@@ -484,6 +494,6 @@
 </script>
 <script>window.MQ_NEARBY_CUSTOMERS = {{ (customers_map_js|default([])) | tojson }};</script>
 <script src="{{ url_for('static', filename='liftcore_map.js') }}?v=8"></script>
-<script src="{{ url_for('static', filename='mq-nearby-map.js') }}?v=4"></script>
+<script src="{{ url_for('static', filename='mq-nearby-map.js') }}?v=5"></script>
 </body>
 </html>

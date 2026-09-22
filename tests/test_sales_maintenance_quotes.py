@@ -253,5 +253,5 @@ def test_maintenance_quote_new_page_quick_customer_and_maps(client):
     assert 'mq-nearby-map' in html
     assert 'MQ_NEARBY_CUSTOMERS' in html
     assert 'عملاء على الخريطة' in html
-    assert 'جميع العملاء على الخريطة' in html
-    assert 'المتعاقد معهم' in html
+    assert 'Google Maps' in html
+    assert 'setSitePin' in html

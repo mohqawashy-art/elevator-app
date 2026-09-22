@@ -21,6 +21,7 @@
   var mapViewMode = 'roadmap';
   var leafletBaseLayer = null;
   var leafletSatLayer = null;
+  var siteMarker = null;
 
   function $(id) { return document.getElementById(id); }
 
@@ -210,6 +211,43 @@
     var latlngs = points.map(function (p) { return [p.lat, p.lng]; });
     if (latlngs.length === 1) map.setView(latlngs[0], 15);
     else map.fitBounds(latlngs, { padding: [28, 28] });
+  }
+
+  function clearSiteMarker() {
+    if (!siteMarker) return;
+    try {
+      if (provider === 'google') siteMarker.setMap(null);
+      else if (map && map.removeLayer) map.removeLayer(siteMarker);
+    } catch (e) { /* ignore */ }
+    siteMarker = null;
+  }
+
+  function setSitePin(lat, lng) {
+    var pos = { lat: num(lat), lng: num(lng) };
+    if (pos.lat == null || pos.lng == null || !map) return;
+    if (isPlaceholderPin(pos.lat, pos.lng)) return;
+    clearSiteMarker();
+    if (provider === 'google') {
+      var icon = (global.LiftCoreMap && LiftCoreMap.makePinIcon)
+        ? LiftCoreMap.makePinIcon('#c8a055', 1.5)
+        : { path: google.maps.SymbolPath.CIRCLE, fillColor: '#c8a055', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2, scale: 10 };
+      siteMarker = new google.maps.Marker({
+        map: map,
+        position: pos,
+        title: 'موقع العرض',
+        icon: icon,
+        zIndex: 9999,
+      });
+    } else if (global.L) {
+      siteMarker = L.circleMarker([pos.lat, pos.lng], {
+        radius: 11,
+        color: '#fff',
+        weight: 3,
+        fillColor: '#c8a055',
+        fillOpacity: 1,
+      }).addTo(map);
+    }
+    setFocus(pos.lat, pos.lng);
   }
 
   function setFocus(lat, lng) {
@@ -413,6 +451,8 @@
   global.LiftCoreNearbyQuoteMap = {
     refresh: scheduleRefresh,
     setFocus: setFocus,
+    setSitePin: setSitePin,
+    clearSitePin: clearSiteMarker,
     upsertCustomer: upsertCustomer,
   };
 
