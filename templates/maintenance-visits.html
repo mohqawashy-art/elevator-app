@@ -1287,9 +1287,16 @@ function draftElevatorIds() {
 function wizardCandidatePool(list) {
   var used = draftElevatorIds();
   return (list || []).filter(function (c) {
+    if (!c || !c.elevator_id) return false;
     if (used[String(c.elevator_id)]) return false;
     if (c.already_planned) return false;
     return true;
+  });
+}
+
+function wizardSelectableCandidates(list) {
+  return wizardCandidatePool(list).filter(function (c) {
+    return !c.already_in_month;
   });
 }
 
@@ -1319,14 +1326,20 @@ function loadWizardCandidates() {
         fillPlanDayOptions();
       }
       renderWizardCandidates(PLAN_CANDIDATES);
-      var avail = wizardCandidatePool(PLAN_CANDIDATES).length;
+      var pool = wizardCandidatePool(PLAN_CANDIDATES);
+      var avail = wizardSelectableCandidates(PLAN_CANDIDATES).length;
+      var done = pool.length - avail;
       var distLabel = (res.j.districts && res.j.districts.length)
         ? res.j.districts.join('، ')
         : districts.join('، ');
       if (meta) {
-        meta.textContent = avail
-          ? ('المناطق «' + distLabel + '»: ' + avail + ' مصعد لم يُجدول بعد (مرتّب جغرافياً)')
-          : ('المناطق «' + distLabel + '»: كل المصاعد مجدولة أو مُضافة للمسودة');
+        if (pool.length) {
+          meta.textContent = 'المناطق «' + distLabel + '»: ' + avail + ' مصعد للجدولة'
+            + (done ? (' — ' + done + ' لديهم زيارة هذا الشهر (معروضون للمراجعة)') : '')
+            + ' (مرتّب جغرافياً)';
+        } else {
+          meta.textContent = 'المناطق «' + distLabel + '»: لا مصاعد في هذه المناطق أو كلهم في المسودة';
+        }
       }
     })
     .catch(function (err) {
@@ -1342,7 +1355,7 @@ function renderWizardCandidates(list) {
   var rows = wizardCandidatePool(list);
   var showDistrict = planDistrictFilters().length > 1;
   if (!rows.length) {
-    el.innerHTML = '<p style="padding:12px;color:var(--text3);font-size:13px">لا يوجد عملاء غير مجدولين في المناطق المحددة — غيّر المناطق أو اعرض «عملاء لم تُشمَلهم الزيارات» أعلاه.</p>';
+    el.innerHTML = '<p style="padding:12px;color:var(--text3);font-size:13px">لا يوجد عملاء في المناطق المحددة — غيّر المناطق أو راجع «عملاء لم تُشمَلهم الزيارات» أعلاه.</p>';
     return;
   }
   var cols = showDistrict
@@ -1356,14 +1369,21 @@ function renderWizardCandidates(list) {
       head +
     '</div>' +
     rows.map(function (c) {
+      var done = !!c.already_in_month;
       var districtCell = showDistrict
         ? '<span style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escAttr(c.district || '') + '">' +
             escHtml(c.district || '—') + '</span>'
         : '';
-      return '<label style="display:grid;grid-template-columns:' + cols + ';gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);font-size:13px;cursor:pointer">' +
-        '<input type="checkbox" class="plan-cand-cb" value="' + c.elevator_id + '" data-elevator-id="' + c.elevator_id + '">' +
+      var doneNote = done
+        ? (' <span style="font-size:11px;color:var(--success);font-weight:600">زيارة ' +
+            escHtml(c.existing_visit_date || '') + '</span>')
+        : '';
+      return '<label style="display:grid;grid-template-columns:' + cols + ';gap:6px;align-items:center;padding:8px 10px;border-bottom:1px solid var(--border);font-size:13px;' +
+        (done ? 'opacity:.72;cursor:default' : 'cursor:pointer') + '">' +
+        '<input type="checkbox" class="plan-cand-cb" value="' + c.elevator_id + '" data-elevator-id="' + c.elevator_id + '"' +
+        (done ? ' disabled title="لديه زيارة دورية هذا الشهر"' : '') + '>' +
         '<span style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escAttr(c.customer || c.customer_name || '') + '">' +
-          escHtml(c.customer || c.customer_name || '—') + '</span>' +
+          escHtml(c.customer || c.customer_name || '—') + doneNote + '</span>' +
         districtCell +
         '<span style="font-family:var(--font-en);direction:ltr;color:var(--accent);font-weight:600">' +
           escHtml(c.elevator || c.elevator_code || '') + '</span>' +
