@@ -112,3 +112,48 @@ def test_install_contract_excluded_from_expiring_alert(client):
         codes = {c.code for c in expiring}
         assert install.code not in codes
         assert maint.code in codes
+
+
+def test_install_contract_excluded_from_expired_alert(client):
+    from datetime import date as date_cls
+
+    from app import _contracts_expired_for_alerts, db
+    from contract_codes import CONTRACT_PREFIX_INSTALLATION
+    from models import Contract, Customer, Organization
+    from tests.conftest import login_as
+
+    login_as(client, role='admin')
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-EXP2',
+            name='عميل منتهي',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        install = Contract(
+            organization_id=org.id,
+            code=f'{CONTRACT_PREFIX_INSTALLATION}99997',
+            customer_id=cust.id,
+            contract_type='عقد تركيب',
+            status='منتهي',
+            start_date=date_cls.today() - timedelta(days=400),
+            end_date=date_cls.today() - timedelta(days=30),
+        )
+        maint = Contract(
+            organization_id=org.id,
+            code='CN-99996',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            status='منتهي',
+            start_date=date_cls.today() - timedelta(days=400),
+            end_date=date_cls.today() - timedelta(days=5),
+        )
+        db.session.add_all([install, maint])
+        db.session.commit()
+        expired = _contracts_expired_for_alerts()
+        codes = {c.code for c in expired}
+        assert install.code not in codes
+        assert maint.code in codes

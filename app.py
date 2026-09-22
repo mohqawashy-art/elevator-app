@@ -4754,10 +4754,16 @@ def get_dashboard_trends(today=None):
     yesterday = today - timedelta(days=1)
 
     def expired_between(d1, d2):
-        return tenant_query(Contract).filter(
+        from contract_codes import is_maintenance_contract_type
+
+        rows = tenant_query(Contract).filter(
             Contract.end_date >= d1,
             Contract.end_date < d2,
-        ).count()
+        ).all()
+        return sum(
+            1 for c in rows
+            if is_maintenance_contract_type(getattr(c, 'contract_type', None))
+        )
 
     exp_this = expired_between(cur_start.date(), today + timedelta(days=1))
     exp_prev = expired_between(prev_start.date(), cur_start.date())
@@ -4859,13 +4865,7 @@ def get_dashboard_stats():
         InventoryItem.current_qty < InventoryItem.min_qty,
     ).order_by(InventoryItem.current_qty).all()
 
-    all_contracts_for_status = tenant_query(Contract).all()
-    renewed_contract_ids = _annotate_contract_renewals(all_contracts_for_status)
-    expired_contracts_count = sum(
-        1
-        for c in all_contracts_for_status
-        if contract_display_status(c, renewed_ids=renewed_contract_ids) == 'منتهي'
-    )
+    expired_contracts_count = len(_contracts_expired_for_alerts(today))
 
     stats = {
         'customers':        tenant_query(Customer).count(),
@@ -5083,19 +5083,15 @@ def api_dashboard_drill(card_type):
             'rows': rows,
         }
     elif card_type == 'expired_contracts':
-        all_c = tenant_query(Contract).order_by(Contract.end_date.desc()).all()
-        renewed_ids = _annotate_contract_renewals(all_c)
         rows = []
-        for c in all_c:
-            if contract_display_status(c, renewed_ids=renewed_ids) != 'منتهي':
-                continue
+        for c in _contracts_expired_for_alerts(today):
             core = [
                 c.code,
                 c.customer.name if c.customer else '—',
                 c.contract_type or '—',
                 str(c.start_date),
                 str(c.end_date),
-                contract_display_status(c, renewed_ids=renewed_ids),
+                'منتهي',
             ]
             rows.append(_contract_alert_drill_cells(c, core, wa_scene='contract_expired'))
         payload = {
@@ -6704,6 +6700,22 @@ def _contracts_expiring_display_status(today=None):
         and contract_display_status(c, today=today, renewed_ids=renewed_ids) == 'على وشك الانتهاء'
     ]
     rows.sort(key=lambda c: c.end_date or date.max)
+    return rows
+
+
+def _contracts_expired_for_alerts(today=None):
+    """عقود صيانة/ضمان/طوارئ بحالة «منتهي» — لا تشمل تركيب/تحديث (انتهاء طبيعي للمشروع)."""
+    from contract_codes import is_maintenance_contract_type
+
+    today = today or date.today()
+    all_c = tenant_query(Contract).all()
+    renewed_ids = _annotate_contract_renewals(all_c)
+    rows = [
+        c for c in all_c
+        if is_maintenance_contract_type(getattr(c, 'contract_type', None))
+        and contract_display_status(c, today=today, renewed_ids=renewed_ids) == 'منتهي'
+    ]
+    rows.sort(key=lambda c: c.end_date or date.min, reverse=True)
     return rows
 
 
