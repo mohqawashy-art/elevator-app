@@ -1330,8 +1330,43 @@ def _planning_district_label(name: str) -> str:
     return s or 'غير محدد'
 
 
+def _planning_district_canonical(name: str) -> str:
+    """مفتاح موحّد للمقارنة — يدمج «حي X» مع «X» والاختلافات البسيطة."""
+    import re
+    s = _planning_district_label(name)
+    if s == 'غير محدد':
+        return ''
+    for prefix in ('حي ', 'حى ', 'منطقة '):
+        if s.startswith(prefix):
+            s = s[len(prefix):].strip()
+            break
+    s = s.replace('أ', 'ا').replace('إ', 'ا').replace('آ', 'ا')
+    s = s.replace('ة', 'ه')
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s.casefold()
+
+
 def _planning_districts_equal(a: str, b: str) -> bool:
-    return _planning_district_label(a) == _planning_district_label(b)
+    if _planning_district_label(a) == _planning_district_label(b):
+        return True
+    ca, cb = _planning_district_canonical(a), _planning_district_canonical(b)
+    return bool(ca) and ca == cb
+
+
+def _planning_districts_public_list(labels: list[str]) -> list[str]:
+    """قائمة مناطق للواجهة — دمج المرادفات (الخضراء / حي الخضراء)."""
+    groups: dict[str, list[str]] = {}
+    for raw in labels or []:
+        label = _planning_district_label(raw)
+        if not label or label == 'غير محدد':
+            continue
+        key = _planning_district_canonical(label) or label.casefold()
+        groups.setdefault(key, []).append(label)
+    out: list[str] = []
+    for variants in groups.values():
+        uniq = sorted(set(variants), key=lambda x: (len(x), x))
+        out.append(uniq[0])
+    return sorted(out, key=lambda x: x)
 
 
 def visit_district_name(v: MaintenanceVisit) -> str:
@@ -1363,7 +1398,8 @@ def list_districts(plan_month: str | None = None) -> list[str]:
         d = _planning_district_label(item.get('district') or '')
         if d and d != 'غير محدد':
             districts.add(d)
-    return sorted(districts) if districts else ['غير محدد']
+    merged = _planning_districts_public_list(sorted(districts))
+    return merged if merged else ['غير محدد']
 
 
 def elevators_for_district(district: str, plan_month: str | None = None) -> list[dict]:

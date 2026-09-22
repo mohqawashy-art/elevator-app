@@ -2,7 +2,12 @@
 from datetime import date
 
 from models import Contract, ContractElevator, Customer, Elevator, Organization, db
-from operations import _elevators_for_maintenance_plan, list_districts
+from operations import (
+    _elevators_for_maintenance_plan,
+    _planning_districts_equal,
+    _planning_districts_public_list,
+    list_districts,
+)
 from maintenance_teams import (
     visit_site_district,
     visit_site_coordinates,
@@ -305,3 +310,56 @@ def test_planning_uses_elevator_district_when_contract_empty(client):
         codes = {row.get('elevator_code') for row in cand.get('candidates') or []}
         assert 'EL-PLAN-02' in codes
         assert 'حي العميل' not in (list_districts('2026-06') or [])
+
+
+def test_planning_district_merges_hiy_prefix(client):
+    assert _planning_districts_equal('الخضrاء', 'حي الخضrاء')
+    assert _planning_districts_equal('المعيصm', 'حي المعيصm')
+    merged = _planning_districts_public_list(['حي الخضrاء', 'الخضrاء', 'المعيصm'])
+    assert 'حي الخضrاء' not in merged or 'الخضrاء' in merged
+    assert len(merged) == 2
+
+
+def test_plan_candidates_match_district_alias(client):
+    from operations import plan_candidates_for_district
+
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-ALIAS-01',
+            name='عميل خضrاء',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(
+            organization_id=org.id,
+            customer_id=cust.id,
+            code='EL-ALIAS-01',
+            district='حي الخضrاء',
+            status='نشط',
+        )
+        db.session.add(elev)
+        db.session.flush()
+        contract = Contract(
+            organization_id=org.id,
+            code='CN-ALIAS-01',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date(2026, 1, 1),
+            end_date=date(2027, 1, 1),
+            district='حي الخضrاء',
+            status='نشط',
+        )
+        db.session.add(contract)
+        db.session.flush()
+        db.session.add(ContractElevator(contract_id=contract.id, elevator_id=elev.id))
+        db.session.commit()
+
+        short = plan_candidates_for_district('2026-06', 'الخضrاء')
+        long = plan_candidates_for_district('2026-06', 'حي الخضrاء')
+        codes_short = {r.get('elevator_code') for r in short.get('candidates') or []}
+        codes_long = {r.get('elevator_code') for r in long.get('candidates') or []}
+        assert 'EL-ALIAS-01' in codes_short
+        assert 'EL-ALIAS-01' in codes_long
