@@ -18,6 +18,9 @@
   var googleInfo = null;
   var ready = false;
   var refreshTimer = null;
+  var mapViewMode = 'roadmap';
+  var leafletBaseLayer = null;
+  var leafletSatLayer = null;
 
   function $(id) { return document.getElementById(id); }
 
@@ -274,6 +277,52 @@
     if (points.length) fitPoints(points);
   }
 
+  function setSatelliteButtonState() {
+    var btn = $('mq-map-satellite-btn');
+    if (!btn) return;
+    var sat = mapViewMode === 'satellite';
+    btn.setAttribute('aria-pressed', sat ? 'true' : 'false');
+    btn.classList.toggle('active', sat);
+    btn.textContent = sat ? 'خريطة' : 'قمر صناعي';
+    btn.title = sat ? 'عرض الخريطة العادية' : 'عرض صور القمر الصناعي';
+  }
+
+  function applyMapViewMode() {
+    if (!map) return;
+    if (provider === 'google' && global.google && google.maps) {
+      if (mapViewMode === 'satellite') {
+        map.setMapTypeId(google.maps.MapTypeId.HYBRID);
+      } else {
+        map.setMapTypeId(google.maps.MapTypeId.ROADMAP);
+        map.setOptions({ styles: GOOGLE_MAP_CLEAN_STYLES });
+      }
+      return;
+    }
+    if (provider === 'leaflet' && leafletBaseLayer && leafletSatLayer) {
+      if (mapViewMode === 'satellite') {
+        if (map.hasLayer(leafletBaseLayer)) map.removeLayer(leafletBaseLayer);
+        if (!map.hasLayer(leafletSatLayer)) leafletSatLayer.addTo(map);
+      } else {
+        if (map.hasLayer(leafletSatLayer)) map.removeLayer(leafletSatLayer);
+        if (!map.hasLayer(leafletBaseLayer)) leafletBaseLayer.addTo(map);
+      }
+    }
+  }
+
+  function toggleMapViewMode() {
+    mapViewMode = mapViewMode === 'satellite' ? 'roadmap' : 'satellite';
+    applyMapViewMode();
+    setSatelliteButtonState();
+  }
+
+  function bindSatelliteButton() {
+    var btn = $('mq-map-satellite-btn');
+    if (!btn || btn.dataset.mqSatBound) return;
+    btn.dataset.mqSatBound = '1';
+    btn.addEventListener('click', toggleMapViewMode);
+    setSatelliteButtonState();
+  }
+
   function scheduleRefresh() {
     clearTimeout(refreshTimer);
     refreshTimer = setTimeout(refresh, 180);
@@ -297,15 +346,22 @@
     } else if (global.L) {
       provider = 'leaflet';
       map = L.map(el, { scrollWheelZoom: true }).setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], 12);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      leafletBaseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap',
-      }).addTo(map);
+      });
+      leafletSatLayer = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { maxZoom: 19, attribution: '&copy; Esri' }
+      );
+      leafletBaseLayer.addTo(map);
     } else {
       el.textContent = 'تعذّر تحميل الخريطة';
       return;
     }
     ready = true;
+    bindSatelliteButton();
+    setSatelliteButtonState();
     setTimeout(function () {
       try {
         if (provider === 'google' && google.maps.event) google.maps.event.trigger(map, 'resize');
