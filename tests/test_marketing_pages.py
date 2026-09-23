@@ -232,6 +232,22 @@ def test_spam_sales_lead_detector():
         city='Piran',
         notes='Egijnjm fnefjwdifj fkm dkdw d w k d w jj fkm fkengjkfmsdnfejfk mkfm kdm w jefnejfem liftcoreapp.com',
     ) is True
+    assert is_spam_sales_lead(
+        company_name='To the http://liftcoreapp.com/fekal0911 Admin',
+        contact_name='Hello http://liftcoreapp.com/fekal0911 Administrator',
+        contact_email='pirduhina96@gmail.com',
+        phone='4122981773',
+        city='Crafton',
+        notes='Hi http://liftcoreapp.com/fekal0911 Admin',
+    ) is True
+    assert is_spam_sales_lead(
+        company_name='العالمية',
+        contact_name='محمد',
+        contact_email='mohqawashy@gmail.com',
+        phone='0555076078',
+        city='مكة المكرمة',
+        notes='شاهدنا الموقع https://liftcoreapp.com',
+    ) is False
 
 
 def test_spam_demo_request_is_dropped(monkeypatch):
@@ -267,6 +283,79 @@ def test_spam_demo_request_is_dropped(monkeypatch):
     with app.app_context():
         from models import SalesLead
         assert SalesLead.query.filter_by(contact_email='henrydixon487@gmail.com').count() == 0
+
+
+def test_url_admin_bot_demo_request_is_dropped(monkeypatch):
+    captured = []
+
+    def fake_send(**kwargs):
+        captured.append(kwargs)
+        return {'ok': True, 'reason': 'sent'}
+
+    monkeypatch.setattr('liftcore_mail.send_demo_request_email', fake_send)
+    client = app.test_client()
+    app.config['TESTING'] = True
+    with app.app_context():
+        from models import SalesLead, db
+        db.create_all()
+
+    r = client.post(
+        '/demo-request',
+        data={
+            'company_name': 'To the http://liftcoreapp.com/fekal0911 Admin',
+            'contact_name': 'Hello http://liftcoreapp.com/fekal0911 Administrator',
+            'contact_email': 'pirduhina96@gmail.com',
+            'phone': '4122981773',
+            'city': 'Crafton',
+            'notes': 'Hi http://liftcoreapp.com/fekal0911 Admin',
+            'request_type': 'demo',
+            'next': '/',
+        },
+        base_url=PUBLIC,
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    assert captured == []
+    with app.app_context():
+        from models import SalesLead
+        assert SalesLead.query.filter_by(contact_email='pirduhina96@gmail.com').count() == 0
+
+
+def test_close_spam_sales_leads_closes_matching_open_leads():
+    from sales_leads import close_spam_sales_leads
+
+    client = app.test_client()
+    app.config['TESTING'] = True
+    with app.app_context():
+        from models import SalesLead, db
+        db.create_all()
+        spam = SalesLead(
+            request_type='demo',
+            status='new',
+            company_name='To the http://liftcoreapp.com/fekal0911 Admin',
+            contact_name='Hello http://liftcoreapp.com/fekal0911 Administrator',
+            contact_email='url-admin-bot@example.com',
+            phone='4122981773',
+            city='Crafton',
+            notes='Hi http://liftcoreapp.com/fekal0911 Admin',
+        )
+        real = SalesLead(
+            request_type='demo',
+            status='new',
+            company_name='العالمية',
+            contact_name='محمد',
+            contact_email='buyer@example.com',
+            phone='0555076078',
+            city='مكة المكرمة',
+        )
+        db.session.add_all([spam, real])
+        db.session.commit()
+        spam_id, real_id = spam.id, real.id
+        closed = close_spam_sales_leads()
+        assert spam_id in closed
+        assert real_id not in closed
+        assert db.session.get(SalesLead, spam_id).status == 'closed'
+        assert db.session.get(SalesLead, real_id).status == 'new'
 
 
 def test_ads_landing_and_conversion_flow(monkeypatch):

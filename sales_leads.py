@@ -10,8 +10,16 @@ _SPAM_COMPANIES = frozenset({
     'roberthob',
     'hiltonconge',
 })
+_SPAM_EMAILS = frozenset({
+    'pirduhina96@gmail.com',
+})
 _ARABIC_RE = re.compile(r'[\u0600-\u06FF]')
 _REPEAT_CHAR_RE = re.compile(r'(.)\1{6,}')
+_URL_RE = re.compile(r'https?://|\bwww\.|\bliftcoreapp\.com\b', re.I)
+_ADMIN_GREETING_RE = re.compile(
+    r'(?:to the|hello|hi|dear|attention)\b.{0,160}\b(?:admin|administrator)\b',
+    re.I,
+)
 
 
 def is_spam_sales_lead(
@@ -29,6 +37,15 @@ def is_spam_sales_lead(
     email = (contact_email or '').strip().lower()
     note = (notes or '').strip()
     if company in _SPAM_COMPANIES or name in _SPAM_COMPANIES:
+        return True
+    if email in _SPAM_EMAILS:
+        return True
+    if _URL_RE.search(f'{company} {name}'):
+        return True
+    if _ADMIN_GREETING_RE.search(f'{company} {name} {note}'):
+        return True
+    url_fields = sum(1 for part in (company, name, note.lower()) if part and _URL_RE.search(part))
+    if url_fields >= 2:
         return True
     blob = f'{company} {name} {note} {email}'
     if _REPEAT_CHAR_RE.search(blob):
@@ -50,6 +67,31 @@ def is_spam_sales_lead(
     ):
         return True
     return False
+
+
+def close_spam_sales_leads() -> list[int]:
+    """يغلق الطلبات الحالية المطابقة لفلتر البوت. لا يمس الطلبات المُرسلة."""
+    closed_ids = []
+    rows = SalesLead.query.filter(SalesLead.status.in_(('new', 'contacted'))).all()
+    for lead in rows:
+        if not is_spam_sales_lead(
+            company_name=lead.company_name or '',
+            contact_name=lead.contact_name or '',
+            contact_email=lead.contact_email or '',
+            phone=lead.phone or '',
+            city=lead.city or '',
+            notes=lead.notes or '',
+        ):
+            continue
+        lead.status = 'closed'
+        note = 'أُغلق تلقائياً: سبام/بوت'
+        lead.action_note = note if not lead.action_note else f'{lead.action_note} · {note}'
+        lead.action_note = lead.action_note[:500]
+        lead.updated_at = datetime.utcnow()
+        closed_ids.append(int(lead.id))
+    if closed_ids:
+        db.session.commit()
+    return closed_ids
 
 
 REQUEST_TYPES = {
