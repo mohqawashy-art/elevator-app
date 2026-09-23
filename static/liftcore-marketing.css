@@ -198,6 +198,38 @@ body.mkt img{display:block;max-width:100%}
 .mkt-demo-form textarea{min-height:84px;resize:vertical}
 .mkt-demo-form .hp{position:absolute;left:-9999px;opacity:0;height:0;width:0;overflow:hidden}
 .mkt-demo-form .hint{font-size:.8rem;color:var(--mkt-muted2);margin-top:2px}
+.human-check{
+  display:grid;
+  gap:10px;
+  border:1px solid var(--mkt-line, rgba(15,23,42,.12));
+  background:linear-gradient(180deg,#fffdf8,#f7f3ea);
+  border-radius:14px;
+  padding:12px 14px;
+}
+.human-check--warn{border-color:#c45c4a;box-shadow:0 0 0 3px rgba(196,92,74,.12)}
+.human-check__box{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:0;
+  font-size:.95rem;
+  font-weight:700;
+  color:var(--mkt-text,#1a2433);
+  cursor:pointer;
+}
+.human-check__box input{
+  width:18px;
+  height:18px;
+  margin:0;
+  accent-color:#9a7420;
+  flex:none;
+}
+.human-check__quiz label{
+  margin-bottom:6px;
+  color:var(--mkt-muted2,#5a6578);
+}
+.human-check__quiz b{color:#9a7420;font-size:1.05rem}
+.human-check__quiz input{max-width:120px}
 
 @media (max-width:640px){
   .mkt-demo-form .row{grid-template-columns:1fr}

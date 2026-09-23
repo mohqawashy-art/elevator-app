@@ -1,0 +1,28 @@
+{% set hc = human_challenge() %}
+<div class="human-check" data-human-check>
+  <input type="hidden" name="human_token" value="{{ hc.token }}">
+  <label class="human-check__box">
+    <input type="checkbox" name="human_ok" value="1" required>
+    <span>لست روبوتاً</span>
+  </label>
+  <div class="human-check__quiz">
+    <label for="human-answer">تحقق سريع: كم يساوي <b dir="rtl">{{ hc.question }}</b>؟</label>
+    <input id="human-answer" name="human_answer" inputmode="numeric" autocomplete="off" maxlength="3" required placeholder="الإجابة">
+  </div>
+</div>
+<script>
+(function () {
+  var box = document.querySelector('[data-human-check]');
+  if (!box) return;
+  var form = box.closest('form');
+  if (!form) return;
+  form.addEventListener('submit', function (ev) {
+    var ok = form.querySelector('[name="human_ok"]');
+    var ans = form.querySelector('[name="human_answer"]');
+    if (!ok || !ok.checked || !ans || !String(ans.value || '').trim()) {
+      ev.preventDefault();
+      box.classList.add('human-check--warn');
+    }
+  });
+})();
+</script>

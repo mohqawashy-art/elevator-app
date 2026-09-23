@@ -22,6 +22,9 @@ def test_public_landing_and_pricing_anonymous():
     assert 'sales@liftcoreapp.com' in body
     assert 'طلب عرض تجريبي' in body or 'اطلب عرضاً تجريبياً' in body
     assert 'demo-request' in body or 'إرسال طلب التجربة' in body
+    assert 'لست روبوتاً' in body
+    assert 'name="human_ok"' in body
+    assert 'name="human_answer"' in body
     assert 'name="contact_email"' in body
     assert '#contact' in body
     assert body.count('googletagmanager.com/gtag/js?id=AW-18388162918') == 1
@@ -454,3 +457,125 @@ def test_marketing_context_matches_catalog():
     ctx = marketing_page_context(signup_open=False, signup_href='#contact', signup_label='test')
     assert len(ctx['included_modules']) == len(INCLUDED_MODULES)
     assert len(plans[0]['limit_rows']) == len(PUBLIC_LIMIT_KEYS)
+
+
+def test_human_challenge_accepts_correct_arabic_answer():
+    from liftcore_security import issue_human_challenge, validate_human_challenge
+
+    client = app.test_client()
+    app.config['TESTING'] = True
+    app.config['FORCE_HUMAN_CHECK'] = True
+    try:
+        with app.app_context():
+            chal = issue_human_challenge()
+            ok, err = validate_human_challenge({
+                'human_ok': '1',
+                'human_token': chal['token'],
+                'human_answer': str(chal['answer']),
+            })
+            assert ok is True
+            assert err == ''
+            ok_ar, _ = validate_human_challenge({
+                'human_ok': '1',
+                'human_token': chal['token'],
+                'human_answer': ''.join('٠١٢٣٤٥٦٧٨٩'[int(c)] for c in str(chal['answer'])),
+            })
+            assert ok_ar is True
+            bad, msg = validate_human_challenge({
+                'human_ok': '1',
+                'human_token': chal['token'],
+                'human_answer': '99',
+            })
+            assert bad is False
+            assert 'التحقق' in msg
+            missing, msg2 = validate_human_challenge({
+                'human_token': chal['token'],
+                'human_answer': str(chal['answer']),
+            })
+            assert missing is False
+            assert 'روبوتاً' in msg2
+    finally:
+        app.config['FORCE_HUMAN_CHECK'] = False
+
+
+def test_demo_request_without_human_check_is_rejected(monkeypatch):
+    captured = []
+
+    def fake_send(**kwargs):
+        captured.append(kwargs)
+        return {'ok': True, 'reason': 'sent'}
+
+    monkeypatch.setattr('liftcore_mail.send_demo_request_email', fake_send)
+    client = app.test_client()
+    app.config['TESTING'] = True
+    app.config['FORCE_HUMAN_CHECK'] = True
+    try:
+        with app.app_context():
+            from models import SalesLead, db
+            db.create_all()
+        r = client.post(
+            '/demo-request',
+            data={
+                'company_name': 'شركة تجربة',
+                'contact_name': 'محمد',
+                'contact_email': 'human-check@example.com',
+                'phone': '0566299626',
+                'city': 'مكة المكرمة',
+                'request_type': 'demo',
+                'next': '/',
+            },
+            base_url=PUBLIC,
+            follow_redirects=False,
+        )
+        assert r.status_code in (302, 303)
+        assert captured == []
+        with app.app_context():
+            from models import SalesLead
+            assert SalesLead.query.filter_by(contact_email='human-check@example.com').count() == 0
+    finally:
+        app.config['FORCE_HUMAN_CHECK'] = False
+
+
+def test_demo_request_with_human_check_is_accepted(monkeypatch):
+    captured = {}
+
+    def fake_send(**kwargs):
+        captured.update(kwargs)
+        return {'ok': True, 'reason': 'sent'}
+
+    monkeypatch.setattr('liftcore_mail.send_demo_request_email', fake_send)
+    client = app.test_client()
+    app.config['TESTING'] = True
+    app.config['FORCE_HUMAN_CHECK'] = True
+    try:
+        with app.app_context():
+            from models import SalesLead, db
+            from liftcore_security import issue_human_challenge
+            db.create_all()
+            chal = issue_human_challenge()
+            token, answer = chal['token'], chal['answer']
+        r = client.post(
+            '/demo-request',
+            data={
+                'company_name': 'شركة تجربة',
+                'contact_name': 'محمد',
+                'contact_email': 'human-ok@example.com',
+                'phone': '0566299626',
+                'city': 'مكة المكرمة',
+                'request_type': 'demo',
+                'next': '/',
+                'human_ok': '1',
+                'human_token': token,
+                'human_answer': str(answer),
+            },
+            base_url=PUBLIC,
+            follow_redirects=False,
+        )
+        assert r.status_code in (302, 303)
+        assert captured.get('contact_email') == 'human-ok@example.com'
+        with app.app_context():
+            from models import SalesLead
+            lead = SalesLead.query.filter_by(contact_email='human-ok@example.com').first()
+            assert lead is not None
+    finally:
+        app.config['FORCE_HUMAN_CHECK'] = False

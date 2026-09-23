@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=11">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=12">
 <style>
 .hero{padding:28px 0 10px;text-align:center;max-width:780px;margin:0 auto}
 .eyebrow{
@@ -275,6 +275,7 @@
           <label for="buy-notes">ملاحظات (اختياري)</label>
           <textarea id="buy-notes" name="notes" maxlength="800" placeholder="سيرفر خاص أو مُدار، عدد المستخدمين، موعد مناسب…"></textarea>
         </div>
+        {% include 'partials/human_check.html' %}
         <button class="mkt-btn mkt-btn-gold" type="submit">إرسال طلب الشراء</button>
         <div class="hint">يصل الطلب إلى {{ sales_email }} كـ «شراء البرنامج كامل».</div>
       </form>

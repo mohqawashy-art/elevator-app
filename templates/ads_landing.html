@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=11">
+<link rel="stylesheet" href="{{ url_for('static', filename='liftcore-marketing.css') }}?v=12">
 <style>
 /* ═══════════════════════════════════════════
    /start — تركيبة تحويل سينمائية ضمن هوية LiftCore
@@ -199,6 +199,8 @@ body.mkt-ads::before{display:none}
 }
 .x-fields textarea{min-height:64px;resize:vertical}
 .x-fields .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+.x-fields .human-check{background:linear-gradient(180deg,#fffdf8,#f4eee0);border-color:rgba(154,116,32,.22)}
+.x-fields .human-check__box input{width:18px;height:18px;padding:0}
 .x-fields .mkt-btn-gold{
   width:100%;margin-top:2px;padding:14px 18px;
   font-size:1rem;border-radius:14px;
@@ -411,6 +413,7 @@ body.mkt-ads::before{display:none}
                 <label for="ads-notes">ملاحظات (اختياري)</label>
                 <textarea id="ads-notes" name="notes" maxlength="800" placeholder="موعد مناسب للتواصل…"></textarea>
               </div>
+              {% include 'partials/human_check.html' %}
               <button class="mkt-btn mkt-btn-gold" type="submit">إرسال طلب التجربة</button>
               <p class="hint">يصل إلى <b dir="ltr">{{ sales_email }}</b></p>
             </form>

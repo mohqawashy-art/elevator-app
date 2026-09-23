@@ -4,6 +4,8 @@ LiftCore — أمان مركزي: CSRF، rate limit، env، كلمات مرور�
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
 import secrets
 import time
@@ -485,4 +487,89 @@ def validate_upload_file(file_storage, *, allowed_ext: set[str]) -> tuple[bool, 
         else:
             return False, 'نوع MIME للملف غير مسموح'
 
+    return True, ''
+
+
+# ── Human check (demo / quote / buy forms) ─────────────────────────
+
+_AR_DIGITS = '٠١٢٣٤٥٦٧٨٩'
+_AR_TO_LATIN = str.maketrans(_AR_DIGITS, '0123456789')
+_HUMAN_TTL_SEC = 4 * 3600
+
+
+def _human_secret() -> bytes:
+    from flask import current_app
+    return str(current_app.config.get('SECRET_KEY') or 'liftcore-human').encode()
+
+
+def _sign_human(payload: str) -> str:
+    return hmac.new(_human_secret(), payload.encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def _to_ar_digits(n: int) -> str:
+    return ''.join(_AR_DIGITS[int(ch)] for ch in str(n))
+
+
+def _parse_human_answer(raw: str) -> int | None:
+    s = (raw or '').strip().translate(_AR_TO_LATIN)
+    if not s.isdigit():
+        return None
+    return int(s)
+
+
+def issue_human_challenge() -> dict:
+    """مسألة جمع قصيرة + رمز موقّع. يُعاد استخدام نفس التحدي في نفس الطلب."""
+    from flask import g
+    cached = getattr(g, 'human_challenge', None)
+    if cached:
+        return cached
+    a = secrets.randbelow(8) + 1
+    b = secrets.randbelow(8) + 1
+    ts = int(time.time())
+    nonce = secrets.token_hex(8)
+    payload = f'{ts}|{nonce}'
+    token = f'{payload}|{_sign_human(f"{payload}|{a + b}")}'
+    result = {
+        'token': token,
+        'question': f'{_to_ar_digits(a)} + {_to_ar_digits(b)}',
+        'answer': a + b,
+    }
+    g.human_challenge = result
+    return result
+
+
+def human_check_required() -> bool:
+    from flask import current_app
+    if current_app.config.get('TESTING') and not current_app.config.get('FORCE_HUMAN_CHECK'):
+        return False
+    return True
+
+
+def validate_human_challenge(form) -> tuple[bool, str]:
+    """يتحقق أن الطلب من شخص: تأشير + إجابة المسألة. (ok, رسالة خطأ)."""
+    if not human_check_required():
+        return True, ''
+    checked = (form.get('human_ok') or '').strip().lower()
+    if checked not in ('1', 'on', 'yes', 'true'):
+        return False, 'أكد أنك لست روبوتاً ثم أعد إرسال الطلب.'
+    token = (form.get('human_token') or '').strip()
+    parts = token.split('|')
+    if len(parts) != 3:
+        return False, 'انتهت صلاحية التحقق. حدّث الصفحة ثم أعد المحاولة.'
+    ts_s, nonce, sig = parts
+    if not nonce or len(nonce) < 8:
+        return False, 'انتهت صلاحية التحقق. حدّث الصفحة ثم أعد المحاولة.'
+    try:
+        ts = int(ts_s)
+    except ValueError:
+        return False, 'انتهت صلاحية التحقق. حدّث الصفحة ثم أعد المحاولة.'
+    age = int(time.time()) - ts
+    if age < 0 or age > _HUMAN_TTL_SEC:
+        return False, 'انتهت صلاحية التحقق. حدّث الصفحة ثم أعد المحاولة.'
+    answer = _parse_human_answer(form.get('human_answer') or '')
+    if answer is None:
+        return False, 'أجب على مسألة التحقق ثم أعد الإرسال.'
+    payload = f'{ts_s}|{nonce}|{answer}'
+    if not hmac.compare_digest(sig, _sign_human(payload)):
+        return False, 'أجب على مسألة التحقق ثم أعد الإرسال.'
     return True, ''

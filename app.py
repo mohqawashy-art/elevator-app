@@ -1156,6 +1156,12 @@ def csrf_token():
     return ensure_csrf_token()
 
 
+@app.template_global()
+def human_challenge():
+    from liftcore_security import issue_human_challenge
+    return issue_human_challenge()
+
+
 def _money_round(n):
     return round(float(n or 0), 2)
 
@@ -2488,6 +2494,7 @@ def demo_request():
         ensure_csrf_token,
         record_demo_request_attempt,
         validate_csrf,
+        validate_human_challenge,
     )
     from marketing_site import marketing_page_context
     from sales_leads import create_sales_lead, is_spam_sales_lead, mark_lead_email_result
@@ -2515,6 +2522,11 @@ def demo_request():
         if next_url == '/start':
             return redirect('/start')
         return redirect(redirect_to)
+
+    human_ok, human_error = validate_human_challenge(request.form)
+    if not human_ok:
+        flash(human_error, 'warn')
+        return redirect(redirect_to if next_url != '/start' else '/start#contact')
 
     allowed, _retry = check_demo_request_rate_limit()
     if not allowed:
