@@ -576,7 +576,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M2 2.5h10v2H2zM3 4.5v7a1 1 0 001 1h6a1 1 0 001-1v-7"/></svg>
         تحويل لفاتورة
       </button>
-      <button class="btn btn-primary" onclick="closeModal('modal-view');openAddModal()">تعديل</button>
+      <button class="btn btn-primary" id="view-edit-btn" onclick="editViewedFault()">تعديل</button>
     </div>
   </div>
 </div>
@@ -690,6 +690,16 @@ function fillClientSelect() {
     LcClientSelect.setCustomers('f-client-sel', CUSTOMERS);
     return;
   }
+}
+
+function setFaultCustomerSelection(customerId) {
+  const id = customerId != null && customerId !== '' ? customerId : '';
+  if (typeof LcClientSelect !== 'undefined' && LcClientSelect.isUpgraded('f-client-sel')) {
+    LcClientSelect.setCustomers('f-client-sel', CUSTOMERS, id);
+    return;
+  }
+  const clientSel = document.getElementById('f-client-sel');
+  if (clientSel) clientSel.value = id ? String(id) : '';
 }
 
 function initFaultClientSelect() {
@@ -1259,6 +1269,12 @@ function saveFault() {
     });
 }
 
+function editViewedFault() {
+  const id = Number(document.getElementById('modal-view')?.dataset.faultId);
+  closeModal('modal-view');
+  if (id) editFault(id);
+}
+
 // ===== تعديل =====
 function editFault(id) {
   const f = FAULTS.find(x=>x.id===id);
@@ -1268,12 +1284,12 @@ function editFault(id) {
   const codeEl = document.getElementById('f-code');
   if (codeEl) codeEl.value = f.code;
   fillClientSelect();
-  const elev = ELEVATORS.find(e => e.id === f.elevator_id);
-  const clientSel = document.getElementById('f-client-sel');
-  if (clientSel && elev) clientSel.value = elev.customer_id;
+  const elev = ELEVATORS.find(e => Number(e.id) === Number(f.elevator_id));
+  const customerId = (elev && elev.customer_id != null) ? elev.customer_id : f.customer_id;
+  setFaultCustomerSelection(customerId);
   onCustomerSelected();
   const esel = document.getElementById('f-elevator-sel');
-  if (esel) esel.value = f.elevator_id;
+  if (esel && f.elevator_id != null) esel.value = String(f.elevator_id);
   onElevatorSelected();
   const map = {
     'f-category-sel': f.fault_type, 'f-client-report': f.client_report || f.description,
@@ -1312,6 +1328,8 @@ function editFault(id) {
 function viewFault(id) {
   const f = FAULTS.find(x=>x.id===id);
   if(!f) return;
+  const viewModal = document.getElementById('modal-view');
+  if (viewModal) viewModal.dataset.faultId = String(id);
   document.getElementById('view-title').textContent = f.code + ' — ' + f.customer;
   document.getElementById('view-body').innerHTML = `
     <div class="view-grid">
