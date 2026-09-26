@@ -200,12 +200,12 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="stat-sub" id="s-margin">هامش 0%</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">محصل ✓</div>
+        <div class="stat-label">المسدد</div>
         <div class="stat-value green" id="s-collected">0</div>
         <div class="stat-sub" id="s-collected-sub">0 عملية</div>
       </div>
       <div class="stat-card">
-        <div class="stat-label">غير محصل ⏳</div>
+        <div class="stat-label">المتبقي</div>
         <div class="stat-value red" id="s-pending">0</div>
         <div class="stat-sub" id="s-pending-sub">0 عملية</div>
       </div>
@@ -279,6 +279,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <th class="th-sort" data-sort-col="description">بيان القطع <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="cost_price">التكلفة <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="sell_price">المطلوب من العميل <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="paid_amount">المسدد <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="remaining">المتبقي <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="profit">الربح <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="status">الحالة <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="payment_note">بيان السداد <span class="sort-ind"></span></th>
@@ -521,7 +523,7 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
   defaultCol: 'billing_date',
   defaultDir: 'asc',
   dateCols: ['billing_date'],
-  numberCols: ['cost_price', 'sell_price', 'profit'],
+  numberCols: ['cost_price', 'sell_price', 'paid_amount', 'remaining', 'profit'],
   getters: {
     ref_code: function (p) { return [p.visit_code, p.fault_code].filter(Boolean).join(' '); },
     customer: function (p) {
@@ -537,6 +539,10 @@ var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({
   container: '#page-btns',
   infoEl: '#page-info',
   onPageChange: function () { renderTable(filtered); },
+  sumFields: [
+    { key: 'paid_amount', label: 'المسدد', labelEn: 'Paid' },
+    { key: 'remaining', label: 'المتبقي', labelEn: 'Remaining' },
+  ],
 }) : null;
 
 function escHtml(s) {
@@ -547,8 +553,8 @@ function updateStats() {
   const totalSell = PARTS.reduce((s,p) => s + p.sell_price, 0);
   const totalCost = PARTS.reduce((s,p) => s + p.cost_price, 0);
   const totalProfit = PARTS.reduce((s,p) => s + p.profit, 0);
-  const collected = PARTS.filter(p => p.status === 'محصل' || p.status === 'مكتملة');
-  const pending = PARTS.filter(p => p.status === 'غير محصل' || p.status === 'معلقة');
+  const collected = PARTS.filter(p => Number(p.paid_amount || 0) > 0.01);
+  const pending = PARTS.filter(p => Number(p.remaining || 0) > 0.01);
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
   const LC = window.LiftCoreDisplay;
   const cnt = (n) => (LC ? LC.fmtTransactionsCount(n) : n + ' عملية');
@@ -558,9 +564,9 @@ function updateStats() {
   setMoneyEl(document.getElementById('s-profit'), totalProfit);
   const marginPct = totalSell ? ((totalProfit/totalSell)*100).toFixed(1) : 0;
   set('s-margin', LC ? LC.fmtMargin(marginPct) : 'هامش ' + marginPct + '%');
-  setMoneyEl(document.getElementById('s-collected'), collected.reduce((s,p) => s + p.sell_price, 0));
+  setMoneyEl(document.getElementById('s-collected'), PARTS.reduce((s,p) => s + Number(p.paid_amount || 0), 0));
   set('s-collected-sub', cnt(collected.length));
-  setMoneyEl(document.getElementById('s-pending'), pending.reduce((s,p) => s + p.sell_price, 0));
+  setMoneyEl(document.getElementById('s-pending'), PARTS.reduce((s,p) => s + Number(p.remaining || 0), 0));
   set('s-pending-sub', cnt(pending.length));
   set('bills-count', cnt(PARTS.length));
 }
@@ -584,6 +590,8 @@ function renderTable(data) {
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${D(p.description||'—')}</td>
       <td style="font-family:var(--font-en);color:var(--danger)">${p.cost_price.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
       <td style="font-family:var(--font-en);color:var(--text1)">${p.sell_price.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
+      <td style="font-family:var(--font-en);color:${Number(p.paid_amount||0)>0.01?'var(--success)':'var(--text3)'}">${Number(p.paid_amount||0).toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
+      <td style="font-family:var(--font-en);color:${Number(p.remaining||0)>0.01?'var(--danger)':'var(--success)'}">${Number(p.remaining||0).toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
       <td style="font-family:var(--font-en);color:var(--success)">${p.profit.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
       <td><span class="badge ${STATUS_BADGE[p.status]||'badge-active'}">${D(p.status)}</span></td>
       <td style="color:var(--text2);font-size:11px;max-width:160px;overflow:hidden;text-overflow:ellipsis">${p.payment_note ? escHtml(p.payment_note) : '—'}</td>
@@ -1243,6 +1251,18 @@ function viewPart(id) {
       <div style="background:rgba(31,184,122,.08);border:1px solid rgba(31,184,122,.2);border-radius:8px;padding:12px;text-align:center">
         <div style="font-size:11px;color:var(--text3);margin-bottom:4px">الربح (${margin}%)</div>
         <div style="font-size:18px;font-weight:700;color:var(--success);font-family:var(--font-en)">${p.profit.toLocaleString()}</div>
+        <div style="font-size:10px;color:var(--text3)"><span class="lc-sar" role="img" aria-label="ريال"></span></div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px">
+      <div style="background:rgba(31,184,122,.08);border:1px solid rgba(31,184,122,.2);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">المسدد</div>
+        <div style="font-size:18px;font-weight:700;color:var(--success);font-family:var(--font-en)">${Number(p.paid_amount||0).toLocaleString()}</div>
+        <div style="font-size:10px;color:var(--text3)"><span class="lc-sar" role="img" aria-label="ريال"></span></div>
+      </div>
+      <div style="background:rgba(224,72,72,.08);border:1px solid rgba(224,72,72,.2);border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">المتبقي</div>
+        <div style="font-size:18px;font-weight:700;color:${Number(p.remaining||0)>0.01?'var(--danger)':'var(--success)'};font-family:var(--font-en)">${Number(p.remaining||0).toLocaleString()}</div>
         <div style="font-size:10px;color:var(--text3)"><span class="lc-sar" role="img" aria-label="ريال"></span></div>
       </div>
     </div>

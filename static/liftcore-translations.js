@@ -552,6 +552,8 @@ window.__LC_TRANSLATIONS = {
   'خصم': 'Discount',
   'الصافي': 'Net',
   'المطلوب من العميل': 'Amount due from client',
+  'المسدد': 'Paid',
+  'المتبقي': 'Remaining',
   'صافي المطلوب من العميل': 'Net due from client',
   'حالة التحصيل': 'Collection Status',
   'طلبات قطع غيار من الفنيين': 'Parts requests from technicians',

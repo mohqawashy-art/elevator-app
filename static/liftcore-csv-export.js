@@ -226,7 +226,7 @@
       code: 'الكود', customer: 'العميل', customer_name_en: 'اسم العميل إنجليزي',
       contract: 'العقد', elevator: 'المصعد', technician: 'الفني',
       billing_date: 'التاريخ', description: 'البيان',
-      cost_price: 'التكلفة', sell_price: 'سعر البيع', profit: 'الربح',
+      cost_price: 'التكلفة', sell_price: 'سعر البيع', paid_amount: 'المسدد', remaining: 'المتبقي', profit: 'الربح',
       payment_note: 'بيان السداد', status: 'الحالة',
       visit_code: 'كود الزيارة', fault_code: 'كود العطل',
       notes: 'ملاحظات', parts_lines: 'تفاصيل القطع'

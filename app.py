@@ -5963,11 +5963,29 @@ def _visit_map_points(visits, today_only=True):
     return points
 
 
+_PARTS_COLLECTED_STATUSES = frozenset({'محصل', 'محصّل', 'مكتملة', 'مدفوع'})
+
+
+def _parts_paid_remaining(p):
+    """المسدّد والمتبقي لعرض بيان القطع. الحالة المحصّلة بالكامل تُظهر السداد كاملاً."""
+    sell = _money_round(getattr(p, 'sell_price', 0) or 0)
+    paid = _money_round(getattr(p, 'paid_amount', 0) or 0)
+    status = (getattr(p, 'status', None) or '').strip()
+    if status in _PARTS_COLLECTED_STATUSES and paid + 0.01 < sell:
+        paid = sell
+    if status == 'على حساب الشركة':
+        remaining = 0.0
+    else:
+        remaining = _money_round(max(sell - paid, 0))
+    return paid, remaining
+
+
 def _parts_js_list(parts):
     from operations import parts_billing_notes_display
 
     rows = []
     for p in parts:
+        paid, remaining = _parts_paid_remaining(p)
         rows.append({
             'id': p.id,
             'code': p.code,
@@ -5983,6 +6001,8 @@ def _parts_js_list(parts):
             'description': p.description or '',
             'cost_price': p.cost_price or 0,
             'sell_price': p.sell_price or 0,
+            'paid_amount': paid,
+            'remaining': remaining,
             'profit': p.profit or 0,
             'payment_note': (getattr(p, 'payment_note', None) or p.payment_method or '').strip(),
             'status': p.status or 'غير محصل',
@@ -6067,6 +6087,7 @@ def _fault_json(f):
 def _part_json(p):
     from operations import parts_billing_notes_display
 
+    paid, remaining = _parts_paid_remaining(p)
     return {
         'id': p.id,
         'code': p.code,
@@ -6084,6 +6105,8 @@ def _part_json(p):
         'description': p.description or '',
         'cost_price': p.cost_price or 0,
         'sell_price': p.sell_price or 0,
+        'paid_amount': paid,
+        'remaining': remaining,
         'profit': p.profit or 0,
         'payment_note': (getattr(p, 'payment_note', None) or p.payment_method or '').strip(),
         'status': p.status or 'غير محصل',
