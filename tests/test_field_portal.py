@@ -425,6 +425,59 @@ def test_closed_fault_fault_visit_hidden_from_field_portal(client):
         assert not any(f['code'] == fault.code for f in payload.get('faults') or [])
 
 
+def test_field_today_visit_includes_site_coordinates(client):
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid, code='T-MAP', name='فني خريطة', phone='0500000191', team='صيانة',
+        )
+        db.session.add(tech)
+        cust = Customer(organization_id=oid, code='C-MAP', name='عميل خريطة', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-MAP', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        contract = Contract(
+            organization_id=oid,
+            code='CN-MAP',
+            customer_id=cust.id,
+            contract_type='صيانة',
+            start_date=date.today(),
+            end_date=date.today(),
+            status='نشط',
+            lat='21.4225',
+            lng='39.8262',
+            address='مبنى الاختبار',
+            district='العزيزية',
+        )
+        db.session.add(contract)
+        db.session.flush()
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='V-MAP1',
+            elevator_id=elev.id,
+            contract_id=contract.id,
+            technician_id=tech.id,
+            visit_date=date.today(),
+            visit_type='صيانة دورية',
+            status='مجدولة',
+        )
+        db.session.add(visit)
+        db.session.commit()
+        tech_id = tech.id
+        payload = field_technician_payload(tech.id, portal_kind='maintenance')
+        row = next(v for v in payload['visits_today'] if v['code'] == 'V-MAP1')
+        assert abs(row['lat'] - 21.4225) < 0.0001
+        assert abs(row['lng'] - 39.8262) < 0.0001
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+    html = client.get('/field').get_data(as_text=True)
+    assert 'fp-today-map-host' in html
+    assert '21.4225' in html
+
+
 def test_field_visit_page_sets_at_client_status(client):
     from operations import VISIT_AT_CLIENT, VISIT_FINISHED_AT_CLIENT
 

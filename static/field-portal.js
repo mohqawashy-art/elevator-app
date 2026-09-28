@@ -116,6 +116,135 @@
     );
   }
 
+  var fpTodayMap = null;
+  var fpTodayMarkers = [];
+  var fpTodayCluster = null;
+  var fpTodayInfo = null;
+  var fpTodaySig = '';
+
+  function visitPinColor(status) {
+    var s = status || '';
+    if (s.indexOf('مكتمل') >= 0 || s.indexOf('أنهى') >= 0) return '#15803d';
+    if (s.indexOf('تنفيذ') >= 0 || s.indexOf('جاري') >= 0 || s.indexOf('عند العميل') >= 0) return '#b45309';
+    if (s.indexOf('متأخر') >= 0) return '#c62828';
+    return '#1a6fe8';
+  }
+
+  function todayMapPoints(visits) {
+    return (visits || []).filter(function (v) {
+      var lat = parseFloat(v.lat);
+      var lng = parseFloat(v.lng);
+      return !isNaN(lat) && !isNaN(lng) && !(lat === 0 && lng === 0);
+    }).map(function (v) {
+      var bits = [v.building, v.district, v.address].filter(function (x) {
+        return x && x !== '—';
+      });
+      return {
+        lat: parseFloat(v.lat),
+        lng: parseFloat(v.lng),
+        label: (v.code || '') + (v.customer ? ' — ' + v.customer : ''),
+        address: bits.join(' · '),
+        status: v.status || '',
+        url: v.url || '',
+        maps_url: v.maps_url || ('https://www.google.com/maps?q=' + v.lat + ',' + v.lng),
+      };
+    });
+  }
+
+  function todayRouteUrl(points) {
+    if (!points.length) return '';
+    if (points.length === 1) {
+      return 'https://www.google.com/maps/dir/?api=1&destination=' +
+        points[0].lat + ',' + points[0].lng + '&travelmode=driving';
+    }
+    var stops = points.slice(0, 10);
+    var dest = stops[stops.length - 1];
+    var wps = stops.slice(0, -1).map(function (p) { return p.lat + ',' + p.lng; }).join('|');
+    return 'https://www.google.com/maps/dir/?api=1&destination=' + dest.lat + ',' + dest.lng +
+      '&waypoints=' + encodeURIComponent(wps) + '&travelmode=driving';
+  }
+
+  function drawTodayPins(points) {
+    function go() {
+      if (window.__gmapsAuthFailed || !window.LIFTCORE_GOOGLE_MAPS_KEY) return;
+      if (typeof google === 'undefined' || !google.maps || !window.LiftCoreMap) {
+        if (window.whenGoogleMapsReady) window.whenGoogleMapsReady(go);
+        return;
+      }
+      if (LiftCoreMap.getMapId && LiftCoreMap.getMapId() && !LiftCoreMap.canUseAdvancedMarkers()) {
+        LiftCoreMap.ensureMapMarkersReady(function () { go(); });
+        return;
+      }
+      var el = document.getElementById('fp-today-map');
+      if (!el) return;
+      fpTodayMap = LiftCoreMap.initMap(el, null);
+      if (!fpTodayMap) return;
+      fpTodayInfo = new google.maps.InfoWindow();
+      fpTodayMarkers = [];
+      points.forEach(function (p, i) {
+        var marker = LiftCoreMap.createPinMarker({
+          position: { lat: p.lat, lng: p.lng },
+          title: (i + 1) + '. ' + p.label,
+          color: visitPinColor(p.status),
+          scale: 1.15
+        });
+        if (!marker) return;
+        marker.addListener('click', function () {
+          fpTodayInfo.setContent(
+            '<div style="font-family:Tahoma,Arial;direction:rtl;text-align:right;min-width:180px;line-height:1.45">' +
+            '<b>' + (i + 1) + '. ' + esc(p.label) + '</b>' +
+            (p.address ? '<br><span style="color:#555">' + esc(p.address) + '</span>' : '') +
+            '<br>' + esc(p.status) +
+            '<br><a href="' + esc(p.url) + '">فتح الزيارة</a>' +
+            (p.maps_url ? ' · <a href="' + esc(p.maps_url) + '" target="_blank" rel="noopener">التنقل</a>' : '') +
+            '</div>'
+          );
+          if (LiftCoreMap.openInfoWindow) LiftCoreMap.openInfoWindow(fpTodayInfo, fpTodayMap, marker);
+          else fpTodayInfo.open(fpTodayMap, marker);
+        });
+        fpTodayMarkers.push(marker);
+      });
+      if (fpTodayMarkers.length) {
+        fpTodayCluster = LiftCoreMap.attachCluster(fpTodayMap, fpTodayMarkers, 'زيارة');
+        LiftCoreMap.fitMapToMarkers(fpTodayMap, fpTodayMarkers, true);
+      }
+    }
+    go();
+  }
+
+  function paintTodayMap(visits) {
+    var host = document.getElementById('fp-today-map-host');
+    if (!host) return;
+    var points = todayMapPoints(visits);
+    var sig = ((visits || []).length) + '|' + points.map(function (p) {
+      return p.lat + ',' + p.lng + ':' + p.status;
+    }).join('|');
+    if (sig === fpTodaySig && (points.length ? document.getElementById('fp-today-map') : !host.innerHTML)) return;
+    fpTodaySig = sig;
+    fpTodayMap = null;
+    fpTodayMarkers = [];
+    fpTodayCluster = null;
+    fpTodayInfo = null;
+    if (!visits || !visits.length) {
+      host.innerHTML = '';
+      return;
+    }
+    if (!points.length) {
+      host.innerHTML = '<div class="fp-map-wrap"><div class="fp-section">خريطة مواقع اليوم</div>' +
+        '<div class="fp-empty">زيارات اليوم بدون إحداثيات — حدّث موقع العقد من المكتب</div></div>';
+      return;
+    }
+    var missing = visits.length - points.length;
+    host.innerHTML =
+      '<div class="fp-map-wrap">' +
+      '<div class="fp-section">خريطة مواقع اليوم <span class="fp-count">' + points.length + '</span></div>' +
+      '<div id="fp-today-map" class="fp-today-map"></div>' +
+      (missing ? '<div class="fp-map-note">' + missing + ' زيارة بدون موقع على الخريطة — تظهر في القائمة</div>' : '') +
+      '<a class="fp-map-route" href="' + esc(todayRouteUrl(points)) + '" target="_blank" rel="noopener">فتح مسار اليوم في خرائط جوجل</a>' +
+      '</div>';
+    drawTodayPins(points);
+  }
+
   function surveyCard(s) {
     return (
       '<a class="fp-card" href="' + esc(s.url) + '">' +
@@ -228,6 +357,7 @@
       html += '</div>';
     }
     root.innerHTML = html;
+    if (payload.show_visits) paintTodayMap(payload.visits_today || []);
   }
 
   function renderOfflineHome(payload) {
@@ -574,6 +704,10 @@
   document.addEventListener('DOMContentLoaded', function () {
     ensureSoundTip();
     bindOfflineForms();
+    var todayRaw = document.getElementById('fp-today-visits-data');
+    if (todayRaw) {
+      try { paintTodayMap(JSON.parse(todayRaw.textContent || '[]')); } catch (e) { /* ignore */ }
+    }
     startPolling();
     if (window.LiftCoreFieldOffline) {
       window.LiftCoreFieldOffline.flushQueue();

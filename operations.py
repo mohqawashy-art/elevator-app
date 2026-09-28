@@ -2343,9 +2343,12 @@ def _field_site_payload(elev=None, contract=None, visit_date=None, base_url: str
 
 
 def field_visit_summary(v: MaintenanceVisit, base_url: str = '') -> dict:
+    from maintenance_teams import visit_coordinates
+
     elev = v.elevator
     cust = elev.customer if elev else None
     site = _field_site_payload(elev, contract=getattr(v, 'contract', None), visit_date=v.visit_date, base_url=base_url)
+    coords = visit_coordinates(v)
     return {
         'id': v.id,
         'code': v.code,
@@ -2359,6 +2362,8 @@ def field_visit_summary(v: MaintenanceVisit, base_url: str = '') -> dict:
         'building': site['building'],
         'district': site['district'],
         'address': site['address'],
+        'lat': coords[0] if coords else None,
+        'lng': coords[1] if coords else None,
         'maps_url': site['maps_url'],
         'building_photo': site['building_photo'],
         'elevator': elev.code if elev else '',

@@ -1,6 +1,12 @@
 {% extends 'field_base.html' %}
 {% set fp_nav = 'home' %}
 {% block fp_title %}مهامي — {{ field_tech.name }}{% endblock %}
+{% block fp_head %}
+{% if payload and payload.show_visits %}
+{% include 'partials/google_maps_head.html' %}
+<script src="{{ url_for('static', filename='liftcore_map.js') }}?v=8" defer></script>
+{% endif %}
+{% endblock %}
 
 {% block fp_content %}
 {% if error %}
@@ -47,6 +53,11 @@
   <div class="fp-title">لديك {{ payload.faults|length }} عطل مفتوح — اضغط للانتقال</div>
   <div class="fp-meta">يُحدَّث تلقائياً عند إسناد عطل جديد من المكتب</div>
 </a>
+{% endif %}
+
+{% if payload.show_visits %}
+<div id="fp-today-map-host"></div>
+<script type="application/json" id="fp-today-visits-data">{{ payload.visits_today|tojson }}</script>
 {% endif %}
 
 {% if portal_kind == 'both' or (payload.show_visits and payload.show_faults) %}
