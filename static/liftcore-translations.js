@@ -778,6 +778,8 @@ window.__LC_TRANSLATIONS = {
   'مخزن': 'Warehouse',
   'أدوات': 'Tools',
   'أدوات ومستلزمات': 'Tools & Supplies',
+  'إيجار': 'Rent',
+  'مصروفات متنوعة': 'Miscellaneous expenses',
   'إلكترونيات': 'Electronics',
   'محركات': 'Motors',
   'لوحات تحكم': 'Control Panels',

@@ -218,12 +218,9 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="filter-label">نوع المصروف</div>
         <select class="filter-select" id="f-type" onchange="applyFilters()">
           <option value="">الكل</option>
-          <option>محروقات</option>
-          <option>قطع غيار</option>
-          <option>صيانة سيارات</option>
-          <option>ضيافة</option>
-          <option>متنوعة</option>
-          <option>أخرى</option>
+          {% for t in expense_type_options %}
+          <option>{{ t }}</option>
+          {% endfor %}
         </select>
       </div>
       <div class="filter-group">
@@ -446,7 +443,15 @@ function applyFilters() {
   const td = document.getElementById('f-to')?.value || '';
   filtered = EXPENSES.filter(e =>
     LcSearch.match(s, [e.code, e.description, e.expense_type, e.responsible, e.created_by, e.notes, e.reference, e.pay_method]) &&
-    lcAllows('f-type', e.expense_type) &&
+    lcAllows('f-type', e.expense_type, {
+      aliases: {
+        'محروقات': ['وقود'],
+        'رواتب': ['رواتب فنيين', 'أجور'],
+        'أدوات': ['أدوات ومستلزمات'],
+        'إيجار': ['ايجار'],
+        'مصروفات متنوعة': ['متنوعة', 'ضيافة', 'أخرى']
+      }
+    }) &&
     lcAllows('f-pay', e.pay_method) &&
     (!fd || e.expense_date >= fd) &&
     (!td || e.expense_date <= td)
