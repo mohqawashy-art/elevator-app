@@ -3072,8 +3072,11 @@ def stamp_field_visit_arrival(visit_id: int, tech_id: int | None = None) -> None
     db.session.commit()
 
 
-def stamp_field_visit_finished_at_client(visit_id: int, tech_id: int | None = None) -> None:
-    """عند إنهاء الفني العمل في موقع العميل — قبل الاعتماد النهائي."""
+def stamp_field_visit_finished_at_client(visit_id: int, tech_id: int | None = None) -> bool:
+    """عند إنهاء الفني العمل في موقع العميل — قبل الاعتماد النهائي.
+
+    ترجع True فقط عند أول انتقال إلى «أنهى العمل عند العميل».
+    """
     from checklist_templates import merge_report_data, parse_report_json
     from technician_assignments import technician_assigned_to_visit
 
@@ -3081,9 +3084,9 @@ def stamp_field_visit_finished_at_client(visit_id: int, tech_id: int | None = No
     if tech_id and not technician_assigned_to_visit(v, tech_id):
         raise PermissionError('الزيارة غير مخصصة لهذا الفني')
     if (v.status or '') in VISIT_DONE:
-        return
+        return False
     if (v.status or '') == VISIT_FINISHED_AT_CLIENT:
-        return
+        return False
 
     template_key = v.checklist_template_key or _default_checklist_template_key()
     saved = parse_report_json(v.checklist_json)
@@ -3093,6 +3096,7 @@ def stamp_field_visit_finished_at_client(visit_id: int, tech_id: int | None = No
     if (v.status or '') in (VISIT_AT_CLIENT, 'جارية', 'مُرسلة للفني', *VISIT_PRE_ARRIVAL):
         v.status = VISIT_FINISHED_AT_CLIENT
     db.session.commit()
+    return (v.status or '') == VISIT_FINISHED_AT_CLIENT
 
 
 def stamp_field_visit_report_start(visit_id: int, tech_id: int | None = None) -> None:
@@ -3244,6 +3248,116 @@ def visit_report_payload(
 
 def visit_report_print_path(visit_id: int) -> str:
     return f'/maintenance-visits/{int(visit_id)}/report?print=1'
+
+
+_AR_INDIC_DIGITS = str.maketrans('0123456789', '٠١٢٣٤٥٦٧٨٩')
+VISIT_CUSTOMER_DONE_STATUSES = ('مكتملة', VISIT_FINISHED_AT_CLIENT)
+
+
+def _arabic_indic(text: str) -> str:
+    return str(text or '').translate(_AR_INDIC_DIGITS)
+
+
+def _company_signature(company_name: str | None = None) -> str:
+    if company_name is None:
+        s = tenant_query(Settings).first()
+        name = ((s.company_name if s else '') or '').strip() or 'LiftCore'
+    else:
+        name = (company_name or '').strip() or 'LiftCore'
+    if name.startswith('شركة'):
+        return name
+    return f'شركة {name}'
+
+
+def _company_contact_phone(contact_phone: str | None = None) -> str:
+    if contact_phone is not None:
+        return (contact_phone or '').strip()
+    s = tenant_query(Settings).first()
+    if not s:
+        return ''
+    return (s.phone or s.whatsapp_phone or '').strip()
+
+
+def is_periodic_maintenance_visit(visit: MaintenanceVisit | None) -> bool:
+    """زيارة صيانة دورية — ليست بلاغ عطل."""
+    if not visit or is_fault_visit_type(visit.visit_type):
+        return False
+    vt = (visit.visit_type or '').strip()
+    return (not vt) or ('دوري' in vt)
+
+
+def should_send_visit_done_notice(prev_status: str | None, new_status: str | None) -> bool:
+    prev = (prev_status or '').strip()
+    new = (new_status or '').strip()
+    if new not in VISIT_CUSTOMER_DONE_STATUSES:
+        return False
+    return prev not in VISIT_CUSTOMER_DONE_STATUSES
+
+
+def _visit_notice_date_line(visit_day: date | None) -> tuple[str, str]:
+    from contract_print import weekday_ar
+
+    if not visit_day:
+        return '—', '—'
+    shown = _arabic_indic(f'{visit_day.year}/{visit_day.month}/{visit_day.day}')
+    return weekday_ar(visit_day), shown
+
+
+def build_periodic_visit_eve_message(
+    visit: MaintenanceVisit,
+    *,
+    company_name: str | None = None,
+) -> str:
+    """تذكير العميل بزيارة الصيانة الدورية غداً."""
+    weekday, shown = _visit_notice_date_line(visit.visit_date)
+    company = _company_signature(company_name)
+    return '\n'.join([
+        'عميلنا العزيز',
+        f'نفيدكم علما بأن موعد الصيانة الدورية لمصعدكم غدا {weekday}',
+        f'الموافق {shown} م',
+        'نرجوا منكم تسهيل أمر فريق الصيانه ولكم جزيل الشكر',
+        company,
+    ])
+
+
+def build_periodic_visit_done_message(
+    visit: MaintenanceVisit | None = None,
+    *,
+    company_name: str | None = None,
+    contact_phone: str | None = None,
+) -> str:
+    """بعد انتهاء الصيانة الدورية — رسالة رضا العميل."""
+    company = _company_signature(company_name)
+    phone = _company_contact_phone(contact_phone)
+    lines = [
+        'عميلنا العزيز',
+        'نفيدكم علما بانه تم عمل الصيانه الدوريه لمصعدكم اليوم و نرجوا ان نحوز على رضاكم',
+    ]
+    if phone:
+        lines.append(f'ولاى ملاحظات او استفسار التواصل علي هذا الرقم {phone}.')
+    else:
+        lines.append('ولاى ملاحظات او استفسار التواصل مع الشركة.')
+    lines.append(company)
+    return '\n'.join(lines)
+
+
+def visit_customer_notice_whatsapp(visit: MaintenanceVisit | None, kind: str) -> str:
+    """رابط واتساب جاهز للإرسال: eve = زيارة الغد، done = بعد الانتهاء."""
+    if not visit or not is_periodic_maintenance_visit(visit):
+        return ''
+    phone = customer_phone_for_visit(visit)
+    if not phone:
+        return ''
+    kind = (kind or '').strip().lower()
+    if kind in ('eve', 'tomorrow', 'غد', 'غدا'):
+        if not visit.visit_date:
+            return ''
+        msg = build_periodic_visit_eve_message(visit)
+    elif kind in ('done', 'complete', 'finished'):
+        msg = build_periodic_visit_done_message(visit)
+    else:
+        return ''
+    return whatsapp_url(phone, msg)
 
 
 def customer_phone_for_visit(visit: MaintenanceVisit) -> str:

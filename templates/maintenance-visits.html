@@ -2774,6 +2774,7 @@ function viewVisit(id) {
       <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val lc-date">${v.visit_date}</div></div>
       <div class="view-item"><div class="view-label">الوقت</div><div class="view-val lc-num">${v.visit_time||'—'}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[v.status]||'badge-active'}">${v.status}</span></div></div>
+      ${visitCustomerNoticeButtons(v)}
       ${renderVisitFlaggedItems(v)}
       ${v.observations?`<div class="view-item view-full"><div class="view-label">الملاحظات</div><div class="view-val">${v.observations}</div></div>`:''}
       ${v.has_report?`<div class="view-item view-full"><div class="view-label">محضر الفحص</div><div class="view-val">${v.report_filled}/${v.report_total} بند — <a href="/maintenance-visits/${v.id}/report" style="color:var(--accent)">تعديل المحضر</a> · <a href="/maintenance-visits/${v.id}/report?print=1" class="lc-open-tab" style="color:var(--accent)">طباعة PDF</a> · <button type="button" class="btn btn-success btn-sm" style="margin-top:6px" onclick="sendVisitReportToCustomer(${v.id})">إرسال واتساب للعميل</button></div></div>`:''}
@@ -2793,6 +2794,50 @@ function sendVisitReportToCustomer(visitId) {
   if (window.LiftCoreVisitReportSend) {
     LiftCoreVisitReportSend.send(visitId);
   }
+}
+
+function isPeriodicVisit(v) {
+  var t = (v && v.visit_type) || '';
+  if (t.indexOf('عطل') >= 0) return false;
+  return !t || t.indexOf('دوري') >= 0;
+}
+
+function openVisitCustomerWhatsapp(url) {
+  if (!url) return;
+  var wa = window.open(url, '_blank', 'noopener');
+  if (!wa && confirm('رسالة واتساب جاهزة للعميل. اضغط موافق لفتح واتساب وإرسالها.')) {
+    window.location.href = url;
+  }
+}
+
+function sendVisitCustomerNotice(visitId, kind) {
+  fetch('/api/maintenance-visits/' + visitId + '/customer-notice', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ kind: kind || 'done' })
+  }).then(function (r) {
+    return r.json().then(function (data) { return { ok: r.ok, data: data || {} }; });
+  }).then(function (res) {
+    if (!res.ok || !res.data.ok) {
+      alert(res.data.error || 'تعذّر تجهيز الرسالة');
+      return;
+    }
+    openVisitCustomerWhatsapp(res.data.url);
+  }).catch(function () { alert('تعذّر تجهيز رسالة العميل'); });
+}
+
+function visitCustomerNoticeButtons(v) {
+  if (!isPeriodicVisit(v)) return '';
+  var html = '';
+  var done = v.status === 'مكتملة' || v.status === 'أنهى العمل عند العميل';
+  if (v.visit_date === OPS_TOMORROW && !done && v.status !== 'ملغية') {
+    html += '<div class="view-item view-full"><div class="view-label">رسالة العميل</div><div class="view-val"><button type="button" class="btn btn-success btn-sm" onclick="sendVisitCustomerNotice(' + v.id + ', \'eve\')">إرسال تذكير زيارة الغد</button></div></div>';
+  }
+  if (done) {
+    html += '<div class="view-item view-full"><div class="view-label">رسالة العميل</div><div class="view-val"><button type="button" class="btn btn-success btn-sm" onclick="sendVisitCustomerNotice(' + v.id + ', \'done\')">إرسال رسالة انتهاء الصيانة</button></div></div>';
+  }
+  return html;
 }
 
 function editVisitFromView() {
@@ -2855,6 +2900,10 @@ document.getElementById('cal-grid')?.addEventListener('click', function (e) {
   switchTab('table');
   filterTable();
 });
+(function () {
+  var pendingVisitWa = {{ (pending_visit_customer_wa or '')|tojson }};
+  if (pendingVisitWa) openVisitCustomerWhatsapp(pendingVisitWa);
+})();
 if (new URLSearchParams(window.location.search).get('action') === 'add') {
   openAddModal();
   history.replaceState(null, '', window.location.pathname);

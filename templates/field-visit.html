@@ -60,11 +60,15 @@
       var data; try { data = t ? JSON.parse(t) : {}; } catch (e) { throw new Error('تعذّر قراءة الرد'); }
       if (!r.ok || !data.ok) throw new Error(data.error || 'تعذّر التحديث');
       return data;
-    }); }).then(function () {
+    });     }).then(function (data) {
       var el = document.getElementById('visit-status-label');
       if (el) { el.textContent = 'أنهى العمل عند العميل'; el.style.color = '#9b59b6'; }
       btn.remove();
       alert('✅ تم تسجيل إنهاء العمل عند العميل');
+      if (data && data.customer_whatsapp_url) {
+        var wa = window.open(data.customer_whatsapp_url, '_blank', 'noopener');
+        if (!wa) window.location.href = data.customer_whatsapp_url;
+      }
     }).catch(function (err) {
       btn.disabled = false;
       alert(err.message || err);

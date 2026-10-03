@@ -9118,6 +9118,7 @@ def maintenance_visits():
         maint_technicians=maint_techs,
         plan_districts=list_districts(),
         duplicate_visit_ids=duplicate_visit_ids,
+        pending_visit_customer_wa=session.pop('pending_visit_customer_wa', '') or '',
     )
 
 def build_elevator_profile(elevator_id):
@@ -9365,6 +9366,7 @@ def visit_edit(id):
         return redirect(url_for('maintenance_visits'))
 
     v = tenant_get_or_404(MaintenanceVisit, id)
+    prev_status = v.status or ''
     links = resolve_visit_links(
         request.form['elevator_id'],
         request.form.get('contract_id'),
@@ -9391,6 +9393,12 @@ def visit_edit(id):
 
     sync_visit_technicians(v, tech_ids)
     db.session.commit()
+    from operations import should_send_visit_done_notice, visit_customer_notice_whatsapp
+
+    if should_send_visit_done_notice(prev_status, v.status):
+        url = visit_customer_notice_whatsapp(v, 'done')
+        if url:
+            session['pending_visit_customer_wa'] = url
     return redirect(url_for('maintenance_visits'))
 
 
@@ -10384,6 +10392,28 @@ def api_visit_report_customer_send(visit_id):
     return jsonify(result)
 
 
+@app.route('/api/maintenance-visits/<int:visit_id>/customer-notice', methods=['POST'])
+def api_visit_customer_notice(visit_id):
+    """واتساب العميل: تذكير زيارة الغد أو رسالة بعد انتهاء الصيانة."""
+    from operations import visit_customer_notice_whatsapp
+
+    v = tenant_query(MaintenanceVisit).filter_by(id=visit_id).first()
+    if not v:
+        return jsonify({'ok': False, 'error': 'الزيارة غير موجودة', 'url': ''}), 404
+    data = request.get_json(silent=True) or {}
+    kind = (data.get('kind') or request.form.get('kind') or 'done').strip().lower()
+    if kind not in ('eve', 'tomorrow', 'done', 'complete', 'finished'):
+        return jsonify({'ok': False, 'error': 'نوع الرسالة غير معروف', 'url': ''}), 400
+    url = visit_customer_notice_whatsapp(v, kind)
+    if not url:
+        return jsonify({
+            'ok': False,
+            'error': 'لا توجد رسالة — تأكد أن الزيارة صيانة دورية وأن للعميل رقم جوال',
+            'url': '',
+        }), 400
+    return jsonify({'ok': True, 'url': url, 'kind': kind})
+
+
 @app.route('/field/maint-quote-survey/<int:survey_id>')
 def field_maint_quote_survey(survey_id):
     from field_auth import technician_portal_kind
@@ -10924,8 +10954,16 @@ def api_save_visit_report(visit_id):
 
         tech_id = getattr(g, 'field_tech_id', None)
         try:
-            stamp_field_visit_finished_at_client(visit_id, tech_id=tech_id)
-            return jsonify({'ok': True, 'visit_id': visit_id, 'status': 'أنهى العمل عند العميل'})
+            from operations import visit_customer_notice_whatsapp
+
+            changed = stamp_field_visit_finished_at_client(visit_id, tech_id=tech_id)
+            body = {'ok': True, 'visit_id': visit_id, 'status': 'أنهى العمل عند العميل'}
+            if changed:
+                v = tenant_query(MaintenanceVisit).filter_by(id=visit_id).first()
+                url = visit_customer_notice_whatsapp(v, 'done') if v else ''
+                if url:
+                    body['customer_whatsapp_url'] = url
+            return jsonify(body)
         except PermissionError as e:
             return jsonify({'ok': False, 'error': str(e)}), 403
         except Exception as e:
@@ -10933,7 +10971,10 @@ def api_save_visit_report(visit_id):
 
     mark_complete = bool(data.pop('mark_complete', False))
     status = data.pop('status', 'مكتملة')
+    prev_status = v.status or ''
     try:
+        from operations import should_send_visit_done_notice, visit_customer_notice_whatsapp
+
         save_visit_report(
             visit_id,
             data,
@@ -10941,7 +10982,13 @@ def api_save_visit_report(visit_id):
             status=status,
             preserve_field_times=bool(tech_id),
         )
-        return jsonify({'ok': True, 'visit_id': visit_id})
+        body = {'ok': True, 'visit_id': visit_id}
+        if mark_complete and should_send_visit_done_notice(prev_status, status or 'مكتملة'):
+            v2 = tenant_query(MaintenanceVisit).filter_by(id=visit_id).first()
+            url = visit_customer_notice_whatsapp(v2, 'done') if v2 else ''
+            if url:
+                body['customer_whatsapp_url'] = url
+        return jsonify(body)
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)}), 400
 

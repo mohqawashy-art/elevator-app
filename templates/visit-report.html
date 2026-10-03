@@ -350,6 +350,12 @@ function syncFinishAtClientButton() {
   btn.style.display = show ? '' : 'none';
 }
 
+function openVisitCustomerWhatsapp(url) {
+  if (!url) return;
+  var wa = window.open(url, '_blank', 'noopener');
+  if (!wa) window.location.href = url;
+}
+
 function markFinishedAtClient() {
   if (!REPORT_CFG.editable) return;
   var url = '/api/maintenance-visits/' + REPORT_CFG.visitId + '/report';
@@ -359,6 +365,7 @@ function markFinishedAtClient() {
       REPORT_CFG.visitStatus = data.status || 'أنهى العمل عند العميل';
       syncFinishAtClientButton();
       alert('✅ تم تسجيل إنهاء العمل عند العميل');
+      openVisitCustomerWhatsapp(data.customer_whatsapp_url);
     })
     .catch(function (err) { alert(err.message || err); });
 }
@@ -388,6 +395,7 @@ function saveReport(markComplete) {
         REPORT_CFG.visitStatus = 'مكتملة';
         syncFinishAtClientButton();
         alert('✅ تم حفظ المحضر وإنهاء الزيارة');
+        openVisitCustomerWhatsapp(data.customer_whatsapp_url);
         if (REPORT_CFG.backUrl) (window.LiftCoreNav ? LiftCoreNav.goBack(REPORT_CFG.backUrl) : (window.location.href = REPORT_CFG.backUrl));
       } else {
         alert('✅ تم حفظ المحضر');
