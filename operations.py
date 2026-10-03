@@ -1937,6 +1937,11 @@ def dispatch_technician_route(
         'day_label': day_label,
         'technician': tech.name if tech else '',
         'whatsapp_url': build_route_whatsapp(tech, visits, base_url, day_label=day_label) if tech else '',
+        'customer_notices': (
+            tomorrow_customer_eve_notices(on_date=target - timedelta(days=1), technician_id=technician_id)[0]
+            if target == (date.today() + timedelta(days=1))
+            else []
+        ),
     }
 
 
@@ -3339,6 +3344,50 @@ def build_periodic_visit_done_message(
         lines.append('ولاى ملاحظات او استفسار التواصل مع الشركة.')
     lines.append(company)
     return '\n'.join(lines)
+
+
+def tomorrow_customer_eve_notices(
+    *,
+    on_date: date | None = None,
+    technician_id: int | None = None,
+) -> tuple[list[dict], int]:
+    """رسائل تذكير الصيانة الدورية لعملاء الغد — رسالة واحدة لكل جوال."""
+    from whatsapp_support import phone_key
+
+    today = on_date or date.today()
+    target = today + timedelta(days=1)
+    q = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
+        MaintenanceVisit.visit_date == target,
+        ~MaintenanceVisit.status.in_(('مكتملة', 'ملغاة', 'ملغية')),
+    )
+    if technician_id:
+        q = q.filter(MaintenanceVisit.technician_id == int(technician_id))
+    visits = q.order_by(MaintenanceVisit.route_order, MaintenanceVisit.id).all()
+    seen: set[str] = set()
+    items: list[dict] = []
+    skipped = 0
+    for visit in visits:
+        if not is_periodic_maintenance_visit(visit):
+            continue
+        phone = customer_phone_for_visit(visit)
+        if not phone:
+            skipped += 1
+            continue
+        key = phone_key(phone) or phone
+        if key in seen:
+            continue
+        url = visit_customer_notice_whatsapp(visit, 'eve')
+        if not url:
+            skipped += 1
+            continue
+        seen.add(key)
+        cust = visit.elevator.customer if visit.elevator else None
+        items.append({
+            'visit_id': visit.id,
+            'customer': (cust.name if cust else '') or '',
+            'url': url,
+        })
+    return items, skipped
 
 
 def visit_customer_notice_whatsapp(visit: MaintenanceVisit | None, kind: str) -> str:

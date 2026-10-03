@@ -303,6 +303,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       {% if not visit_alerts %}<div class="alert-chip info" style="animation:none;opacity:.7">لا تنبيهات عاجلة — الوضع طبيعي</div>{% endif %}
     </div>
 
+    <div id="tomorrow-customer-bar" style="display:none;margin:0 0 14px;padding:12px 14px;border-radius:10px;border:1px solid rgba(31,184,122,.35);background:rgba(31,184,122,.08);align-items:center;gap:10px;flex-wrap:wrap">
+      <span id="tomorrow-customer-text" style="font-size:13px;line-height:1.6"></span>
+      <button type="button" class="btn btn-success btn-sm" id="btn-send-tomorrow-notices" onclick="startTomorrowCustomerNotices()">إرسال رسالة تذكير الغد</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-next-tomorrow-notice" style="display:none" onclick="openNextTomorrowNotice()">الرسالة التالية</button>
+    </div>
+
     <!-- TABS -->
     <div class="tabs">
       <div class="tab active" id="tab-btn-table" onclick="switchTab('table')">
@@ -2578,6 +2584,10 @@ function dispatchRoute() {
     if (data.whatsapp_url) {
       window.open(data.whatsapp_url, '_blank');
       alert((data.day_label || 'تم الإرسال') + ' — ' + data.count + ' زيارة');
+      if (data.customer_notices && data.customer_notices.length) {
+        beginTomorrowNoticeQueue(data.customer_notices, data.skipped_no_phone || 0);
+        return;
+      }
       setTimeout(() => window.location.reload(), 1200);
     } else {
       alert(data.error || 'لا توجد زيارات في التاريخ المحدد لهذا الفني.\n\nتأكد أن تاريخ الإرسال = تاريخ الزيارة المجدولة.');
@@ -2810,6 +2820,85 @@ function openVisitCustomerWhatsapp(url) {
   }
 }
 
+var TOMORROW_NOTICE_QUEUE = [];
+
+function tomorrowPeriodicVisits() {
+  return (typeof VISITS !== 'undefined' ? VISITS : []).filter(function (v) {
+    if (!v || v.visit_date !== OPS_TOMORROW || !isPeriodicVisit(v)) return false;
+    return v.status !== 'مكتملة' && v.status !== 'ملغية' && v.status !== 'ملغاة';
+  });
+}
+
+function refreshTomorrowNoticeBar() {
+  var bar = document.getElementById('tomorrow-customer-bar');
+  var text = document.getElementById('tomorrow-customer-text');
+  if (!bar || !text) return;
+  var rows = tomorrowPeriodicVisits();
+  var customers = {};
+  rows.forEach(function (v) { customers[v.customer_id || v.id] = true; });
+  var n = Object.keys(customers).length;
+  if (!n) {
+    bar.style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
+  text.textContent = 'غداً عند ' + n + ' عميل صيانة دورية. أرسل لهم: موعد الصيانة غداً، وتسهيل أمر فريق الصيانة.';
+}
+
+function beginTomorrowNoticeQueue(items, skipped) {
+  TOMORROW_NOTICE_QUEUE = (items || []).slice();
+  var nextBtn = document.getElementById('btn-next-tomorrow-notice');
+  var bar = document.getElementById('tomorrow-customer-bar');
+  if (bar) bar.style.display = 'flex';
+  if (!TOMORROW_NOTICE_QUEUE.length) {
+    alert(skipped ? 'لا يوجد جوال لبعض عملاء الغد.' : 'لا توجد رسائل تذكير للغد.');
+    if (nextBtn) nextBtn.style.display = 'none';
+    return;
+  }
+  if (nextBtn) nextBtn.style.display = TOMORROW_NOTICE_QUEUE.length > 1 ? '' : 'none';
+  openNextTomorrowNotice();
+}
+
+function openNextTomorrowNotice() {
+  var item = TOMORROW_NOTICE_QUEUE.shift();
+  var nextBtn = document.getElementById('btn-next-tomorrow-notice');
+  if (!item) {
+    if (nextBtn) nextBtn.style.display = 'none';
+    alert('تم فتح كل رسائل تذكير الغد. اضغط إرسال داخل واتساب لكل عميل.');
+    return;
+  }
+  openVisitCustomerWhatsapp(item.url);
+  if (nextBtn) {
+    nextBtn.style.display = TOMORROW_NOTICE_QUEUE.length ? '' : 'none';
+    nextBtn.textContent = TOMORROW_NOTICE_QUEUE.length
+      ? ('الرسالة التالية (' + TOMORROW_NOTICE_QUEUE.length + ')')
+      : 'الرسالة التالية';
+  }
+}
+
+function startTomorrowCustomerNotices() {
+  var btn = document.getElementById('btn-send-tomorrow-notices');
+  if (btn) btn.disabled = true;
+  fetch('/api/maintenance/tomorrow-customer-notices', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: '{}'
+  }).then(function (r) {
+    return r.json().then(function (data) { return { ok: r.ok, data: data || {} }; });
+  }).then(function (res) {
+    if (btn) btn.disabled = false;
+    if (!res.ok || !res.data.ok) {
+      alert((res.data && res.data.error) || 'تعذّر تجهيز رسائل الغد');
+      return;
+    }
+    beginTomorrowNoticeQueue(res.data.items || [], res.data.skipped_no_phone || 0);
+  }).catch(function () {
+    if (btn) btn.disabled = false;
+    alert('تعذّر تجهيز رسائل الغد');
+  });
+}
+
 function sendVisitCustomerNotice(visitId, kind) {
   fetch('/api/maintenance-visits/' + visitId + '/customer-notice', {
     method: 'POST',
@@ -2886,6 +2975,7 @@ if (mapLabel) mapLabel.textContent = 'زيارات اليوم — ' + new Date()
 applyWorkMonth();
 updatePlanMonthHint();
 renderTable(filtered);
+refreshTomorrowNoticeBar();
 document.getElementById('cal-grid')?.addEventListener('click', function (e) {
   const cell = e.target.closest('.cal-day[data-date]');
   if (!cell || cell.classList.contains('empty')) return;

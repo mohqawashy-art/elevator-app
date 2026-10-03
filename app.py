@@ -10414,6 +10414,23 @@ def api_visit_customer_notice(visit_id):
     return jsonify({'ok': True, 'url': url, 'kind': kind})
 
 
+@app.route('/api/maintenance/tomorrow-customer-notices', methods=['POST'])
+def api_tomorrow_customer_notices():
+    """تذكير واتساب لعملاء الصيانة الدورية غداً."""
+    from operations import tomorrow_customer_eve_notices
+
+    data = request.get_json(silent=True) or {}
+    raw_tech = data.get('technician_id')
+    tech_id = int(raw_tech) if str(raw_tech or '').isdigit() else None
+    items, skipped = tomorrow_customer_eve_notices(technician_id=tech_id)
+    return jsonify({
+        'ok': True,
+        'count': len(items),
+        'skipped_no_phone': skipped,
+        'items': items,
+    })
+
+
 @app.route('/field/maint-quote-survey/<int:survey_id>')
 def field_maint_quote_survey(survey_id):
     from field_auth import technician_portal_kind

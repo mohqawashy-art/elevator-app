@@ -120,6 +120,36 @@ def test_fault_visit_has_no_periodic_notice(client):
         assert visit_customer_notice_whatsapp(visit, 'eve') == ''
 
 
+def test_tomorrow_notices_one_message_per_phone(client):
+    from datetime import timedelta
+    from operations import tomorrow_customer_eve_notices
+
+    with client.application.app_context():
+        _seed(visit_day=date.today() + timedelta(days=1))
+        items, skipped = tomorrow_customer_eve_notices(on_date=date.today())
+    assert skipped == 0
+    assert len(items) == 1
+    text = unquote(items[0]['url'].split('text=', 1)[-1])
+    assert 'موعد الصيانة الدورية لمصعدكم غدا' in text
+    assert 'تسهيل أمر فريق الصيانه' in text
+    assert 'شركة تقنية جما التميز للمصاعد' in text
+
+
+def test_tomorrow_notices_api(client):
+    from datetime import timedelta
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        _seed(visit_day=date.today() + timedelta(days=1))
+    res = client.post('/api/maintenance/tomorrow-customer-notices', json={})
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data['ok'] is True
+    assert data['count'] == 1
+    assert 'wa.me' in data['items'][0]['url']
+
+
 def test_customer_notice_api_eve(client):
     from tests.conftest import login_as
 
