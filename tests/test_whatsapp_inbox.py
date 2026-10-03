@@ -318,3 +318,62 @@ def test_notify_customer_stage_same_thread_code(client):
         assert [e['stage'] for e in journey] == ['received', 'assigned', 'on_way', 'resolved']
         outbound = WhatsAppInbox.query.filter_by(fault_id=fault.id, direction='outbound').count()
         assert outbound == 0
+
+
+def test_resolved_whatsapp_report_opens_without_login(client):
+    from app import app
+    from whatsapp_support import notify_customer_stage
+
+    login_as(client, 'admin')
+    with app.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        g.organization = org
+        g.organization_id = org.id
+        cust = Customer(
+            organization_id=org.id,
+            code='C-WA-PUB',
+            name='عميل التقرير',
+            phone='0555111222',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(
+            organization_id=org.id,
+            code='EL-WA-PUB',
+            customer_id=cust.id,
+            status='نشط',
+        )
+        db.session.add(elev)
+        db.session.flush()
+        fault = Fault(
+            organization_id=org.id,
+            code='FA-PUB1',
+            elevator_id=elev.id,
+            reporter_phone='0555111222',
+            status='تم الاصلاح',
+            resolution='تم الإصلاح',
+        )
+        db.session.add(fault)
+        db.session.commit()
+        fault = Fault.query.filter_by(code='FA-PUB1').first()
+
+        def _next(model, prefix, digits=5):
+            return 'WA-90001'
+
+        result = notify_customer_stage(
+            fault, 'resolved', next_code_fn=_next, base_url='https://app.test',
+        )
+        assert result['ok']
+        assert result['report_url'].startswith('https://app.test/r/fault/')
+        path = result['report_url'].replace('https://app.test', '')
+
+    with client.session_transaction() as sess:
+        sess.clear()
+    page = client.get(path)
+    assert page.status_code == 200
+    body = page.get_data(as_text=True)
+    assert 'FA-PUB1' in body
+    assert 'تقرير الإصلاح' in body
+    office = client.get(f'/faults/{fault.id}/report?print=1', follow_redirects=False)
+    assert office.status_code in (302, 401, 403)

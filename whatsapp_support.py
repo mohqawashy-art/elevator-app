@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+import urllib.parse
 from datetime import datetime
 
 from sqlalchemy import or_
@@ -278,6 +279,26 @@ def fault_report_print_path(fault: Fault) -> str:
     return f'/faults/{fault.id}/report?print=1'
 
 
+def customer_fault_report_url(fault: Fault, report_url: str = '', base_url: str = '') -> str:
+    """رابط يفتحه العميل بدون دخول. يستبدل رابط المكتب الداخلي."""
+    pdf = (report_url or '').strip()
+    if pdf and '/r/fault/' in pdf:
+        return pdf
+    private = (
+        not pdf
+        or pdf.startswith('/')
+        or ('/faults/' in pdf and 'report' in pdf)
+    )
+    if not private:
+        return pdf
+    oid = int(getattr(fault, 'organization_id', 0) or 0)
+    if oid <= 0:
+        return pdf
+    from fault_report_share import fault_report_share_url
+
+    return fault_report_share_url(fault.id, oid, base_url)
+
+
 def build_customer_journey_message(
     fault: Fault,
     stage: str,
@@ -426,6 +447,7 @@ def notify_customer_stage(
     next_code_fn,
     force: bool = False,
     report_url: str = '',
+    base_url: str = '',
 ) -> dict:
     """رسالة حالة على نفس كود الوارد — بدون WA جديد لكل مرحلة."""
     stage = (stage or '').strip()
@@ -437,8 +459,8 @@ def notify_customer_stage(
 
     thread = ensure_thread_for_fault(fault, next_code_fn=next_code_fn)
     pdf = (report_url or '').strip()
-    if stage == 'resolved' and not pdf:
-        pdf = fault_report_print_path(fault)
+    if stage == 'resolved':
+        pdf = customer_fault_report_url(fault, pdf, base_url)
     msg = build_customer_journey_message(
         fault, stage, thread_code=thread.code, report_url=pdf,
     )
@@ -451,6 +473,8 @@ def notify_customer_stage(
                 url = (e or {}).get('url') or url
                 pending = bool((e or {}).get('pending_send'))
                 break
+        if stage == 'resolved':
+            url = with_public_fault_report_link(url, fault, thread.code or '')
         return {
             'ok': True,
             'skipped': True,
@@ -635,7 +659,11 @@ def journey_snapshots_for_faults(faults: list[Fault]) -> dict[int, dict]:
                 or 'بدون رسالة',
             'current_preview': '',
             'pending_send': bool(pending),
-            'pending_url': (pending or {}).get('url') or '',
+            'pending_url': with_public_fault_report_link(
+                (pending or {}).get('url') or '',
+                fault,
+                thread.code if thread else '',
+            ) if (pending or {}).get('stage') == 'resolved' else ((pending or {}).get('url') or ''),
             'pending_stage': (pending or {}).get('stage') or '',
             'pending_label': (pending or {}).get('label')
                 or JOURNEY_LABELS.get((pending or {}).get('stage') or '', ''),
@@ -684,5 +712,34 @@ def inbox_stats() -> dict:
     }
 
 
+def with_public_fault_report_link(url: str, fault: Fault | None, thread_code: str = '') -> str:
+    """يستبدل رابط تقرير المكتب في رسالة جاهزة برابط العميل العام."""
+    if not url or not fault:
+        return url
+    decoded = urllib.parse.unquote(url)
+    if '/r/fault/' in decoded:
+        return url
+    if '/faults/' not in decoded and 'report?print' not in decoded:
+        return url
+    pdf = customer_fault_report_url(fault)
+    phone = customer_phone_for_fault(fault)
+    if not pdf or not phone:
+        return url
+    msg = build_customer_journey_message(
+        fault, 'resolved', thread_code=thread_code, report_url=pdf,
+    )
+    return whatsapp_url(phone, msg) or url
+
+
 def parse_journey_for_template(item: WhatsAppInbox) -> list[dict]:
-    return _load_journey(item)
+    steps = _load_journey(item)
+    fault = item.fault
+    if not fault:
+        return steps
+    out = []
+    for step in steps:
+        row = dict(step or {})
+        if row.get('stage') == 'resolved' and row.get('url'):
+            row['url'] = with_public_fault_report_link(row['url'], fault, item.code or '')
+        out.append(row)
+    return out

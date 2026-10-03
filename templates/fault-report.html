@@ -16,7 +16,9 @@
 </head>
 <body class="fr-report" data-lc-popup="1" data-lc-idle-screensaver="off">
 
-{% if not editable %}
+{% if public_view|default(false) %}
+<div class="readonly-banner">تقرير الإصلاح — يمكنك الطباعة أو حفظه PDF.</div>
+{% elif not editable %}
 <div class="readonly-banner">
   وضع العرض والطباعة فقط.
   {% if field_edit_url %}

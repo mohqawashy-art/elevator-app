@@ -231,6 +231,7 @@ PUBLIC_ENDPOINTS = frozenset({
     'attendance_adms.iclock_registry',
     'attendance.api_punch',
     'public_visit_report',
+    'public_fault_report',
     'public_document_share',
     'public_document_file',
 })
@@ -9906,11 +9907,8 @@ def api_fault_customer_notify(fault_id):
     force = str(data.get('force') or '').lower() in ('1', 'true', 'yes')
     if stage not in JOURNEY_STAGES:
         return jsonify({'ok': False, 'error': 'مرحلة غير صالحة'}), 400
-    report_url = ''
-    if stage == 'resolved':
-        report_url = request.url_root.rstrip('/') + f'/faults/{fault.id}/report?print=1'
     result = notify_customer_stage(
-        fault, stage, next_code_fn=next_code, force=force, report_url=report_url,
+        fault, stage, next_code_fn=next_code, force=force, base_url=request.url_root,
     )
     if result.get('ok') and not result.get('skipped'):
         db.session.commit()
@@ -10227,6 +10225,29 @@ def public_visit_report(token):
     payload['read_only_mode'] = True
     payload['public_view'] = True
     return render_template('visit-report.html', **payload)
+
+
+@app.route('/r/fault/<token>')
+def public_fault_report(token):
+    """تقرير عطل للعميل — رابط موقّع بدون تسجيل دخول."""
+    from fault_report_share import load_fault_report_share_token
+    from operations import fault_report_payload
+
+    data = load_fault_report_share_token(token)
+    if not data:
+        return _public_link_expired_html()
+    _bind_public_organization(data['organization_id'])
+    fault_id = data['fault_id']
+    if not tenant_query(Fault).filter_by(id=fault_id).first():
+        abort(404)
+    payload = fault_report_payload(fault_id, editable=False, base_url=request.url_root)
+    payload['back_url'] = None
+    payload['field_edit_url'] = None
+    payload['public_view'] = True
+    payload['inventory_items_json'] = '[]'
+    if isinstance(payload.get('technician'), dict):
+        payload['technician']['national_id'] = ''
+    return render_template('fault-report.html', **payload)
 
 
 def _public_link_expired_html() -> tuple[str, int, dict]:
