@@ -696,7 +696,7 @@
   });
 
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/field/sw.js', { scope: '/field/' }).catch(function () {});
+    navigator.serviceWorker.register('/field/sw.js', { scope: '/field/', updateViaCache: 'none' }).catch(function () {});
   }
 
   bindGeofenceCards();

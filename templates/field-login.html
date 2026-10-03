@@ -31,7 +31,7 @@
       </div>
       <div class="fp-field">
         <label>رمز الدخول (6 أرقام)</label>
-        <input type="password" name="pin" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" autocomplete="current-password" placeholder="••••••" required>
+        <input type="password" name="pin" inputmode="numeric" maxlength="12" autocomplete="one-time-code" placeholder="••••••" required>
       </div>
       <button type="submit" class="fp-submit">دخول</button>
     </form>
@@ -43,9 +43,29 @@
   </div>
 </div>
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/field/sw.js', { scope: '/field/' }).catch(function () {});
-}
+(function () {
+  function westernPin(value) {
+    var text = String(value || '');
+    var ar = '٠١٢٣٤٥٦٧٨٩';
+    var fa = '۰۱۲۳۴۵۶۷۸۹';
+    var i;
+    for (i = 0; i < 10; i++) {
+      text = text.split(ar.charAt(i)).join(String(i));
+      text = text.split(fa.charAt(i)).join(String(i));
+    }
+    return text.replace(/\D/g, '').slice(0, 6);
+  }
+  var form = document.querySelector('form');
+  if (form) {
+    form.addEventListener('submit', function () {
+      var pin = form.querySelector('input[name="pin"]');
+      if (pin) pin.value = westernPin(pin.value);
+    });
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/field/sw.js', { scope: '/field/', updateViaCache: 'none' }).catch(function () {});
+  }
+})();
 </script>
 </body>
 </html>

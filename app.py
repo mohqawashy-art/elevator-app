@@ -10019,7 +10019,12 @@ def field_home():
     if not tech_id:
         return redirect(url_for('field_login'))
 
-    from field_auth import technician_portal_kind
+    from field_auth import field_logout_technician, technician_portal_kind
+    from models import Technician as _FieldTech
+
+    if not _FieldTech.query.execution_options(skip_tenant=True).filter_by(id=int(tech_id)).first():
+        field_logout_technician()
+        return redirect(url_for('field_login'))
     from operations import field_technician_payload
 
     ctx = _field_portal_context(tech_id)
