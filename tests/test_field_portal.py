@@ -1062,3 +1062,72 @@ def test_field_external_inspection_blank_print(client):
     html = r.get_data(as_text=True)
     assert 'نموذج فارغ' in html
     assert 'قائمة الفحص' in html
+
+
+def test_field_login_accepts_technician_number_and_arabic_pin(client):
+    from app import hash_password
+
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='Tech-001',
+            name='فني أول',
+            phone='0552001001',
+            status='متاح',
+            sign_pin_hash=hash_password('654321'),
+        )
+        db.session.add(tech)
+        db.session.commit()
+
+    response = client.post(
+        '/field/login',
+        data={'login_id': '1', 'pin': '٦٥٤٣٢١'},
+        follow_redirects=False,
+    )
+    assert response.status_code == 302
+    assert '/field' in (response.headers.get('Location') or '')
+
+
+def test_new_field_pin_clears_failed_login_lockout(client, monkeypatch):
+    from app import hash_password
+    import liftcore_security as sec
+
+    monkeypatch.setenv('LIFTCORE_HTTPS', '1')
+    monkeypatch.setattr(sec, '_use_db_store', lambda: False)
+    login_as(client, 'admin')
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='Tech-001',
+            name='فني أول',
+            phone='0552001001',
+            status='متاح',
+            sign_pin_hash=hash_password('654321'),
+        )
+        db.session.add(tech)
+        db.session.commit()
+        tech_id = tech.id
+
+    for _ in range(5):
+        client.post('/field/login', data={'login_id': 'Tech-001', 'pin': '000000'})
+    locked = client.post('/field/login', data={'login_id': 'Tech-001', 'pin': '000000'})
+    assert 'محاولات كثيرة' in locked.get_data(as_text=True)
+
+    saved = client.post(
+        f'/settings/field-portal/{tech_id}/pin',
+        data={'csrf_token': 'test-csrf', 'pin': '111111'},
+        follow_redirects=False,
+    )
+    assert saved.status_code == 302
+
+    ok = client.post(
+        '/field/login',
+        data={'login_id': 'Tech-001', 'pin': '111111'},
+        follow_redirects=False,
+    )
+    assert ok.status_code == 302
+    assert '/field' in (ok.headers.get('Location') or '')

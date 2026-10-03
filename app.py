@@ -8515,11 +8515,24 @@ def _upload_ok(file_storage, allowed_ext):
     return validate_upload_file(file_storage, allowed_ext=allowed_ext)
 
 
+def _clear_technician_login_lockout(tech):
+    from field_auth import normalize_phone
+    from liftcore_security import clear_field_pin_for_identities
+
+    clear_field_pin_for_identities(
+        getattr(tech, 'code', ''),
+        getattr(tech, 'phone', ''),
+        getattr(tech, 'phone2', ''),
+        normalize_phone(getattr(tech, 'phone', '')),
+        normalize_phone(getattr(tech, 'phone2', '')),
+    )
+
+
 def _save_technician_signature(tech, file_storage, pin_plain=''):
     from signatory_service import upsert_signatory
-    from signature_auth import normalize_national_id, validate_sign_pin
+    from signature_auth import normalize_national_id, normalize_sign_pin, validate_sign_pin
 
-    pin = str(pin_plain or '').strip()
+    pin = normalize_sign_pin(pin_plain)
     has_file = bool(file_storage and file_storage.filename)
     if has_file:
         ok, err = _upload_ok(file_storage, ALLOWED_TECH_PHOTO_EXT)
@@ -8536,6 +8549,7 @@ def _save_technician_signature(tech, file_storage, pin_plain=''):
         tech.sign_pin_hash = hash_password(pin)
         if existing:
             existing.sign_pin_hash = tech.sign_pin_hash
+        _clear_technician_login_lockout(tech)
         return
     if has_file and not pin and not tech.sign_pin_hash and not existing:
         raise ValueError('كلمة مرور التوقيع (6 أرقام) مطلوبة مع صورة التوقيع')
@@ -8578,6 +8592,8 @@ def _save_technician_signature(tech, file_storage, pin_plain=''):
     )
     tech.signature_path = row.signature_path
     tech.sign_pin_hash = row.sign_pin_hash
+    if pin:
+        _clear_technician_login_lockout(tech)
 
 
 def _save_technician_photo(tech, file_storage):
@@ -15614,10 +15630,10 @@ def settings_field_portal_pin(tech_id):
     if not require_admin():
         session['settings_notice'] = 'صلاحية المدير مطلوبة.'
         return _settings_redirect('field-portal')
-    from signature_auth import validate_sign_pin
+    from signature_auth import normalize_sign_pin, validate_sign_pin
 
     tech = tenant_get_or_404(Technician, tech_id)
-    pin = (request.form.get('pin') or '').strip()
+    pin = normalize_sign_pin(request.form.get('pin'))
     if not validate_sign_pin(pin):
         session['settings_notice'] = 'رمز دخول الجوال يجب أن يكون 6 أرقام.'
         return _settings_redirect('field-portal')
@@ -15625,6 +15641,7 @@ def settings_field_portal_pin(tech_id):
     sig = tenant_query(Signatory).filter_by(technician_id=tech.id, is_active=True).first()
     if sig:
         sig.sign_pin_hash = tech.sign_pin_hash
+    _clear_technician_login_lockout(tech)
     db.session.commit()
     session['settings_notice'] = f'تم تفعيل رمز دخول الجوال للفني {tech.name} ({tech.code}).'
     return _settings_redirect('field-portal')
@@ -16149,6 +16166,9 @@ def settings_user_edit(user_id):
             session['settings_notice'] = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل.'
             return _settings_redirect('users', edit_user=target.id)
         target.password_hash = hash_password(new_pass)
+        from liftcore_security import is_weak_password
+
+        target.must_change_password = is_weak_password(new_pass)
         bump_user_session_version(target)  # يُنهي جلسات ذلك المستخدم فوراً
         session['settings_generated_username'] = target.username
         session['settings_generated_password'] = new_pass

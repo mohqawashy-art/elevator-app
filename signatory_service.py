@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 
 from models import Signatory, db
-from signature_auth import normalize_national_id, validate_sign_pin
+from signature_auth import normalize_national_id, normalize_sign_pin, validate_sign_pin
 from signature_crypto import save_encrypted_signature
 from tenant_scope import assign_organization, tenant_query
 
@@ -44,7 +44,7 @@ def upsert_signatory(
         if normalize_national_id(existing.national_id) == nid and (not row or existing.id != row.id):
             raise ValueError('رقم الهوية مسجّل لموقّع آخر')
 
-    pin = (pin_plain or '').strip()
+    pin = normalize_sign_pin(pin_plain)
     if not row and not pin:
         raise ValueError('كلمة مرور التوقيع (6 أرقام) مطلوبة')
     if pin and not validate_sign_pin(pin):

@@ -442,6 +442,37 @@ def clear_field_pin_attempts(login_id: str) -> None:
     _clear_attempts(_field_pin_attempts, key, scope=RATE_SCOPE_FIELD_PIN)
 
 
+def clear_field_pin_for_identities(*login_ids: str) -> None:
+    """يلغي قفل المحاولات لكل عناوين دخول الفني بعد تعيين رمز جديد."""
+    idents = {(item or '').strip().lower() for item in login_ids if (item or '').strip()}
+    if not idents:
+        return
+    with _rate_lock:
+        for key in list(_field_pin_attempts):
+            ident = key.split(':', 1)[-1].strip().lower()
+            if ident in idents:
+                _field_pin_attempts.pop(key, None)
+    if not _use_db_store():
+        return
+    global _db_store_disabled
+    from models import RateLimitEvent
+
+    try:
+        with _db_session() as session:
+            rows = (
+                session.query(RateLimitEvent)
+                .filter(RateLimitEvent.scope == RATE_SCOPE_FIELD_PIN)
+                .all()
+            )
+            for row in rows:
+                ident = (row.bucket_key or '').split(':', 1)[-1].strip().lower()
+                if ident in idents:
+                    session.delete(row)
+            session.commit()
+    except Exception:
+        _db_store_disabled = True
+
+
 def check_demo_request_rate_limit() -> tuple[bool, int]:
     return _rate_limit_check(
         _demo_request_attempts,

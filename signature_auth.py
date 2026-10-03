@@ -15,13 +15,29 @@ SIGN_PIN_RE = re.compile(r'^\d{6}$')
 SIGN_MAX_FAILS = 5
 SIGN_LOCK_SECONDS = 60
 
+_AR_DIGITS = '٠١٢٣٤٥٦٧٨٩'
+_FA_DIGITS = '۰۱۲۳۴۵۶۷۸۹'
+
+
+def western_digits(value: str | None) -> str:
+    text = str(value or '')
+    for i, ch in enumerate(_AR_DIGITS):
+        text = text.replace(ch, str(i))
+    for i, ch in enumerate(_FA_DIGITS):
+        text = text.replace(ch, str(i))
+    return text
+
 
 def normalize_national_id(value: str | None) -> str:
-    return re.sub(r'\D', '', str(value or '').strip())
+    return re.sub(r'\D', '', western_digits(value).strip())
+
+
+def normalize_sign_pin(pin: str | None) -> str:
+    return western_digits(pin).strip()
 
 
 def validate_sign_pin(pin: str | None) -> bool:
-    return bool(pin and SIGN_PIN_RE.match(str(pin).strip()))
+    return bool(SIGN_PIN_RE.match(normalize_sign_pin(pin)))
 
 
 def _sign_lock_message() -> str | None:
@@ -143,7 +159,7 @@ def verify_signature_credentials(
         return {'ok': False, 'error': lock_msg}
 
     nid = normalize_national_id(national_id)
-    pin = str(pin or '').strip()
+    pin = normalize_sign_pin(pin)
     if not nid or not validate_sign_pin(pin):
         _sign_fail()
         return {'ok': False, 'error': 'رقم الهوية أو كلمة المرور غير صحيحة'}

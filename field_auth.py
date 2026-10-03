@@ -14,7 +14,9 @@ FIELD_ACTIVE_STATUSES = frozenset({'نشط', 'متاح', 'مشغول'})
 
 
 def normalize_phone(value: str | None) -> str:
-    digits = re.sub(r'\D', '', str(value or ''))
+    from signature_auth import western_digits
+
+    digits = re.sub(r'\D', '', western_digits(value))
     if digits.startswith('966') and len(digits) >= 12:
         digits = '0' + digits[3:]
     if digits.startswith('5') and len(digits) == 9:
@@ -53,6 +55,26 @@ def bind_field_technician_tenant(tech_id: int | None):
     return tech
 
 
+def _login_code_candidates(raw: str) -> list[str]:
+    """Tech-001 يُقبل أيضاً كـ 1 أو tech-1 — رقم الفني في الحساب."""
+    raw = (raw or '').strip()
+    out: list[str] = []
+
+    def add(value: str) -> None:
+        value = (value or '').strip()
+        if value and value.lower() not in {item.lower() for item in out}:
+            out.append(value)
+
+    add(raw)
+    compact = re.sub(r'[\s_]+', '', raw)
+    match = re.fullmatch(r'(?:tech-?)?0*(\d{1,6})', compact, re.I)
+    if match:
+        number = int(match.group(1))
+        add(f'Tech-{number:03d}')
+        add(str(number))
+    return out
+
+
 def find_technician_by_login(login_id: str | None) -> Technician | None:
     """يبحث بالكود أو الجوال — يفضّل مؤسسة الـ subdomain ثم يربط سياق الفني."""
     from tenant_scope import effective_organization_id
@@ -71,14 +93,15 @@ def find_technician_by_login(login_id: str | None) -> Technician | None:
         bind_field_technician_tenant(tech.id)
         return tech
 
-    code_q = q.filter(Technician.code.ilike(raw))
-    if oid:
-        tech = _accept(code_q.filter(Technician.organization_id == oid).first())
+    for candidate in _login_code_candidates(raw):
+        code_q = q.filter(Technician.code.ilike(candidate))
+        if oid:
+            tech = _accept(code_q.filter(Technician.organization_id == oid).first())
+            if tech:
+                return tech
+        tech = _accept(code_q.first())
         if tech:
             return tech
-    tech = _accept(code_q.first())
-    if tech:
-        return tech
 
     phone = normalize_phone(raw)
     if not phone:
@@ -101,7 +124,9 @@ def find_technician_by_login(login_id: str | None) -> Technician | None:
 
 
 def verify_technician_pin(tech: Technician, pin: str | None) -> bool:
-    pin = str(pin or '').strip()
+    from signature_auth import normalize_sign_pin
+
+    pin = normalize_sign_pin(pin)
     if not pin:
         return False
     if tech.sign_pin_hash and check_password_hash(tech.sign_pin_hash, pin):
