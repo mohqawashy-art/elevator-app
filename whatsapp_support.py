@@ -474,7 +474,34 @@ def notify_customer_stage(
                 pending = bool((e or {}).get('pending_send'))
                 break
         if stage == 'resolved':
-            url = with_public_fault_report_link(url, fault, thread.code or '')
+            fresh = with_public_fault_report_link(
+                url, fault, thread.code or '', base_url,
+            )
+            if fresh and fresh != url:
+                url = fresh
+                entries = _load_journey(thread)
+                report = customer_fault_report_url(fault, '', base_url)
+                for entry in entries:
+                    if (entry or {}).get('stage') != stage:
+                        continue
+                    entry['url'] = url
+                    entry['report_url'] = report
+                    entry['pending_send'] = True
+                _save_journey(thread, entries)
+                db.session.add(thread)
+                return {
+                    'ok': True,
+                    'skipped': False,
+                    'link_refreshed': True,
+                    'pending_send': True,
+                    'url': url,
+                    'stage': stage,
+                    'label': JOURNEY_LABELS[stage],
+                    'thread_code': thread.code,
+                    'fault_code': fault.code,
+                    'log_id': thread.id,
+                    'report_url': report,
+                }
         return {
             'ok': True,
             'skipped': True,
@@ -539,6 +566,8 @@ def pending_customer_sends(*, limit: int = 30) -> list[dict]:
             if not url:
                 continue
             fault = thread.fault
+            if (entry.get('stage') or '') == 'resolved' and fault:
+                url = with_public_fault_report_link(url, fault, thread.code or '')
             out.append({
                 'thread_id': thread.id,
                 'thread_code': thread.code,
@@ -712,7 +741,12 @@ def inbox_stats() -> dict:
     }
 
 
-def with_public_fault_report_link(url: str, fault: Fault | None, thread_code: str = '') -> str:
+def with_public_fault_report_link(
+    url: str,
+    fault: Fault | None,
+    thread_code: str = '',
+    base_url: str = '',
+) -> str:
     """يستبدل رابط تقرير المكتب في رسالة جاهزة برابط العميل العام."""
     if not url or not fault:
         return url
@@ -721,7 +755,7 @@ def with_public_fault_report_link(url: str, fault: Fault | None, thread_code: st
         return url
     if '/faults/' not in decoded and 'report?print' not in decoded:
         return url
-    pdf = customer_fault_report_url(fault)
+    pdf = customer_fault_report_url(fault, '', base_url)
     phone = customer_phone_for_fault(fault)
     if not pdf or not phone:
         return url

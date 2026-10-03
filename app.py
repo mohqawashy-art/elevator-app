@@ -9910,7 +9910,7 @@ def api_fault_customer_notify(fault_id):
     result = notify_customer_stage(
         fault, stage, next_code_fn=next_code, force=force, base_url=request.url_root,
     )
-    if result.get('ok') and not result.get('skipped'):
+    if result.get('ok') and (not result.get('skipped') or result.get('link_refreshed')):
         db.session.commit()
     elif result.get('ok'):
         db.session.rollback()

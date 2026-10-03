@@ -1408,7 +1408,7 @@ async function notifyCustomerWhatsApp(faultId, stage) {
     const r = await fetch('/api/faults/' + faultId + '/customer-notify', {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({stage: stage, force: false})
+      body: JSON.stringify({stage: stage, force: stage === 'resolved'})
     });
     const data = await r.json();
     if (!data.ok) {

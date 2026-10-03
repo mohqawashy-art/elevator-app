@@ -377,3 +377,80 @@ def test_resolved_whatsapp_report_opens_without_login(client):
     assert 'تقرير الإصلاح' in body
     office = client.get(f'/faults/{fault.id}/report?print=1', follow_redirects=False)
     assert office.status_code in (302, 401, 403)
+
+
+def test_old_relative_report_link_is_replaced_for_resend(client):
+    import urllib.parse
+
+    from app import app
+    from operations import whatsapp_url
+    from whatsapp_support import build_customer_journey_message, notify_customer_stage
+
+    login_as(client, 'admin')
+    with app.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        g.organization = org
+        g.organization_id = org.id
+        cust = Customer(
+            organization_id=org.id,
+            code='C-WA-OLD',
+            name='عبدالله سند العصيمي',
+            phone='0555000111',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(
+            organization_id=org.id,
+            code='EL-0035',
+            customer_id=cust.id,
+            status='نشط',
+        )
+        db.session.add(elev)
+        db.session.flush()
+        fault = Fault(
+            organization_id=org.id,
+            code='FA-00403',
+            elevator_id=elev.id,
+            reporter_phone='0555000111',
+            status='تم الاصلاح',
+            resolution='تم ضبط الكالون والمصعد يعمل',
+        )
+        db.session.add(fault)
+        db.session.commit()
+        fault = Fault.query.filter_by(code='FA-00403').first()
+
+        def _next(model, prefix, digits=5):
+            return 'WA-403'
+
+        first = notify_customer_stage(
+            fault, 'resolved', next_code_fn=_next, base_url='https://app.liftcoreapp.com',
+        )
+        db.session.commit()
+        thread = WhatsAppInbox.query.filter_by(fault_id=fault.id).first()
+        import json
+        journey = json.loads(thread.journey_json or '[]')
+        old_msg = build_customer_journey_message(
+            fault, 'resolved', report_url=f'/faults/{fault.id}/report?print=1',
+        )
+        journey[-1]['url'] = whatsapp_url('0555000111', old_msg)
+        journey[-1]['pending_send'] = False
+        thread.journey_json = json.dumps(journey, ensure_ascii=False)
+        db.session.commit()
+
+        again = notify_customer_stage(
+            fault, 'resolved', next_code_fn=_next, force=False,
+            base_url='https://app.liftcoreapp.com',
+        )
+        db.session.commit()
+        text = urllib.parse.unquote(again['url'])
+        assert again.get('link_refreshed')
+        assert 'https://app.liftcoreapp.com/r/fault/' in text
+        assert '/faults/' not in text
+        path = text.split('https://app.liftcoreapp.com', 1)[1].split()[0]
+
+    with client.session_transaction() as sess:
+        sess.clear()
+    page = client.get(path)
+    assert page.status_code == 200
+    assert 'FA-00403' in page.get_data(as_text=True)
