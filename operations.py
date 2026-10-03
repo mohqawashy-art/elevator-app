@@ -609,12 +609,17 @@ def alert_customer_whatsapp_url(scene: str, entity_id: int, base_url: str = '') 
             return '', 'لا يوجد رقم جوال/واتساب للعميل — أضفه من بيانات العميل'
         return url, ''
 
-    if scene == 'visit':
+    if scene in ('visit', 'visit_eve'):
         from models import MaintenanceVisit
 
         v = tenant_query(MaintenanceVisit).filter_by(id=eid).first()
         if not v or not v.elevator or not v.elevator.customer:
             return '', 'الزيارة غير موجودة'
+        if scene == 'visit_eve':
+            url = visit_eve_customer_whatsapp(v)
+            if not url:
+                return '', 'لا يوجد رقم جوال/واتساب للعميل'
+            return url, ''
         cust = v.elevator.customer
         url = build_alert_customer_whatsapp(
             customer=cust,
@@ -3318,9 +3323,12 @@ def build_periodic_visit_eve_message(
     company = _company_signature(company_name)
     return '\n'.join([
         'عميلنا العزيز',
+        '',
         f'نفيدكم علما بأن موعد الصيانة الدورية لمصعدكم غدا {weekday}',
         f'الموافق {shown} م',
+        '',
         'نرجوا منكم تسهيل أمر فريق الصيانه ولكم جزيل الشكر',
+        '',
         company,
     ])
 
@@ -3388,6 +3396,20 @@ def tomorrow_customer_eve_notices(
             'url': url,
         })
     return items, skipped
+
+
+def visit_eve_customer_whatsapp(visit: MaintenanceVisit | None) -> str:
+    """واتساب تذكير الغد للعميل فقط — من تنبيه الزيارات المجدولة غداً."""
+    if not visit or is_fault_visit_type(visit.visit_type):
+        return ''
+    if not visit.visit_date:
+        return ''
+    phone = customer_phone_for_visit(visit)
+    if not phone and visit.elevator and visit.elevator.customer:
+        phone = customer_whatsapp_phone(visit.elevator.customer)
+    if not phone:
+        return ''
+    return whatsapp_url(phone, build_periodic_visit_eve_message(visit))
 
 
 def visit_customer_notice_whatsapp(visit: MaintenanceVisit | None, kind: str) -> str:

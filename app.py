@@ -4998,7 +4998,7 @@ def _customer_alert_drill_cells(core_cells, customer, *, wa_scene: str, wa_id: i
     )
 
 
-def _visit_drill_rows(visits, *, date_cell):
+def _visit_drill_rows(visits, *, date_cell, wa_scene='visit'):
     rows = []
     for v in visits:
         cust = v.elevator.customer if v.elevator else None
@@ -5011,7 +5011,7 @@ def _visit_drill_rows(visits, *, date_cell):
             v.technician.name if v.technician else '—',
             v.status,
         ]
-        rows.append(_customer_alert_drill_cells(core, cust, wa_scene='visit', wa_id=v.id))
+        rows.append(_customer_alert_drill_cells(core, cust, wa_scene=wa_scene, wa_id=v.id))
     return rows
 
 
@@ -5289,7 +5289,7 @@ def api_dashboard_drill(card_type):
             'title': 'زيارات مجدولة غداً', 'link': '/maintenance-visits',
             'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة']
             + CUSTOMER_CONTACT_COLS,
-            'rows': _visit_drill_rows(visits, date_cell=lambda v: str(v.visit_date)),
+            'rows': _visit_drill_rows(visits, date_cell=lambda v: str(v.visit_date), wa_scene='visit_eve'),
         }
     elif card_type == 'faults_critical':
         from operations import FAULT_OPEN

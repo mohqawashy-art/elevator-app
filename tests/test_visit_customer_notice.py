@@ -150,6 +150,24 @@ def test_tomorrow_notices_api(client):
     assert 'wa.me' in data['items'][0]['url']
 
 
+def test_tomorrow_alert_whatsapp_uses_eve_message(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        visit_id, _tech_id = _seed(visit_day=date(2026, 10, 4))
+    res = client.get(f'/api/alerts/customer-whatsapp/visit_eve/{visit_id}')
+    assert res.status_code == 200
+    url = (res.get_json() or {}).get('whatsapp_url') or ''
+    text = unquote(url.split('text=', 1)[-1])
+    assert text.startswith('عميلنا العزيز')
+    assert 'غدا الأحد' in text
+    assert 'الموافق ٢٠٢٦/١٠/٤ م' in text
+    assert 'تسهيل أمر فريق الصيانه' in text
+    assert text.endswith('شركة تقنية جما التميز للمصاعد')
+    assert 'متابعة زيارة' not in text
+
+
 def test_customer_notice_api_eve(client):
     from tests.conftest import login_as
 
