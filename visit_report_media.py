@@ -96,6 +96,81 @@ def normalize_report_photos(root_path: str, visit_id: int, photos: list | None) 
     return out
 
 
+VISIT_PHOTO_NAME_RE = re.compile(
+    r'^[a-f0-9]{8,40}\.(?:jpg|jpeg|png|webp|gif)$',
+    re.IGNORECASE,
+)
+
+
+def visit_photo_filename(url: str, visit_id: int) -> str:
+    """اسم الملف إن كان الرابط صورة هذه الزيارة تحت uploads."""
+    path = (url or '').strip().split('?', 1)[0].replace('\\', '/')
+    prefix = f'/static/uploads/visits/{int(visit_id)}/'
+    if not path.startswith(prefix):
+        return ''
+    name = path[len(prefix):]
+    if not VISIT_PHOTO_NAME_RE.match(name):
+        return ''
+    return name
+
+
+def public_visit_photo_url(token: str, url: str, visit_id: int) -> str:
+    """رابط صورة يفتحه العميل من محضر المشاركة بدون تسجيل دخول."""
+    raw = (url or '').strip()
+    name = visit_photo_filename(raw, visit_id)
+    if name:
+        return f'/r/visit/{token}/p/{name}'
+    if raw.startswith('data:image/') or raw.startswith('http://') or raw.startswith('https://'):
+        return raw
+    return ''
+
+
+def rewrite_report_photos_for_public(report_data: dict, visit_id: int, token: str) -> dict:
+    photos: list[dict[str, str]] = []
+    for ph in report_data.get('photos') or []:
+        if not isinstance(ph, dict):
+            continue
+        url = public_visit_photo_url(token, ph.get('url') or '', visit_id)
+        if not url:
+            continue
+        photos.append({
+            'url': url,
+            'caption': (ph.get('caption') or '').strip(),
+        })
+    report_data['photos'] = photos
+    return report_data
+
+
+def resolve_upload_file(root_path: str, relative: str) -> tuple[str, str] | None:
+    """(مجلد uploads, مسار داخله) لملف موجود — أو None."""
+    rel = (relative or '').replace('\\', '/').split('?', 1)[0].strip()
+    if '://' in rel:
+        rel = rel.split('://', 1)[-1]
+        rel = rel.split('/', 1)[-1] if '/' in rel else ''
+    rel = rel.lstrip('/')
+    if rel.startswith('static/'):
+        rel = rel[len('static/'):]
+    marker = 'uploads/'
+    idx = rel.find(marker)
+    if idx < 0:
+        return None
+    sub = rel[idx + len(marker):]
+    parts = [part for part in sub.split('/') if part]
+    if not parts or any(part in ('.', '..') for part in parts):
+        return None
+    sub = '/'.join(parts)
+    directory = os.path.normpath(os.path.join(root_path, 'static', 'uploads'))
+    full = os.path.normpath(os.path.join(directory, *parts))
+    try:
+        if os.path.commonpath([directory, full]) != directory:
+            return None
+    except ValueError:
+        return None
+    if not os.path.isfile(full):
+        return None
+    return directory, sub
+
+
 def photos_need_migration(photos: list | None) -> bool:
     for ph in photos or []:
         if not isinstance(ph, dict):

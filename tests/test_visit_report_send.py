@@ -69,6 +69,55 @@ def test_visit_report_whatsapp_ok(client):
         assert '/r/visit/' in result['report_url']
 
 
+TINY_PNG = (
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
+)
+TINY_DATA_URL = f'data:image/png;base64,{TINY_PNG}'
+
+
+def test_public_visit_report_photos_visible_without_login(client):
+    import re
+
+    from visit_report_media import normalize_report_photos
+    from visit_report_share import visit_report_share_path
+
+    with client.application.app_context():
+        visit_id = _seed_visit()
+        visit = db.session.get(MaintenanceVisit, visit_id)
+        photos = normalize_report_photos(
+            client.application.root_path,
+            visit_id,
+            [{'url': TINY_DATA_URL, 'caption': 'لوحة التحكم'}],
+        )
+        saved = json.loads(visit.checklist_json)
+        saved['photos'] = photos
+        visit.checklist_json = json.dumps(saved, ensure_ascii=False)
+        db.session.commit()
+        stored = photos[0]['url']
+        filename = stored.rsplit('/', 1)[-1]
+        oid = visit.organization_id
+        path = visit_report_share_path(visit_id, oid)
+
+    page = client.get(path)
+    assert page.status_code == 200
+    html = page.get_data(as_text=True)
+    assert stored not in html
+    assert f'/p/{filename}' in html
+    assert 'لوحة التحكم' in html
+
+    photo_url = re.search(r'(/r/visit/[^"\\]+/p/' + re.escape(filename) + ')', html)
+    assert photo_url
+    photo = client.get(photo_url.group(1))
+    assert photo.status_code == 200
+    assert photo.mimetype == 'image/png'
+    assert photo.data.startswith(b'\x89PNG')
+
+    blocked = client.get(stored)
+    assert blocked.status_code in (301, 302, 401, 403)
+    leaked = client.get(f'{path}/p/not-a-photo.png')
+    assert leaked.status_code == 404
+
+
 def test_public_visit_report_without_login(client):
     with client.application.app_context():
         visit_id = _seed_visit()

@@ -10228,11 +10228,96 @@ def public_visit_report(token):
         editable=False,
         base_url=request.url_root,
     )
+    from visit_report_media import rewrite_report_photos_for_public
+
+    report_data = rewrite_report_photos_for_public(
+        payload.get('report_data') or {},
+        visit_id,
+        token,
+    )
+    payload['report_data'] = report_data
+    payload['report_data_json'] = json.dumps(report_data, ensure_ascii=False)
+    payload.update(_public_visit_brand_urls(token))
     payload['back_url'] = None
     payload['field_edit_url'] = None
     payload['read_only_mode'] = True
     payload['public_view'] = True
     return render_template('visit-report.html', **payload)
+
+
+def _public_visit_brand_urls(token: str) -> dict:
+    """شعار وختم وتوقيع الشركة عبر رابط المشاركة — الملفات نفسها محمية بتسجيل الدخول."""
+    from models import Settings
+    from visit_report_media import resolve_upload_file
+
+    settings = tenant_query(Settings).first()
+    if not settings:
+        return {}
+    out = {}
+    logo = (getattr(settings, 'logo_path', None) or '').replace('\\', '/')
+    if resolve_upload_file(app.root_path, logo):
+        out['logo_url'] = f'/r/visit/{token}/b/logo'
+    if resolve_upload_file(app.root_path, getattr(settings, 'company_stamp_path', None) or ''):
+        out['public_seal_stamp_url'] = f'/r/visit/{token}/b/stamp'
+    if resolve_upload_file(app.root_path, getattr(settings, 'company_sign_path', None) or ''):
+        out['public_seal_sign_url'] = f'/r/visit/{token}/b/sign'
+    return out
+
+
+def _serve_public_image(directory: str, subpath: str):
+    full = os.path.join(directory, subpath)
+    mime = _guess_upload_mimetype(full)
+    if not mime.startswith('image/'):
+        abort(404)
+    resp = send_from_directory(directory, subpath, mimetype=mime, as_attachment=False)
+    resp.headers['X-Content-Type-Options'] = 'nosniff'
+    resp.headers['Cache-Control'] = 'private, max-age=86400'
+    return resp
+
+
+@app.route('/r/visit/<token>/p/<filename>')
+def public_visit_report_photo(token, filename):
+    """صورة محضر الصيانة للعميل — مربوطة برابط المشاركة."""
+    from visit_report_media import VISIT_PHOTO_NAME_RE, resolve_upload_file
+    from visit_report_share import load_visit_report_share_token
+
+    if not VISIT_PHOTO_NAME_RE.match(filename or ''):
+        abort(404)
+    data = load_visit_report_share_token(token)
+    if not data:
+        abort(404)
+    _bind_public_organization(data['organization_id'])
+    visit_id = data['visit_id']
+    if not tenant_query(MaintenanceVisit).filter_by(id=visit_id).first():
+        abort(404)
+    found = resolve_upload_file(app.root_path, f'uploads/visits/{visit_id}/{filename}')
+    if not found:
+        abort(404)
+    return _serve_public_image(*found)
+
+
+@app.route('/r/visit/<token>/b/<kind>')
+def public_visit_report_brand(token, kind):
+    """شعار أو ختم أو توقيع الشركة داخل محضر العميل."""
+    from models import Settings
+    from visit_report_media import resolve_upload_file
+    from visit_report_share import load_visit_report_share_token
+
+    attr = {'logo': 'logo_path', 'stamp': 'company_stamp_path', 'sign': 'company_sign_path'}.get(kind)
+    if not attr:
+        abort(404)
+    data = load_visit_report_share_token(token)
+    if not data:
+        abort(404)
+    _bind_public_organization(data['organization_id'])
+    if not tenant_query(MaintenanceVisit).filter_by(id=data['visit_id']).first():
+        abort(404)
+    settings = tenant_query(Settings).first()
+    rel = (getattr(settings, attr, None) or '') if settings else ''
+    found = resolve_upload_file(app.root_path, rel)
+    if not found:
+        abort(404)
+    return _serve_public_image(*found)
 
 
 @app.route('/r/fault/<token>')

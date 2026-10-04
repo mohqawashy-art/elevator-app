@@ -1,18 +1,20 @@
 {# ختم وتوقيع الشركة على المستندات المطبوعة #}
-{% set show_stamp = company_stamp_url and (company_stamp_show|default(true)) %}
-{% set show_sign = company_sign_url and (company_sign_show|default(true)) %}
+{% set stamp_src = public_seal_stamp_url|default(company_stamp_url, true) %}
+{% set sign_src = public_seal_sign_url|default(company_sign_url, true) %}
+{% set show_stamp = stamp_src and (company_stamp_show|default(true)) %}
+{% set show_sign = sign_src and (company_sign_show|default(true)) %}
 {% if show_stamp or show_sign %}
 <div class="doc-company-seal {{ seal_class|default('') }}">
   {% if show_stamp %}
   <div class="doc-seal-item">
-    <img src="{{ company_stamp_url }}" alt="ختم الشركة" class="doc-seal-stamp"
+    <img src="{{ stamp_src }}" alt="ختم الشركة" class="doc-seal-stamp"
          style="--doc-seal-width:{{ company_stamp_width|default(110) }}px;--doc-seal-x:{{ company_stamp_offset_x|default(0) }}px;--doc-seal-y:{{ company_stamp_offset_y|default(0) }}px">
     <div class="doc-seal-caption">ختم الشركة</div>
   </div>
   {% endif %}
   {% if show_sign %}
   <div class="doc-seal-item">
-    <img src="{{ company_sign_url }}" alt="توقيع الشركة" class="doc-seal-sign"
+    <img src="{{ sign_src }}" alt="توقيع الشركة" class="doc-seal-sign"
          style="--doc-seal-width:{{ company_sign_width|default(140) }}px;--doc-seal-x:{{ company_sign_offset_x|default(0) }}px;--doc-seal-y:{{ company_sign_offset_y|default(0) }}px">
     <div class="doc-seal-caption">توقيع الشركة</div>
   </div>
