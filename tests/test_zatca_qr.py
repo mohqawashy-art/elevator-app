@@ -137,6 +137,8 @@ def test_tax_invoices_print_with_qr(client, invoice_type):
     html = r.get_data(as_text=True)
     assert 'data:image/png;base64,' in html
     assert 'امسح الرمز' in html
+    assert 'A4 portrait' in html
+    assert 'A5 landscape' not in html
     if 'مبسطة' in invoice_type:
         assert 'فاتورة ضريبية مبسطة' in html
     else:
@@ -154,6 +156,8 @@ def test_receipt_voucher_print_without_qr(client):
     assert r.status_code == 200
     html = r.get_data(as_text=True)
     assert 'سند قبض' in html
+    assert 'A5 landscape' in html
+    assert 'page-a5-land' in html
     assert 'data:image/png;base64,' not in html
 
 

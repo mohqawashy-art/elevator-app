@@ -184,7 +184,12 @@ def invoice_print_payload(invo: Invoice, *, base_url: str = '') -> dict:
         if is_pay_voucher and invo.parent_invoice_id else None
     )
     parent_receipt_code = (parent_receipt.code or '').strip() if parent_receipt else ''
-    page_size = 'A5' if is_receipt else 'A4'
+    if doc_title == 'سند قبض':
+        page_size = 'A5 landscape'
+    elif is_receipt:
+        page_size = 'A5'
+    else:
+        page_size = 'A4'
     status = invo.status or '—'
     is_paid = _is_paid_status(status)
 

@@ -26,7 +26,8 @@ body{
 .toolbar .btn-wa{background:#25D366;color:#fff;margin-left:8px}
 .toolbar .btn-wa:hover{background:#1da851}
 
-{% if is_receipt %}@page{size:A5 portrait;margin:8mm}
+{% if doc_title == 'سند قبض' %}@page{size:A5 landscape;margin:6mm}
+{% elif is_receipt %}@page{size:A5 portrait;margin:8mm}
 {% else %}@page{size:A4 portrait;margin:10mm}{% endif %}
 
 .doc{
@@ -42,6 +43,7 @@ body.page-a5 .doc{width:148mm;max-width:148mm;min-height:auto}
   .toolbar,.compliance-box{display:none!important}
   body{background:#fff}
   .doc{margin:0;border:none;box-shadow:none;width:100%;max-width:none;min-height:277mm}
+  body.page-a5-land .doc{min-height:0;height:auto}
 }
 
 .inv-head{
@@ -187,9 +189,29 @@ body.page-a5 .inv-head{grid-template-columns:1fr}
 body.page-a5 .doc{min-height:auto}
 body.page-a5 .items-table{font-size:7px}
 body.page-a5 .qr-side img{width:85px;height:85px}
+
+body.page-a5-land .doc{width:210mm;max-width:210mm;min-height:148mm}
+body.page-a5-land .inv-head{grid-template-columns:1.15fr .85fr}
+body.page-a5-land .inv-brand{padding:8px 10px 6px}
+body.page-a5-land .brand-row img{width:auto;max-width:148px;max-height:42px}
+body.page-a5-land .seller-lines{gap:2px;margin-top:4px}
+body.page-a5-land .inv-title-side{padding:8px 10px 6px}
+body.page-a5-land .inv-title-side .big-title{font-size:18px}
+body.page-a5-land .facts-table{margin-top:4px}
+body.page-a5-land .sec-bar{padding:3px 10px}
+body.page-a5-land .cust-grid{padding:4px 10px}
+body.page-a5-land .items-table thead th,
+body.page-a5-land .items-table tbody td{padding:3px 4px}
+body.page-a5-land .bottom-grid{padding:6px 10px;gap:8px}
+body.page-a5-land .sum-table{min-width:220px;margin-bottom:4px}
+body.page-a5-land .tafqeet-line{padding:4px 8px;max-width:100%}
+body.page-a5-land .footer-box{padding:4px 10px}
+body.page-a5-land .contact-ribbon{padding:4px 10px}
+body.page-a5-land .doc-seal-stamp,
+body.page-a5-land .doc-seal-sign{max-height:34px}
 </style>
 </head>
-<body class="{% if is_receipt %}page-a5{% else %}page-a4{% endif %}"{% if request.args.get('popup') == '1' or request.args.get('print') == '1' %} data-lc-popup="1"{% endif %}>
+<body class="{% if doc_title == 'سند قبض' %}page-a5-land{% elif is_receipt %}page-a5{% else %}page-a4{% endif %}"{% if request.args.get('popup') == '1' or request.args.get('print') == '1' %} data-lc-popup="1"{% endif %}>
 {% macro money(v) %}<span class="money">{{ '%.2f'|format(v) }}<span class="cur">ر.س</span></span>{% endmacro %}
 
 <div class="toolbar">
@@ -295,14 +317,12 @@ body.page-a5 .qr-side img{width:85px;height:85px}
     <div class="cust-rows">
       <div class="cust-row">
         <span class="k">الاسم</span><span class="v">{{ customer_name }}</span>
-        <span></span><span></span>
-      </div>
-      {% if customer_phone %}
-      <div class="cust-row">
+        {% if customer_phone %}
         <span class="k">الجوال</span><span class="v ltr">{{ customer_phone }}</span>
+        {% else %}
         <span></span><span></span>
+        {% endif %}
       </div>
-      {% endif %}
     </div>
   </div>
   {% endif %}
