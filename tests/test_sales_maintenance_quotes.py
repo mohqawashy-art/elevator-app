@@ -132,7 +132,7 @@ def test_maintenance_quote_spare_parts_and_seal_flags(client):
     printed = client.get(f'/sales/maintenance-quotes/{qid}/print')
     html = printed.get_data(as_text=True)
     assert printed.status_code == 200
-    assert 'عرض قطع الغيار' in html
+    assert 'عرض قطع الغيار' not in html
     assert 'عرض سعر — عقد صيانة مصاعد' in html
     assert 'عرض سعر قطع غيار' in html
     assert 'باب كابينة' in html
@@ -161,7 +161,7 @@ def test_maintenance_quote_spare_parts_and_seal_flags(client):
     form = client.get(f'/sales/maintenance-quotes/{qid}')
     form_html = form.get_data(as_text=True)
     assert form.status_code == 200
-    assert 'عرض قطع الغيار' in form_html
+    assert 'عرض قطع الغيار' not in form_html
 
 
 def test_approve_maintenance_quote_creates_contract(client):

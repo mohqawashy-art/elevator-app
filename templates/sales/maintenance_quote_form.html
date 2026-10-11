@@ -100,7 +100,6 @@
         <a href="{{ url_for('sales.maintenance_quotes_list') }}" class="btn btn-secondary btn-sm">العروض</a>
         <a href="{{ url_for('sales.hub') }}" class="btn btn-secondary btn-sm">المبيعات</a>
         {% if quote %}<a href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id) }}" class="btn btn-secondary btn-sm lc-open-tab">طباعة</a>{% endif %}
-        {% if quote and spare_parts %}<a href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id, parts=1) }}" class="btn btn-secondary btn-sm lc-open-tab">عرض قطع الغيار</a>{% endif %}
       </div>
     </div>
 
@@ -371,12 +370,10 @@
         <button type="submit" name="action" value="save" class="btn btn-primary">حفظ العرض</button>
         <button type="submit" name="action" value="save_print" class="btn btn-secondary">حفظ وطباعة</button>
         {% if quote %}<a href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id) }}" class="btn btn-secondary lc-open-tab">طباعة</a>{% endif %}
-        {% if quote and spare_parts %}<a href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id, parts=1) }}" class="btn btn-secondary lc-open-tab">عرض قطع الغيار</a>{% endif %}
       </div>
       {% elif quote %}
       <div class="actions">
         <a href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id) }}" class="btn btn-secondary lc-open-tab">طباعة</a>
-        {% if spare_parts %}<a href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id, parts=1) }}" class="btn btn-secondary lc-open-tab">عرض قطع الغيار</a>{% endif %}
       </div>
       {% endif %}
     </form>
@@ -384,7 +381,6 @@
     {% if quote and quote.status != 'مقبول' %}
     <div class="actions" style="margin-top:12px">
       <a class="btn btn-secondary lc-open-tab" href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id) }}">طباعة العرض</a>
-      {% if spare_parts %}<a class="btn btn-secondary lc-open-tab" href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id, parts=1) }}">عرض قطع الغيار</a>{% endif %}
       <a class="btn btn-secondary" href="{{ url_for('sales.maintenance_quote_deliver', quote_id=quote.id, channel='whatsapp') }}" target="_blank" rel="noopener">إرسال واتساب</a>
       <a class="btn btn-secondary" href="{{ url_for('sales.maintenance_quote_deliver', quote_id=quote.id, channel='email') }}">إرسال إيميل</a>
       <form method="post" action="{{ url_for('sales.maintenance_quote_approve', quote_id=quote.id) }}" onsubmit="return confirm('تأكيد موافقة العميل وإنشاء عقد الصيانة؟')">

@@ -43,9 +43,6 @@
 {% set elev_count = survey_units|length if survey_units else 0 %}
 <div class="toolbar">
   <button class="btn btn-primary" type="button" onclick="window.print()">طباعة / PDF</button>
-  {% if spare_parts and not parts_only %}
-  <a class="btn" href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id, parts=1) }}">عرض قطع الغيار</a>
-  {% endif %}
   <a class="btn" href="{{ url_for('sales.maintenance_quote_edit', quote_id=quote.id) }}">← العرض</a>
   <a class="btn" href="{{ url_for('sales.maintenance_quotes_list') }}">قائمة العروض</a>
 </div>
