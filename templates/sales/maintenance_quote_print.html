@@ -335,8 +335,8 @@
           <td>{{ p.category or '—' }}</td>
           <td>{% if p.code %}<b>{{ p.code }}</b> — {% endif %}{{ p.name }}</td>
           <td class="num">{% if p.qty == (p.qty|int) %}{{ '{:,}'.format(p.qty|int) }}{% else %}{{ '{:,.2f}'.format(p.qty or 0) }}{% endif %}</td>
-          <td class="num">{{ '{:,.3f}'.format(p.unit_price or 0) }}</td>
-          <td class="num">{{ '{:,.3f}'.format(p.line_total or 0) }}</td>
+          <td class="num">{{ '{:,.2f}'.format(p.unit_price or 0) }}</td>
+          <td class="num">{{ '{:,.2f}'.format(p.line_total or 0) }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -348,9 +348,9 @@
         {% if co and co.vat_number %}<br><b>الرقم الضريبي:</b> {{ co.vat_number }}{% endif %}
       </div>
       <div class="totals">
-        <div class="r"><span>قبل الضريبة</span><b>{{ '{:,.3f}'.format(parts_totals.subtotal or 0) }} ر.س</b></div>
-        <div class="r"><span>ضريبة ({{ '%.0f'|format(parts_totals.tax_pct or 0) }}%)</span><b>{{ '{:,.3f}'.format(parts_totals.tax_amount or 0) }} ر.س</b></div>
-        <div class="g"><span>إجمالي القطع</span><span>{{ '{:,.3f}'.format(parts_totals.total or 0) }} ر.س</span></div>
+        <div class="r"><span>قبل الضريبة</span><b>{{ '{:,.2f}'.format(parts_totals.subtotal or 0) }} ر.س</b></div>
+        <div class="r"><span>ضريبة ({{ '%.0f'|format(parts_totals.tax_pct or 0) }}%)</span><b>{{ '{:,.2f}'.format(parts_totals.tax_amount or 0) }} ر.س</b></div>
+        <div class="g"><span>إجمالي القطع</span><span>{{ '{:,.2f}'.format(parts_totals.total or 0) }} ر.س</span></div>
         <div class="tafqit">{{ parts_totals.words }}</div>
       </div>
     </div>

@@ -28,14 +28,14 @@ def money_round(n) -> float:
 
 
 def money_round_3(n) -> float:
-    """سعر قطعة الغيار بثلاث خانات عشرية."""
+    """سعر قطعة الغيار برقمين عشريين."""
     from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
     try:
         raw = Decimal(str(n if n not in (None, '') else 0))
     except (InvalidOperation, ValueError, TypeError):
         return 0.0
-    return float(raw.quantize(Decimal('0.001'), rounding=ROUND_HALF_UP))
+    return float(raw.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP))
 
 
 def recalc_quote_totals(quote: MaintenanceQuote) -> None:

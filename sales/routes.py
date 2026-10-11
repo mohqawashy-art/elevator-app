@@ -205,7 +205,7 @@ def quote_money_box(value, total) -> dict:
 
 
 def spare_parts_print_rows(parts, tax_pct) -> tuple[list[dict], dict]:
-    """أسعار القطع تُطبع كما حُفظت بثلاث خانات، والتفقيط على أقرب ريال."""
+    """أسعار القطع تُطبع كما حُفظت برقمين عشريين، والتفقيط على أقرب ريال."""
     rows = []
     for part in parts or []:
         row = dict(part)
