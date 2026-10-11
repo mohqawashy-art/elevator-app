@@ -11,6 +11,19 @@ from sales.service import (
 from tenant_scope import assign_organization, tenant_query
 
 
+def test_spare_part_price_keeps_three_decimals_on_print():
+    from sales.routes import _part_row, spare_parts_print_rows
+
+    row = _part_row('باب', 2, '100.125')
+    assert row['unit_price'] == 100.125
+    assert row['line_total'] == 200.25
+    rows, box = spare_parts_print_rows([row], 15)
+    assert rows[0]['unit_price'] == 100.125
+    assert box['total'] == 230.288
+    other, _ = spare_parts_print_rows([_part_row('باب', 1, '100.400')], 0)
+    assert other[0]['unit_price'] == 100.4
+
+
 def test_quote_money_rounds_half_up_and_spells_the_total():
     from sales.routes import nearest_riyal, quote_money_box
 
@@ -136,7 +149,7 @@ def test_maintenance_quote_spare_parts_and_seal_flags(client):
         'part_name': ['باب كابينة', ''],
         'part_category': ['أبواب', ''],
         'part_qty': ['2', ''],
-        'part_price': ['100', ''],
+        'part_price': ['100.125', ''],
         'show_stamp': '0',
         'show_sign': '1',
     }, follow_redirects=False)
@@ -148,6 +161,7 @@ def test_maintenance_quote_spare_parts_and_seal_flags(client):
         assert saved.show_sign is True
         assert money_round(saved.total) == 2300
         assert 'باب كابينة' in (saved.spare_parts_json or '')
+        assert '100.125' in (saved.spare_parts_json or '')
 
     printed = client.get(f'/sales/maintenance-quotes/{qid}/print')
     html = printed.get_data(as_text=True)
@@ -163,7 +177,11 @@ def test_maintenance_quote_spare_parts_and_seal_flags(client):
     assert i_client < i_elev < i_dur < i_notes < i_pkg
     assert 'عرض سعر قطع غيار' in html
     assert 'باب كابينة' in html
+    assert '100.125' in html
+    assert '200.250' in html
+    assert '230.288' in html
     assert 'أبواب' in html
+    assert 'class="val" dir="ltr"' not in html
     assert 'sheet-parts sheet-break' in html
     assert 'صفحة 2 من 2' in html
     assert 'size:A4' in html or 'size: A4' in html

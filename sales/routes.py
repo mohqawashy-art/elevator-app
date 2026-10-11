@@ -23,6 +23,7 @@ from sales.service import (
     create_install_project_and_quote_from_estimate,
     delete_maintenance_quote,
     money_round,
+    money_round_3,
     sync_quote_elevators,
 )
 from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
@@ -92,8 +93,10 @@ def _part_row(name, qty, unit_price, *, item_id=None, code='', category='') -> d
     name = (name or '').strip()
     if not name:
         return None
+    from decimal import Decimal
+
     qty_n = money_round(qty)
-    price_n = money_round(unit_price)
+    price_n = money_round_3(unit_price)
     return {
         'item_id': item_id,
         'code': (code or '').strip()[:40],
@@ -101,7 +104,7 @@ def _part_row(name, qty, unit_price, *, item_id=None, code='', category='') -> d
         'category': (category or '').strip()[:100],
         'qty': qty_n,
         'unit_price': price_n,
-        'line_total': money_round(qty_n * price_n),
+        'line_total': money_round_3(Decimal(str(qty_n)) * Decimal(str(price_n))),
     }
 
 
@@ -202,22 +205,25 @@ def quote_money_box(value, total) -> dict:
 
 
 def spare_parts_print_rows(parts, tax_pct) -> tuple[list[dict], dict]:
+    """أسعار القطع تُطبع كما حُفظت بثلاث خانات، والتفقيط على أقرب ريال."""
     rows = []
     for part in parts or []:
         row = dict(part)
-        row['unit_price'] = nearest_riyal(part.get('unit_price'))
-        row['line_total'] = max(0, nearest_riyal(part.get('line_total')))
+        row['unit_price'] = money_round_3(part.get('unit_price'))
+        row['line_total'] = max(0.0, money_round_3(part.get('line_total')))
         rows.append(row)
-    subtotal = sum(row['line_total'] for row in rows)
+    from decimal import Decimal
+
+    subtotal = money_round_3(sum(row['line_total'] for row in rows))
     pct = money_round(tax_pct)
-    tax = nearest_riyal(subtotal * float(pct or 0) / 100.0)
-    total = subtotal + tax
+    tax = money_round_3(Decimal(str(subtotal)) * Decimal(str(pct or 0)) / Decimal('100'))
+    total = money_round_3(Decimal(str(subtotal)) + Decimal(str(tax)))
     return rows, {
         'subtotal': subtotal,
         'tax_pct': pct,
         'tax_amount': tax,
         'total': total,
-        'words': quote_tafqit(total),
+        'words': quote_tafqit(nearest_riyal(total)),
     }
 
 

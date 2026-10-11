@@ -317,7 +317,7 @@
               <th>الصنف</th>
               <th>نوع القطعة</th>
               <th style="width:80px">الكمية</th>
-              <th style="width:110px">سعر الوحدة</th>
+              <th style="width:128px">سعر الوحدة</th>
               <th style="width:110px">الإجمالي</th>
               <th style="width:64px"></th>
             </tr>
@@ -336,14 +336,14 @@
               </td>
               <td><input name="part_category" value="{{ p.category or '' }}" placeholder="أبواب، كهرباء…" {% if quote and quote.status=='مقبول' %}readonly{% endif %}></td>
               <td><input name="part_qty" type="number" min="0" step="0.01" value="{{ p.qty or 0 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}></td>
-              <td><input name="part_price" type="number" min="0" step="0.01" value="{{ p.unit_price or 0 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}></td>
-              <td class="part-line">0.00</td>
+              <td><input name="part_price" type="number" min="0" step="0.001" value="{{ '%.3f'|format(p.unit_price or 0) }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}></td>
+              <td class="part-line">0.000</td>
               <td>{% if not quote or quote.status != 'مقبول' %}<button type="button" class="btn btn-secondary part-remove">حذف</button>{% endif %}</td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
-        <div class="parts-sum">إجمالي عرض القطع شامل الضريبة: <b id="parts-grand">0.00</b></div>
+        <div class="parts-sum">إجمالي عرض القطع شامل الضريبة: <b id="parts-grand">0.000</b></div>
         {% if not quote or quote.status != 'مقبول' %}
         <button type="button" class="btn btn-secondary" id="add-part" style="margin-top:8px">+ قطعة غيار</button>
         {% endif %}
@@ -526,7 +526,7 @@
   document.getElementById('total_incl_tax').addEventListener('input', recalcTotals);
   document.getElementById('tax_pct').addEventListener('input', recalcTotals);
   var PART_ITEMS = {{ inventory_items_js|default([])|tojson }};
-  function partMoney(n){ n=Number(n)||0; return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function partMoney(n){ n=Number(n)||0; return n.toLocaleString('en-US',{minimumFractionDigits:3,maximumFractionDigits:3}); }
   function partRow(){
     var row = document.createElement('tr');
     row.className = 'part-row';
@@ -538,8 +538,8 @@
       + '<div class="part-search-list"></div></div></td>'
       + '<td><input name="part_category" placeholder="أبواب، كهرباء…"></td>'
       + '<td><input name="part_qty" type="number" min="0" step="0.01" value="1"></td>'
-      + '<td><input name="part_price" type="number" min="0" step="0.01" value="0"></td>'
-      + '<td class="part-line">0.00</td>'
+      + '<td><input name="part_price" type="number" min="0" step="0.001" value="0.000"></td>'
+      + '<td class="part-line">0.000</td>'
       + '<td><button type="button" class="btn btn-secondary part-remove">حذف</button></td>';
     return row;
   }
