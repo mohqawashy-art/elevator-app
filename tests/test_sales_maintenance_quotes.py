@@ -68,6 +68,72 @@ def test_maintenance_quote_print_page(client):
     assert 'q-sign-box' in html
     assert 'document-company-seal.css' in html
     assert 'طباعة / PDF' in html
+    assert 'قطع الغيار غير مشمولة في سعر عقد الصيانة' in html
+    assert 'data-stamp="1"' in html
+    assert 'data-sign="1"' in html
+
+
+def test_maintenance_quote_spare_parts_and_seal_flags(client):
+    login_as = __import__('tests.conftest', fromlist=['login_as']).login_as
+    login_as(client, 'admin')
+    with client.application.app_context():
+        cust = Customer(code='C-9004', name='عميل قطع غيار', status='نشط')
+        assign_organization(cust)
+        db.session.add(cust)
+        db.session.flush()
+        quote = MaintenanceQuote(
+            code='MQ-90004',
+            customer_id=cust.id,
+            status='مسودة',
+            duration_months=12,
+            maint_frequency='شهري',
+            visits_per_month=1,
+            tax_pct=15,
+            notes='باقة الخدمة: قياسي',
+        )
+        assign_organization(quote)
+        apply_total_including_tax(quote, 2300)
+        db.session.add(quote)
+        db.session.commit()
+        qid = quote.id
+        cid = cust.id
+
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+
+    r = client.post(f'/sales/maintenance-quotes/{qid}', data={
+        'csrf_token': 'test-csrf',
+        'action': 'save',
+        'customer_id': cid,
+        'duration_months': '12',
+        'maint_frequency': 'شهري',
+        'visits_per_month': '1',
+        'tax_pct': '15',
+        'total_incl_tax': '2300',
+        'service_package': 'قياسي',
+        'part_name': ['باب كابينة', ''],
+        'part_qty': ['2', ''],
+        'part_note': ['مصعد 1', ''],
+        'show_stamp': '0',
+        'show_sign': '1',
+    }, follow_redirects=False)
+    assert r.status_code in (302, 303)
+
+    with client.application.app_context():
+        saved = db.session.get(MaintenanceQuote, qid)
+        assert saved.show_stamp is False
+        assert saved.show_sign is True
+        assert money_round(saved.total) == 2300
+        assert 'باب كابينة' in (saved.spare_parts_json or '')
+
+    printed = client.get(f'/sales/maintenance-quotes/{qid}/print')
+    html = printed.get_data(as_text=True)
+    assert printed.status_code == 200
+    assert 'باب كابينة' in html
+    assert 'غير مشمولة في سعر عقد الصيانة' in html
+    assert 'data-stamp="0"' in html
+    assert 'data-sign="1"' in html
+    assert 'doc-seal-stamp' not in html
 
 
 def test_approve_maintenance_quote_creates_contract(client):

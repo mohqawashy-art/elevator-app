@@ -1079,6 +1079,9 @@ class MaintenanceQuote(TenantMixin, db.Model):
     district = db.Column(db.String(100))
     address = db.Column(db.Text)
     notes = db.Column(db.Text)
+    spare_parts_json = db.Column(db.Text)  # قطع غيار اختيارية — خارج سعر العقد
+    show_stamp = db.Column(db.Boolean, default=True)
+    show_sign = db.Column(db.Boolean, default=True)
     result_contract_id = db.Column(db.Integer, db.ForeignKey('contracts.id'), nullable=True)
     approved_at = db.Column(db.DateTime)
     sent_at = db.Column(db.DateTime)

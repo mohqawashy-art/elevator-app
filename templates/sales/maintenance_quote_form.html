@@ -62,6 +62,12 @@
 .mq-near-item small{color:var(--text3);font-size:11px}
 .mq-near-item.on{border-color:var(--gold);background:rgba(200,160,85,.08)}
 .mq-near-item:hover{border-color:var(--accent)}
+.parts-note{font-size:12px;line-height:1.6;background:rgba(224,144,48,.12);border:1px solid rgba(224,144,48,.4);border-radius:var(--r-sm);padding:8px 10px;margin:0 0 10px;color:var(--text1)}
+.part-row{display:grid;grid-template-columns:1.4fr 90px 1fr auto;gap:8px;align-items:end;margin-bottom:8px}
+.part-row .btn{padding:8px 10px}
+.seal-flags{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px}
+.seal-flags label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text1)}
+@media(max-width:860px){.part-row{grid-template-columns:1fr}}
 .mq-map-pop{font-size:12px;line-height:1.5;max-width:220px}
 @media(max-width:1100px){.mq-layout{grid-template-columns:1fr}.mq-map-card{position:static}}
 @media(max-width:860px){.mq-grid,.pkg,.scope,.totals{grid-template-columns:1fr}}
@@ -207,7 +213,7 @@
           <label class="{% if pkg=='شامل' %}selected{% endif %}">
             <input type="radio" name="service_package" value="شامل" {% if pkg=='شامل' %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
             <b>شامل</b>
-            <small>قياسي + طوارئ 24/7 + أولوية قطع غيار (حسب الاتفاق).</small>
+            <small>قياسي + طوارئ 24/7. قطع الغيار غير مشمولة وتُسعَّر منفصلة.</small>
           </label>
         </div>
         <div class="scope" style="margin-top:12px" id="scope-box">
@@ -289,6 +295,51 @@
             <label>ملاحظات للعميل</label>
             <textarea name="notes_body" id="notes_body" rows="3" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>{{ notes_body|default('') }}</textarea>
           </div>
+        </div>
+      </section>
+
+      <section class="mq-card">
+        <h2><span class="n">6</span> قطع الغيار والختم</h2>
+        <p class="parts-note">قطع الغيار غير مشمولة في سعر عقد الصيانة، وتُسعَّر وتُفوتر بشكل منفصل عند الحاجة. أضفها هنا فقط إذا لزم الأمر — لا تُضاف إلى إجمالي العرض.</p>
+        <div id="parts-rows">
+          {% for p in spare_parts|default([]) %}
+          <div class="part-row">
+            <div class="field">
+              <label>القطعة</label>
+              <input name="part_name" value="{{ p.name }}" placeholder="اسم القطعة" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+            </div>
+            <div class="field">
+              <label>الكمية</label>
+              <input name="part_qty" value="{{ p.qty }}" placeholder="1" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+            </div>
+            <div class="field">
+              <label>ملاحظة</label>
+              <input name="part_note" value="{{ p.note }}" placeholder="المصعد أو الملاحظة" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+            </div>
+            {% if not quote or quote.status != 'مقبول' %}
+            <button type="button" class="btn btn-secondary part-remove">حذف</button>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% if not quote or quote.status != 'مقبول' %}
+        <button type="button" class="btn btn-secondary" id="add-part">+ قطعة غيار</button>
+        {% endif %}
+        <div class="field full" style="margin-top:14px">
+          <label>ختم وتوقيع الشركة على هذا العرض فقط</label>
+          <div class="seal-flags">
+            <label>
+              <input type="hidden" name="show_stamp" value="0">
+              <input type="checkbox" name="show_stamp" value="1" {% if show_stamp|default(true) %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+              إظهار الختم
+            </label>
+            <label>
+              <input type="hidden" name="show_sign" value="0">
+              <input type="checkbox" name="show_sign" value="1" {% if show_sign|default(true) %}checked{% endif %} {% if quote and quote.status=='مقبول' %}disabled{% endif %}>
+              إظهار التوقيع
+            </label>
+          </div>
+          <div class="hint">الصور تُرفع مرة واحدة من إعدادات الشركة. الإظهار والإخفاء هنا يخص عرض سعر الصيانة ولا يغيّر باقي المستندات.</div>
         </div>
       </section>
 
@@ -452,6 +503,26 @@
   document.getElementById('visits_per_month').addEventListener('input', visitsHint);
   document.getElementById('total_incl_tax').addEventListener('input', recalcTotals);
   document.getElementById('tax_pct').addEventListener('input', recalcTotals);
+  function partRow(){
+    var row = document.createElement('div');
+    row.className = 'part-row';
+    row.innerHTML = '<div class="field"><label>القطعة</label><input name="part_name" placeholder="اسم القطعة"></div>'
+      + '<div class="field"><label>الكمية</label><input name="part_qty" placeholder="1"></div>'
+      + '<div class="field"><label>ملاحظة</label><input name="part_note" placeholder="المصعد أو الملاحظة"></div>'
+      + '<button type="button" class="btn btn-secondary part-remove">حذف</button>';
+    return row;
+  }
+  var partsBox = document.getElementById('parts-rows');
+  var addPart = document.getElementById('add-part');
+  if(partsBox && addPart && !locked){
+    addPart.addEventListener('click', function(){ partsBox.appendChild(partRow()); });
+    partsBox.addEventListener('click', function(ev){
+      var btn = ev.target.closest('.part-remove');
+      if(!btn) return;
+      var row = btn.closest('.part-row');
+      if(row) row.remove();
+    });
+  }
   visitsHint();
   if(!document.getElementById('end_date').value) syncEnd();
   recalcTotals();

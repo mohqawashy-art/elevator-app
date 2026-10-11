@@ -1722,6 +1722,11 @@ def _sqlite_legacy_schema_patches():
                 ('signature_data', 'TEXT'),
                 ('pdf_path', 'VARCHAR(300)'),
             ],
+            'maintenance_quotes': [
+                ('spare_parts_json', 'TEXT'),
+                ('show_stamp', 'BOOLEAN DEFAULT 1'),
+                ('show_sign', 'BOOLEAN DEFAULT 1'),
+            ],
             'installation_quotations': [
                 ('customer_id', 'INTEGER'),
                 ('approved_at', 'DATETIME'),

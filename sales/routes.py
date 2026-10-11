@@ -1,6 +1,7 @@
 """مسارات قسم المبيعات."""
 from __future__ import annotations
 
+import json
 from datetime import date, datetime
 
 from flask import flash, g, redirect, render_template, request, url_for
@@ -66,6 +67,91 @@ def _compose_maint_notes(form) -> str:
     return '\n'.join(parts)
 
 
+def _form_flag(form, name: str, default: bool = True) -> bool:
+    """صندوق اختيار مع حقل مخفي 0 — القيمة 1 تعني إظهار."""
+    if hasattr(form, 'getlist'):
+        values = form.getlist(name)
+        if not values:
+            return default
+        return '1' in values
+    raw = form.get(name)
+    if raw is None:
+        return default
+    return str(raw) == '1'
+
+
+def parse_spare_parts(raw) -> list[dict]:
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(data, list):
+        return []
+    out = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get('name') or '').strip()
+        if not name:
+            continue
+        out.append({
+            'name': name[:200],
+            'qty': str(item.get('qty') or '').strip()[:40],
+            'note': str(item.get('note') or '').strip()[:300],
+        })
+    return out
+
+
+def spare_parts_from_form(form) -> list[dict]:
+    names = form.getlist('part_name') if hasattr(form, 'getlist') else []
+    qtys = form.getlist('part_qty') if hasattr(form, 'getlist') else []
+    notes = form.getlist('part_note') if hasattr(form, 'getlist') else []
+    out = []
+    for i, name in enumerate(names):
+        name = (name or '').strip()
+        if not name:
+            continue
+        out.append({
+            'name': name[:200],
+            'qty': (qtys[i] if i < len(qtys) else '').strip()[:40],
+            'note': (notes[i] if i < len(notes) else '').strip()[:300],
+        })
+    return out
+
+
+def survey_spare_parts(units) -> list[dict]:
+    """قطع ذُكرت في فحص الفني — للعرض فقط إلى أن يحفظها المكتب."""
+    out = []
+    for unit in units or []:
+        if not isinstance(unit, dict):
+            continue
+        scope = str(unit.get('spare_parts_scope') or '').strip()
+        if not unit.get('needs_spare_parts') and not scope:
+            continue
+        label = str(unit.get('unit_label') or '').strip()
+        out.append({
+            'name': (scope or 'قطع غيار')[:200],
+            'qty': '',
+            'note': label[:300],
+        })
+    return out
+
+
+def spare_parts_for_quote(quote, survey_units) -> list[dict]:
+    raw = getattr(quote, 'spare_parts_json', None) if quote else None
+    if raw is None:
+        return survey_spare_parts(survey_units)
+    return parse_spare_parts(raw)
+
+
+def _seal_on(value) -> bool:
+    if value is None:
+        return True
+    return bool(value)
+
+
 def _apply_maint_quote_form(quote: MaintenanceQuote, form) -> None:
     quote.customer_id = int(form.get('customer_id') or 0)
     quote.duration_months = int(form.get('duration_months') or 12)
@@ -92,6 +178,10 @@ def _apply_maint_quote_form(quote: MaintenanceQuote, form) -> None:
     quote.district = (form.get('district') or '').strip() or None
     quote.address = (form.get('address') or '').strip() or None
     quote.notes = _compose_maint_notes(form) or None
+    parts = spare_parts_from_form(form)
+    quote.spare_parts_json = json.dumps(parts, ensure_ascii=False) if parts else '[]'
+    quote.show_stamp = _form_flag(form, 'show_stamp', True)
+    quote.show_sign = _form_flag(form, 'show_sign', True)
     if quote.start_date and quote.duration_months and not quote.end_date:
         from sales.service import add_months
         quote.end_date = add_months(quote.start_date, quote.duration_months)
@@ -168,6 +258,9 @@ def _maint_form_context(quote=None, *, selected_elevator_ids=None):
         maint_survey=survey,
         survey_units=survey_units,
         technicians=technicians,
+        spare_parts=spare_parts_for_quote(quote, survey_units),
+        show_stamp=_seal_on(getattr(quote, 'show_stamp', None) if quote else True),
+        show_sign=_seal_on(getattr(quote, 'show_sign', None) if quote else True),
     )
 
 
@@ -735,6 +828,9 @@ def maintenance_quote_print(quote_id):
         quote=quote,
         survey=survey if survey and survey.status == SURVEY_DONE else None,
         survey_units=survey_units,
+        spare_parts=spare_parts_for_quote(quote, survey_units),
+        quote_show_stamp=_seal_on(quote.show_stamp),
+        quote_show_sign=_seal_on(quote.show_sign),
         package=package,
         scope_items=scope,
         notes_body=notes_body,
