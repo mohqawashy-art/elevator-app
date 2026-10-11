@@ -26,7 +26,7 @@ body{
 .toolbar .btn-wa{background:#25D366;color:#fff;margin-left:8px}
 .toolbar .btn-wa:hover{background:#1da851}
 
-{% if doc_title == 'سند قبض' %}@page{size:A5 landscape;margin:6mm}
+{% if doc_title == 'سند قبض' %}@page{size:A5 landscape;margin:4mm}
 {% elif is_receipt %}@page{size:A5 portrait;margin:8mm}
 {% else %}@page{size:A4 portrait;margin:10mm}{% endif %}
 
@@ -43,7 +43,10 @@ body.page-a5 .doc{width:148mm;max-width:148mm;min-height:auto}
   .toolbar,.compliance-box{display:none!important}
   body{background:#fff}
   .doc{margin:0;border:none;box-shadow:none;width:100%;max-width:none;min-height:277mm}
-  body.page-a5-land .doc{min-height:0;height:auto}
+  html,body.page-a5-land{height:auto;background:#fff}
+  body.page-a5-land .doc{
+    width:100%;max-width:none;height:140mm;min-height:140mm;max-height:140mm;margin:0
+  }
 }
 
 .inv-head{
@@ -190,13 +193,26 @@ body.page-a5 .doc{min-height:auto}
 body.page-a5 .items-table{font-size:7px}
 body.page-a5 .qr-side img{width:85px;height:85px}
 
-body.page-a5-land .doc{width:210mm;max-width:210mm;min-height:148mm}
-body.page-a5-land .inv-head{grid-template-columns:1.15fr .85fr}
+body.page-a5-land .doc{
+  width:210mm;max-width:210mm;height:140mm;min-height:140mm;max-height:140mm;overflow:hidden
+}
+body.page-a5-land .doc-body{flex:1;min-height:0}
+body.page-a5-land .inv-head{grid-template-columns:minmax(0,1.25fr) minmax(0,.9fr)}
+body.page-a5-land .inv-brand,
+body.page-a5-land .inv-title-side{min-width:0}
 body.page-a5-land .inv-brand{padding:8px 10px 6px}
 body.page-a5-land .brand-row img{width:auto;max-width:148px;max-height:42px}
 body.page-a5-land .seller-lines{gap:2px;margin-top:4px}
-body.page-a5-land .inv-title-side{padding:8px 10px 6px}
-body.page-a5-land .inv-title-side .big-title{font-size:18px}
+body.page-a5-land .seller-line .val{overflow-wrap:anywhere}
+body.page-a5-land .inv-title-side{
+  padding:8px 10px 6px;direction:rtl;align-items:stretch;text-align:right
+}
+body.page-a5-land .inv-title-side .big-title{
+  font-size:20px;direction:rtl;text-align:right
+}
+body.page-a5-land .inv-title-side .big-sub{
+  direction:ltr;text-align:right;unicode-bidi:isolate;width:100%
+}
 body.page-a5-land .facts-table{margin-top:4px}
 body.page-a5-land .sec-bar{padding:3px 10px}
 body.page-a5-land .cust-grid{padding:4px 10px}
@@ -205,8 +221,9 @@ body.page-a5-land .items-table tbody td{padding:3px 4px}
 body.page-a5-land .bottom-grid{padding:6px 10px;gap:8px}
 body.page-a5-land .sum-table{min-width:220px;margin-bottom:4px}
 body.page-a5-land .tafqeet-line{padding:4px 8px;max-width:100%}
-body.page-a5-land .footer-box{padding:4px 10px}
-body.page-a5-land .contact-ribbon{padding:4px 10px}
+body.page-a5-land .footer-grid{flex:1;min-height:0;grid-template-rows:1fr;align-items:stretch}
+body.page-a5-land .footer-box{padding:6px 10px}
+body.page-a5-land .contact-ribbon{margin-top:0;padding:5px 10px}
 body.page-a5-land .doc-seal-stamp,
 body.page-a5-land .doc-seal-sign{max-height:34px}
 </style>
