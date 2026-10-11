@@ -80,6 +80,31 @@ def _form_flag(form, name: str, default: bool = True) -> bool:
     return str(raw) == '1'
 
 
+def _part_item_id(raw):
+    try:
+        n = int(raw)
+    except (TypeError, ValueError):
+        return None
+    return n if n > 0 else None
+
+
+def _part_row(name, qty, unit_price, *, item_id=None, code='', category='') -> dict | None:
+    name = (name or '').strip()
+    if not name:
+        return None
+    qty_n = money_round(qty)
+    price_n = money_round(unit_price)
+    return {
+        'item_id': item_id,
+        'code': (code or '').strip()[:40],
+        'name': name[:200],
+        'category': (category or '').strip()[:100],
+        'qty': qty_n,
+        'unit_price': price_n,
+        'line_total': money_round(qty_n * price_n),
+    }
+
+
 def parse_spare_parts(raw) -> list[dict]:
     if not raw:
         return []
@@ -93,32 +118,54 @@ def parse_spare_parts(raw) -> list[dict]:
     for item in data:
         if not isinstance(item, dict):
             continue
-        name = str(item.get('name') or '').strip()
-        if not name:
-            continue
-        out.append({
-            'name': name[:200],
-            'qty': str(item.get('qty') or '').strip()[:40],
-            'note': str(item.get('note') or '').strip()[:300],
-        })
+        row = _part_row(
+            item.get('name'),
+            item.get('qty'),
+            item.get('unit_price'),
+            item_id=_part_item_id(item.get('item_id')),
+            code=str(item.get('code') or ''),
+            category=str(item.get('category') or ''),
+        )
+        if row:
+            out.append(row)
     return out
 
 
 def spare_parts_from_form(form) -> list[dict]:
-    names = form.getlist('part_name') if hasattr(form, 'getlist') else []
-    qtys = form.getlist('part_qty') if hasattr(form, 'getlist') else []
-    notes = form.getlist('part_note') if hasattr(form, 'getlist') else []
+    def values(name):
+        return form.getlist(name) if hasattr(form, 'getlist') else []
+
+    names = values('part_name')
+    qtys = values('part_qty')
+    prices = values('part_price')
+    cats = values('part_category')
+    codes = values('part_code')
+    ids = values('part_item_id')
     out = []
     for i, name in enumerate(names):
-        name = (name or '').strip()
-        if not name:
-            continue
-        out.append({
-            'name': name[:200],
-            'qty': (qtys[i] if i < len(qtys) else '').strip()[:40],
-            'note': (notes[i] if i < len(notes) else '').strip()[:300],
-        })
+        row = _part_row(
+            name,
+            qtys[i] if i < len(qtys) else 0,
+            prices[i] if i < len(prices) else 0,
+            item_id=_part_item_id(ids[i] if i < len(ids) else None),
+            code=codes[i] if i < len(codes) else '',
+            category=cats[i] if i < len(cats) else '',
+        )
+        if row:
+            out.append(row)
     return out
+
+
+def spare_parts_totals(parts, tax_pct) -> dict:
+    subtotal = money_round(sum(money_round(p.get('line_total')) for p in parts or []))
+    pct = money_round(tax_pct)
+    tax = money_round(subtotal * pct / 100.0)
+    return {
+        'subtotal': subtotal,
+        'tax_pct': pct,
+        'tax_amount': tax,
+        'total': money_round(subtotal + tax),
+    }
 
 
 def survey_spare_parts(units) -> list[dict]:
@@ -130,12 +177,9 @@ def survey_spare_parts(units) -> list[dict]:
         scope = str(unit.get('spare_parts_scope') or '').strip()
         if not unit.get('needs_spare_parts') and not scope:
             continue
-        label = str(unit.get('unit_label') or '').strip()
-        out.append({
-            'name': (scope or 'قطع غيار')[:200],
-            'qty': '',
-            'note': label[:300],
-        })
+        row = _part_row(scope or 'قطع غيار', 1, 0)
+        if row:
+            out.append(row)
     return out
 
 
@@ -144,6 +188,22 @@ def spare_parts_for_quote(quote, survey_units) -> list[dict]:
     if raw is None:
         return survey_spare_parts(survey_units)
     return parse_spare_parts(raw)
+
+
+def _inventory_items_for_parts() -> list[dict]:
+    from models import InventoryItem
+
+    return [
+        {
+            'id': item.id,
+            'code': item.code or '',
+            'name': item.name or '',
+            'category': item.category or '',
+            'sell_price': float(item.sell_price or 0),
+            'buy_price': float(item.buy_price or 0),
+        }
+        for item in tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    ]
 
 
 def _seal_on(value) -> bool:
@@ -259,6 +319,7 @@ def _maint_form_context(quote=None, *, selected_elevator_ids=None):
         survey_units=survey_units,
         technicians=technicians,
         spare_parts=spare_parts_for_quote(quote, survey_units),
+        inventory_items_js=_inventory_items_for_parts(),
         show_stamp=_seal_on(getattr(quote, 'show_stamp', None) if quote else True),
         show_sign=_seal_on(getattr(quote, 'show_sign', None) if quote else True),
     )
@@ -823,12 +884,14 @@ def maintenance_quote_print(quote_id):
     survey_units = quote_survey_units_for_display(quote)
     package, scope, notes_body = _split_maint_notes(quote.notes if quote else None)
     survey = latest_survey_for_quote(quote.id)
+    spare_parts = spare_parts_for_quote(quote, survey_units)
     return render_template(
         'sales/maintenance_quote_print.html',
         quote=quote,
         survey=survey if survey and survey.status == SURVEY_DONE else None,
         survey_units=survey_units,
-        spare_parts=spare_parts_for_quote(quote, survey_units),
+        spare_parts=spare_parts,
+        parts_totals=spare_parts_totals(spare_parts, quote.tax_pct),
         quote_show_stamp=_seal_on(quote.show_stamp),
         quote_show_sign=_seal_on(quote.show_sign),
         package=package,

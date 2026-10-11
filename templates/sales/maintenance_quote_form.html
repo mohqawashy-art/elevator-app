@@ -63,11 +63,21 @@
 .mq-near-item.on{border-color:var(--gold);background:rgba(200,160,85,.08)}
 .mq-near-item:hover{border-color:var(--accent)}
 .parts-note{font-size:12px;line-height:1.6;background:rgba(224,144,48,.12);border:1px solid rgba(224,144,48,.4);border-radius:var(--r-sm);padding:8px 10px;margin:0 0 10px;color:var(--text1)}
-.part-row{display:grid;grid-template-columns:1.4fr 90px 1fr auto;gap:8px;align-items:end;margin-bottom:8px}
-.part-row .btn{padding:8px 10px}
+.parts-table{width:100%;border-collapse:collapse}
+.parts-table th,.parts-table td{padding:6px 4px;border-bottom:1px solid var(--border);vertical-align:top;text-align:right}
+.parts-table th{font-size:11px;color:var(--text2);font-weight:700}
+.parts-table input{width:100%;padding:8px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-family:inherit}
+.part-search{position:relative}
+.part-search-list{display:none;position:absolute;z-index:40;right:0;left:0;top:calc(100% + 2px);background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);max-height:200px;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+.part-search-list.open{display:block}
+.part-search-list button{display:block;width:100%;text-align:right;background:transparent;border:0;border-bottom:1px solid var(--border);color:var(--text1);padding:7px 8px;font:inherit;font-size:12px;cursor:pointer}
+.part-search-list button small{display:block;color:var(--text3);font-size:11px}
+.part-line{font-weight:700;padding-top:10px;white-space:nowrap}
+.parts-sum{margin-top:8px;font-size:13px}
+.parts-table .btn{padding:8px 10px}
 .seal-flags{display:flex;gap:16px;flex-wrap:wrap;margin-top:4px}
 .seal-flags label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--text1)}
-@media(max-width:860px){.part-row{grid-template-columns:1fr}}
+@media(max-width:860px){.parts-table{display:block;overflow:auto}}
 .mq-map-pop{font-size:12px;line-height:1.5;max-width:220px}
 @media(max-width:1100px){.mq-layout{grid-template-columns:1fr}.mq-map-card{position:static}}
 @media(max-width:860px){.mq-grid,.pkg,.scope,.totals{grid-template-columns:1fr}}
@@ -300,30 +310,42 @@
 
       <section class="mq-card">
         <h2><span class="n">6</span> قطع الغيار والختم</h2>
-        <p class="parts-note">قطع الغيار غير مشمولة في سعر عقد الصيانة، وتُسعَّر وتُفوتر بشكل منفصل عند الحاجة. أضفها هنا فقط إذا لزم الأمر — لا تُضاف إلى إجمالي العرض.</p>
-        <div id="parts-rows">
-          {% for p in spare_parts|default([]) %}
-          <div class="part-row">
-            <div class="field">
-              <label>القطعة</label>
-              <input name="part_name" value="{{ p.name }}" placeholder="اسم القطعة" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
-            </div>
-            <div class="field">
-              <label>الكمية</label>
-              <input name="part_qty" value="{{ p.qty }}" placeholder="1" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
-            </div>
-            <div class="field">
-              <label>ملاحظة</label>
-              <input name="part_note" value="{{ p.note }}" placeholder="المصعد أو الملاحظة" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
-            </div>
-            {% if not quote or quote.status != 'مقبول' %}
-            <button type="button" class="btn btn-secondary part-remove">حذف</button>
-            {% endif %}
-          </div>
-          {% endfor %}
-        </div>
+        <p class="parts-note">قطع الغيار غير مشمولة في سعر عقد الصيانة. إذا أضفت قطعاً تُطبع في صفحة ثانية كعرض سعر مستقل: نوع القطعة، الصنف، الكمية، سعر الوحدة، والإجمالي، مع الختم والتوقيع. لا تُضاف إلى إجمالي العقد.</p>
+        <table class="parts-table">
+          <thead>
+            <tr>
+              <th>الصنف</th>
+              <th>نوع القطعة</th>
+              <th style="width:80px">الكمية</th>
+              <th style="width:110px">سعر الوحدة</th>
+              <th style="width:110px">الإجمالي</th>
+              <th style="width:64px"></th>
+            </tr>
+          </thead>
+          <tbody id="parts-rows">
+            {% for p in spare_parts|default([]) %}
+            <tr class="part-row">
+              <td>
+                <div class="part-search">
+                  <input class="part-q" placeholder="ابحث بالكود أو اسم الصنف" value="{% if p.code %}{{ p.code }} — {% endif %}{{ p.name }}" autocomplete="off" {% if quote and quote.status=='مقبول' %}readonly{% endif %}>
+                  <input type="hidden" name="part_item_id" value="{{ p.item_id or '' }}">
+                  <input type="hidden" name="part_code" value="{{ p.code or '' }}">
+                  <input type="hidden" name="part_name" value="{{ p.name }}">
+                  <div class="part-search-list"></div>
+                </div>
+              </td>
+              <td><input name="part_category" value="{{ p.category or '' }}" placeholder="أبواب، كهرباء…" {% if quote and quote.status=='مقبول' %}readonly{% endif %}></td>
+              <td><input name="part_qty" type="number" min="0" step="0.01" value="{{ p.qty or 0 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}></td>
+              <td><input name="part_price" type="number" min="0" step="0.01" value="{{ p.unit_price or 0 }}" {% if quote and quote.status=='مقبول' %}readonly{% endif %}></td>
+              <td class="part-line">0.00</td>
+              <td>{% if not quote or quote.status != 'مقبول' %}<button type="button" class="btn btn-secondary part-remove">حذف</button>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        <div class="parts-sum">إجمالي عرض القطع شامل الضريبة: <b id="parts-grand">0.00</b></div>
         {% if not quote or quote.status != 'مقبول' %}
-        <button type="button" class="btn btn-secondary" id="add-part">+ قطعة غيار</button>
+        <button type="button" class="btn btn-secondary" id="add-part" style="margin-top:8px">+ قطعة غيار</button>
         {% endif %}
         <div class="field full" style="margin-top:14px">
           <label>ختم وتوقيع الشركة على هذا العرض فقط</label>
@@ -503,26 +525,126 @@
   document.getElementById('visits_per_month').addEventListener('input', visitsHint);
   document.getElementById('total_incl_tax').addEventListener('input', recalcTotals);
   document.getElementById('tax_pct').addEventListener('input', recalcTotals);
+  var PART_ITEMS = {{ inventory_items_js|default([])|tojson }};
+  function partMoney(n){ n=Number(n)||0; return n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
   function partRow(){
-    var row = document.createElement('div');
+    var row = document.createElement('tr');
     row.className = 'part-row';
-    row.innerHTML = '<div class="field"><label>القطعة</label><input name="part_name" placeholder="اسم القطعة"></div>'
-      + '<div class="field"><label>الكمية</label><input name="part_qty" placeholder="1"></div>'
-      + '<div class="field"><label>ملاحظة</label><input name="part_note" placeholder="المصعد أو الملاحظة"></div>'
-      + '<button type="button" class="btn btn-secondary part-remove">حذف</button>';
+    row.innerHTML = '<td><div class="part-search">'
+      + '<input class="part-q" placeholder="ابحث بالكود أو اسم الصنف" autocomplete="off">'
+      + '<input type="hidden" name="part_item_id" value="">'
+      + '<input type="hidden" name="part_code" value="">'
+      + '<input type="hidden" name="part_name" value="">'
+      + '<div class="part-search-list"></div></div></td>'
+      + '<td><input name="part_category" placeholder="أبواب، كهرباء…"></td>'
+      + '<td><input name="part_qty" type="number" min="0" step="0.01" value="1"></td>'
+      + '<td><input name="part_price" type="number" min="0" step="0.01" value="0"></td>'
+      + '<td class="part-line">0.00</td>'
+      + '<td><button type="button" class="btn btn-secondary part-remove">حذف</button></td>';
     return row;
+  }
+  function closePartLists(except){
+    document.querySelectorAll('.part-search-list.open').forEach(function(list){
+      if(list !== except) list.classList.remove('open');
+    });
+  }
+  function bindPartRow(row){
+    var q = row.querySelector('.part-q');
+    var list = row.querySelector('.part-search-list');
+    var idEl = row.querySelector('input[name=part_item_id]');
+    var codeEl = row.querySelector('input[name=part_code]');
+    var nameEl = row.querySelector('input[name=part_name]');
+    var catEl = row.querySelector('input[name=part_category]');
+    var priceEl = row.querySelector('input[name=part_price]');
+    function paint(items){
+      list.innerHTML = '';
+      items.forEach(function(it){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.innerHTML = '<b></b><small></small>';
+        btn.querySelector('b').textContent = (it.code ? it.code + ' — ' : '') + (it.name || '');
+        btn.querySelector('small').textContent = it.category || '';
+        btn.addEventListener('mousedown', function(ev){
+          ev.preventDefault();
+          idEl.value = it.id || '';
+          codeEl.value = it.code || '';
+          nameEl.value = it.name || '';
+          q.value = (it.code ? it.code + ' — ' : '') + (it.name || '');
+          if(catEl && it.category) catEl.value = it.category;
+          var sell = Number(it.sell_price)||0;
+          if(priceEl) priceEl.value = sell > 0 ? sell : (Number(it.buy_price)||0);
+          list.classList.remove('open');
+          recalcParts();
+        });
+        list.appendChild(btn);
+      });
+      list.classList.toggle('open', items.length > 0);
+    }
+    function showMatches(){
+      var needle = q.value.trim().toLowerCase();
+      var found = PART_ITEMS.filter(function(it){
+        var blob = ((it.code||'') + ' ' + (it.name||'') + ' ' + (it.category||'')).toLowerCase();
+        return !needle || blob.indexOf(needle) >= 0;
+      }).slice(0, 12);
+      paint(found);
+    }
+    if(q && !q.readOnly){
+      q.addEventListener('input', function(){
+        idEl.value = '';
+        codeEl.value = '';
+        nameEl.value = q.value.trim();
+        showMatches();
+        recalcParts();
+      });
+      q.addEventListener('focus', showMatches);
+    }
+    row.querySelectorAll('input[name=part_qty],input[name=part_price]').forEach(function(el){
+      el.addEventListener('input', recalcParts);
+    });
+  }
+  function recalcParts(){
+    var taxPct = Number((document.getElementById('tax_pct')||{}).value)||0;
+    var sub = 0;
+    document.querySelectorAll('#parts-rows .part-row').forEach(function(row){
+      var qty = Number((row.querySelector('input[name=part_qty]')||{}).value)||0;
+      var price = Number((row.querySelector('input[name=part_price]')||{}).value)||0;
+      var line = qty * price;
+      sub += line;
+      var cell = row.querySelector('.part-line');
+      if(cell) cell.textContent = partMoney(line);
+    });
+    var grand = sub * (1 + taxPct / 100);
+    var el = document.getElementById('parts-grand');
+    if(el) el.textContent = partMoney(grand);
   }
   var partsBox = document.getElementById('parts-rows');
   var addPart = document.getElementById('add-part');
-  if(partsBox && addPart && !locked){
-    addPart.addEventListener('click', function(){ partsBox.appendChild(partRow()); });
+  if(partsBox){
+    partsBox.querySelectorAll('.part-row').forEach(bindPartRow);
+    if(addPart && !locked){
+      addPart.addEventListener('click', function(){
+        var row = partRow();
+        partsBox.appendChild(row);
+        bindPartRow(row);
+        var q = row.querySelector('.part-q');
+        if(q) q.focus();
+        recalcParts();
+      });
+    }
     partsBox.addEventListener('click', function(ev){
       var btn = ev.target.closest('.part-remove');
-      if(!btn) return;
+      if(!btn || locked) return;
       var row = btn.closest('.part-row');
       if(row) row.remove();
+      recalcParts();
     });
   }
+  document.addEventListener('click', function(ev){
+    if(!ev.target.closest('.part-search')) closePartLists(null);
+  });
+  var taxPctEl = document.getElementById('tax_pct');
+  if(taxPctEl) taxPctEl.addEventListener('input', recalcParts);
+  recalcParts();
   visitsHint();
   if(!document.getElementById('end_date').value) syncEnd();
   recalcTotals();

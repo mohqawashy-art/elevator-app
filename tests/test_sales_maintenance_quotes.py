@@ -69,6 +69,7 @@ def test_maintenance_quote_print_page(client):
     assert 'document-company-seal.css' in html
     assert 'طباعة / PDF' in html
     assert 'قطع الغيار غير مشمولة في سعر عقد الصيانة' in html
+    assert 'عرض سعر قطع غيار' not in html
     assert 'data-stamp="1"' in html
     assert 'data-sign="1"' in html
 
@@ -112,8 +113,9 @@ def test_maintenance_quote_spare_parts_and_seal_flags(client):
         'total_incl_tax': '2300',
         'service_package': 'قياسي',
         'part_name': ['باب كابينة', ''],
+        'part_category': ['أبواب', ''],
         'part_qty': ['2', ''],
-        'part_note': ['مصعد 1', ''],
+        'part_price': ['100', ''],
         'show_stamp': '0',
         'show_sign': '1',
     }, follow_redirects=False)
@@ -130,8 +132,15 @@ def test_maintenance_quote_spare_parts_and_seal_flags(client):
     html = printed.get_data(as_text=True)
     assert printed.status_code == 200
     assert 'باب كابينة' in html
+    assert 'أبواب' in html
+    assert 'عرض سعر قطع غيار' in html
+    assert 'sheet-parts' in html
+    assert '200.00' in html
+    assert '230.00' in html
+    assert '2,300.00' in html
     assert 'غير مشمولة في سعر عقد الصيانة' in html
     assert 'data-stamp="0"' in html
+    assert 'data-parts-stamp="0"' in html
     assert 'data-sign="1"' in html
     assert 'doc-seal-stamp' not in html
 
