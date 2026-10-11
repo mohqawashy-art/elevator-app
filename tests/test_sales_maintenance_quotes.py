@@ -70,6 +70,7 @@ def test_maintenance_quote_print_page(client):
     assert 'طباعة / PDF' in html
     assert 'قطع الغيار غير مشمولة في سعر عقد الصيانة' in html
     assert 'عرض سعر قطع غيار' not in html
+    assert 'عرض قطع الغيار' not in html
     assert 'data-stamp="1"' in html
     assert 'data-sign="1"' in html
 
@@ -131,18 +132,32 @@ def test_maintenance_quote_spare_parts_and_seal_flags(client):
     printed = client.get(f'/sales/maintenance-quotes/{qid}/print')
     html = printed.get_data(as_text=True)
     assert printed.status_code == 200
-    assert 'باب كابينة' in html
-    assert 'أبواب' in html
-    assert 'عرض سعر قطع غيار' in html
-    assert 'sheet-parts' in html
-    assert '200.00' in html
-    assert '230.00' in html
+    assert 'عرض قطع الغيار' in html
+    assert 'parts=1' in html
+    assert 'عرض سعر قطع غيار' not in html
+    assert 'باب كابينة' not in html
     assert '2,300.00' in html
     assert 'غير مشمولة في سعر عقد الصيانة' in html
     assert 'data-stamp="0"' in html
-    assert 'data-parts-stamp="0"' in html
     assert 'data-sign="1"' in html
-    assert 'doc-seal-stamp' not in html
+
+    parts_page = client.get(f'/sales/maintenance-quotes/{qid}/print?parts=1')
+    parts_html = parts_page.get_data(as_text=True)
+    assert parts_page.status_code == 200
+    assert 'باب كابينة' in parts_html
+    assert 'أبواب' in parts_html
+    assert 'عرض سعر قطع غيار' in parts_html
+    assert 'sheet-parts' in parts_html
+    assert '200.00' in parts_html
+    assert '230.00' in parts_html
+    assert 'عرض سعر — عقد صيانة مصاعد' not in parts_html
+    assert 'data-parts-stamp="0"' in parts_html
+    assert 'doc-seal-stamp' not in parts_html
+
+    form = client.get(f'/sales/maintenance-quotes/{qid}')
+    form_html = form.get_data(as_text=True)
+    assert form.status_code == 200
+    assert 'عرض قطع الغيار' in form_html
 
 
 def test_approve_maintenance_quote_creates_contract(client):

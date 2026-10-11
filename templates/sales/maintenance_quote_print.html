@@ -26,10 +26,7 @@
 .sheet-mq .q-sign-box{height:72px}
 .sheet-mq .q-foot{margin-top:6px;padding-top:4px}
 .sheet-mq .mq-parts-note{font-size:11px;line-height:1.5;background:#fff7ed;border:1px solid #f0c48a;border-radius:6px;padding:6px 8px;color:#7a4b12;margin-bottom:6px}
-.sheet-parts{margin-top:18px}
-@media print{
-  .sheet-parts{page-break-before:always;break-before:page;margin-top:0}
-}
+.sheet-parts{margin-top:0}
 .sheet-mq table.data thead th,.sheet-mq table.data tbody td{padding:4px 8px}
 .sheet-mq .elev-note{display:block;font-size:10px;color:#64748b;font-weight:500;margin-top:2px;max-height:2.4em;overflow:hidden}
 @media print{
@@ -53,10 +50,14 @@
 {% set elev_count = survey_units|length if survey_units else 0 %}
 <div class="toolbar">
   <button class="btn btn-primary" type="button" onclick="window.print()">طباعة / PDF</button>
+  {% if spare_parts and not parts_only %}
+  <a class="btn" href="{{ url_for('sales.maintenance_quote_print', quote_id=quote.id, parts=1) }}">عرض قطع الغيار</a>
+  {% endif %}
   <a class="btn" href="{{ url_for('sales.maintenance_quote_edit', quote_id=quote.id) }}">← العرض</a>
   <a class="btn" href="{{ url_for('sales.maintenance_quotes_list') }}">قائمة العروض</a>
 </div>
 
+{% if not parts_only %}
 <div class="sheet sheet-mq">
   <div class="sheet-top">
     <div class="brand">
@@ -218,7 +219,7 @@
         {% if notes_body %}
         <b>ملاحظات:</b> {{ notes_body }}<br>
         {% endif %}
-        <b>قطع الغيار غير مشمولة في سعر عقد الصيانة</b>، وتُسعَّر وتُفوتر بشكل منفصل{% if spare_parts %} — التفاصيل في الصفحة التالية{% endif %}.<br>
+        <b>قطع الغيار غير مشمولة في سعر عقد الصيانة</b>، وتُسعَّر وتُفوتر بشكل منفصل.<br>
         {% if not quote.payment_terms and not notes_body %}
         يخضع هذا العرض لشروط ومدة العقد المذكورة أعلاه.
         {% endif %}
@@ -251,8 +252,9 @@
     </div>
   </div>
 </div>
+{% endif %}
 
-{% if spare_parts %}
+{% if parts_only and spare_parts %}
 <div class="sheet sheet-mq sheet-parts">
   <div class="sheet-top">
     <div class="brand">

@@ -886,8 +886,10 @@ def maintenance_quote_print(quote_id):
     package, scope, notes_body = _split_maint_notes(quote.notes if quote else None)
     survey = latest_survey_for_quote(quote.id)
     spare_parts = spare_parts_for_quote(quote, survey_units)
+    parts_only = request.args.get('parts') == '1'
     return render_template(
         'sales/maintenance_quote_print.html',
+        parts_only=parts_only,
         quote=quote,
         survey=survey if survey and survey.status == SURVEY_DONE else None,
         survey_units=survey_units,
@@ -898,5 +900,5 @@ def maintenance_quote_print(quote_id):
         package=package,
         scope_items=scope,
         notes_body=notes_body,
-        page_title=f'طباعة {quote.code}',
+        page_title=(f'قطع غيار {quote.code}' if parts_only else f'طباعة {quote.code}'),
     )
