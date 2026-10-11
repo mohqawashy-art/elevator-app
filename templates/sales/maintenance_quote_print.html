@@ -34,9 +34,14 @@
 .sheet-mq .mq-bottom{margin-top:6px;gap:8px}
 .sheet-mq .mq-terms{padding:6px 8px;line-height:1.45}
 .sheet-mq .totals .g{margin-top:0}
-.sheet-mq .q-sign{margin-top:8px;gap:10px}
-.sheet-mq .q-sign-box{height:62px}
+.sheet-mq .q-sign{margin-top:10px;gap:12px}
+.sheet-mq .q-sign-box{height:90px}
 .sheet-mq .q-foot{margin-top:6px;padding-top:4px}
+.sheet-mq .mq-parts-note{font-size:12px;line-height:1.6;background:#fff7ed;border:1px solid #f0c48a;border-radius:8px;padding:8px 10px;color:#7a4b12;margin-bottom:10px}
+.sheet-mq .q-page{margin-top:8px;text-align:center;font-size:11px;color:#6b7a90}
+@media screen{
+  .sheet-break{margin-top:16px}
+}
 @media print{
   @page{size:A4 portrait;margin:7mm}
   html,body{background:#fff!important}
@@ -46,6 +51,7 @@
   .sheet-mq .sheet-body{padding:6px 8px 4px!important}
   .sheet-mq .q-sec{margin-top:4px!important}
   .sheet-mq .mq-stats{margin-bottom:4px!important}
+  .sheet-break{break-before:page;page-break-before:always}
   .sheet-mq .q-sign,.sheet-mq .mq-bottom,.sheet-mq .q-panel{page-break-inside:avoid;break-inside:avoid}
   .sheet-top,.sheet-title,.mq-stat.highlight,.totals .g,table.data thead th{
     -webkit-print-color-adjust:exact;print-color-adjust:exact
@@ -250,7 +256,7 @@
         {% if notes_body %}
         <b>ملاحظات:</b> {{ notes_body }}<br>
         {% endif %}
-        <b>قطع الغيار غير مشمولة في سعر عقد الصيانة</b>، وتُسعَّر وتُفوتر بشكل منفصل.<br>
+        <b>قطع الغيار غير مشمولة في سعر عقد الصيانة</b>{% if spare_parts %}، وعرضها في الصفحة التالية{% else %}، وتُسعَّر وتُفوتر بشكل منفصل{% endif %}.<br>
         {% if not quote.payment_terms and not notes_body %}
         يخضع هذا العرض لشروط ومدة العقد المذكورة أعلاه.
         {% endif %}
@@ -281,7 +287,86 @@
       {% if co and co.email %} · {{ co.email }}{% endif %}
       · هذا العرض ساري لمدة العقد المحددة — الأسعار بالريال السعودي.
     </div>
+    {% if spare_parts %}<div class="q-page">صفحة 1 من 2</div>{% endif %}
   </div>
 </div>
+
+{% if spare_parts %}
+<div class="sheet sheet-mq sheet-parts sheet-break">
+  <div class="sheet-top">
+    <div class="brand">
+      <img src="{{ brand_logo_url }}" alt="{{ doc_name }}">
+      <div>
+        <div class="co-name">{{ doc_name }}</div>
+        <div class="co-sub">عرض مستقل عن سعر عقد الصيانة{% if co and co.phone %} · {{ co.phone }}{% endif %}</div>
+      </div>
+    </div>
+    <div class="doc-meta">
+      <div class="line"><span>رقم العرض</span><b dir="ltr">{{ quote.code }}</b></div>
+      <div class="line"><span>التاريخ</span><b>{{ quote.created_at|dmY if quote.created_at else '—' }}</b></div>
+      <div class="line"><span>العميل</span><b>{{ quote.customer.name if quote.customer else '—' }}</b></div>
+    </div>
+  </div>
+  <div class="sheet-title">عرض سعر قطع غيار</div>
+  <div class="sheet-body">
+    <div class="mq-parts-note">قطع الغيار غير مشمولة في سعر عقد الصيانة، وتُسعَّر وتُفوتر بهذا العرض بشكل منفصل.</div>
+    <table class="data">
+      <colgroup>
+        <col style="width:18%">
+        <col style="width:36%">
+        <col style="width:12%">
+        <col style="width:17%">
+        <col style="width:17%">
+      </colgroup>
+      <thead>
+        <tr>
+          <th>نوع القطعة</th>
+          <th>الصنف</th>
+          <th class="num">الكمية</th>
+          <th class="num">سعر الوحدة</th>
+          <th class="num">الإجمالي</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in spare_parts %}
+        <tr>
+          <td>{{ p.category or '—' }}</td>
+          <td>{% if p.code %}<b>{{ p.code }}</b> — {% endif %}{{ p.name }}</td>
+          <td class="num">{{ '{:,.2f}'.format(p.qty or 0) }}</td>
+          <td class="num">{{ '{:,.2f}'.format(p.unit_price or 0) }}</td>
+          <td class="num">{{ '{:,.2f}'.format(p.line_total or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="mq-bottom">
+      <div class="mq-terms">
+        <b>هذا عرض سعر قطع الغيار فقط.</b><br>
+        لا يدخل في إجمالي عقد الصيانة، ويُفوتر عند التوريد أو التركيب.
+        {% if co and co.vat_number %}<br><b>الرقم الضريبي:</b> {{ co.vat_number }}{% endif %}
+      </div>
+      <div class="totals">
+        <div class="r"><span>قبل الضريبة</span><b>{{ '{:,.2f}'.format(parts_totals.subtotal or 0) }} ر.س</b></div>
+        <div class="r"><span>ضريبة ({{ '%.0f'|format(parts_totals.tax_pct or 0) }}%)</span><b>{{ '{:,.2f}'.format(parts_totals.tax_amount or 0) }} ر.س</b></div>
+        <div class="g"><span>إجمالي القطع</span><span>{{ '{:,.2f}'.format(parts_totals.total or 0) }} ر.س</span></div>
+      </div>
+    </div>
+    <div class="q-sign">
+      <div class="q-sign-box">
+        {% with seal_class='q-company-seal', quote_show_stamp=quote_show_stamp, quote_show_sign=quote_show_sign %}
+        {% include 'partials/document_company_seal.html' %}
+        {% endwith %}
+        <div class="q-sign-line">ختم وتوقيع الشركة</div>
+      </div>
+      <div class="q-sign-box"><div class="q-sign-line">موافقة العميل</div></div>
+    </div>
+    <div class="q-foot">
+      <b>{{ doc_name }}</b>
+      · عرض قطع غيار تابع لـ {{ quote.code }} — الأسعار بالريال السعودي.
+    </div>
+    <div class="q-page">صفحة 2 من 2</div>
+  </div>
+</div>
+{% endif %}
 </body>
 </html>

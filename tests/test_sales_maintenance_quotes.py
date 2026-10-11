@@ -148,9 +148,12 @@ def test_maintenance_quote_spare_parts_and_seal_flags(client):
     i_notes = html.index('ملاحظات الفحص')
     i_pkg = html.index('باقة الخدمة')
     assert i_client < i_elev < i_dur < i_notes < i_pkg
-    assert 'عرض سعر قطع غيار' not in html
-    assert 'باب كابينة' not in html
-    assert 'صفحة 2' not in html
+    assert 'عرض سعر قطع غيار' in html
+    assert 'باب كابينة' in html
+    assert 'أبواب' in html
+    assert 'sheet-parts sheet-break' in html
+    assert 'صفحة 2 من 2' in html
+    assert '230.00' in html
     assert 'size:A4' in html or 'size: A4' in html
     assert '2,300.00' in html
     assert 'غير مشمولة في سعر عقد الصيانة' in html
