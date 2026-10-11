@@ -47,7 +47,7 @@ body.page-a5 .doc{width:148mm;max-width:148mm;min-height:auto}
   body.page-a5-land{margin:0!important;padding:0!important;background:#fff!important}
   body.page-a5-land .doc{
     width:210mm!important;max-width:210mm!important;
-    height:148mm!important;min-height:148mm!important;max-height:148mm!important;
+    height:auto!important;min-height:0!important;max-height:none!important;
     margin:0!important;border:none!important;box-shadow:none!important
   }
 }
@@ -197,19 +197,19 @@ body.page-a5 .items-table{font-size:7px}
 body.page-a5 .qr-side img{width:85px;height:85px}
 
 body.page-a5-land .doc{
-  width:210mm;max-width:210mm;height:148mm;min-height:148mm;max-height:148mm;overflow:hidden
+  width:210mm;max-width:210mm;height:auto;min-height:0;max-height:none;overflow:visible
 }
 body.page-a5-land .doc-body{
-  flex:1;min-height:0;display:grid;
+  flex:0 0 auto;min-height:0;display:grid;
   grid-template-columns:1.05fr .95fr;
-  grid-template-rows:auto auto auto auto minmax(0,1fr);
+  grid-template-rows:auto auto auto auto auto;
 }
 body.page-a5-land .inv-head,
 body.page-a5-land .sec-bar,
 body.page-a5-land .cust-grid,
 body.page-a5-land .items-wrap{grid-column:1 / -1}
-body.page-a5-land .bottom-grid{grid-column:1;grid-row:5;height:100%;border-bottom:none;align-content:start}
-body.page-a5-land .footer-grid{grid-column:2;grid-row:5;height:100%;border-bottom:none;border-right:1px solid var(--line);grid-template-rows:1fr}
+body.page-a5-land .bottom-grid{grid-column:1;grid-row:5;height:auto;border-bottom:1px solid var(--line);align-content:start}
+body.page-a5-land .footer-grid{grid-column:2;grid-row:5;height:auto;border-bottom:1px solid var(--line);border-right:1px solid var(--line);grid-template-rows:auto}
 body.page-a5-land .doc-company-seal{grid-column:1;grid-row:5;align-self:end;justify-self:center;margin:0 0 8px}
 body.page-a5-land .inv-head{grid-template-columns:minmax(0,1fr) 78mm}
 body.page-a5-land .inv-brand,
@@ -245,7 +245,7 @@ body.page-a5-land .footer-box{padding:8px 10px;font-size:10px}
 body.page-a5-land .footer-box h4,
 body.page-a5-land .footer-box .bank-row,
 body.page-a5-land .footer-box li{font-size:10px}
-body.page-a5-land .contact-ribbon{margin-top:0;padding:5px 10px;flex-shrink:0}
+body.page-a5-land .contact-ribbon{margin-top:0!important;padding:5px 10px;flex-shrink:0}
 body.page-a5-land .doc-seal-stamp,
 body.page-a5-land .doc-seal-sign{max-height:32px}
 </style>
