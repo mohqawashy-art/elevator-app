@@ -14,15 +14,11 @@
 .sheet-mq td.num,.sheet-mq th.num{overflow-wrap:normal;word-break:normal;white-space:nowrap;text-align:center;font-variant-numeric:tabular-nums}
 .sheet-mq .cell-sub{display:block;margin-top:3px;font-size:11px;line-height:1.45;color:#4b5b73;font-weight:500}
 .sheet-mq .mq-parts-note{font-size:12px;line-height:1.6;background:#fff7ed;border:1px solid #f0c48a;border-radius:8px;padding:8px 10px;color:#7a4b12;margin-bottom:10px}
-.sheet-mq .q-page{margin-top:10px;text-align:center;font-size:11px;color:#6b7a90}
-@media screen{
-  .sheet-break{margin-top:16px}
-}
+.sheet-mq .elev-empty{margin:0;padding:10px 12px;font-size:12px;color:#64748b}
 @media print{
   @page{size:A4 portrait;margin:10mm}
   html,body{background:#fff!important}
   .sheet-mq{width:auto;max-width:none;min-height:0;margin:0;overflow:visible;box-shadow:none;border:none}
-  .sheet-break{break-before:page;page-break-before:always}
   .sheet-mq .q-panel,.sheet-mq .q-sign,.sheet-mq .mq-bottom{page-break-inside:auto}
   .sheet-mq tr{break-inside:avoid;page-break-inside:avoid}
   .sheet-top,.sheet-title,.mq-stat.highlight,.totals .g,table.data thead th{
@@ -47,7 +43,6 @@
   <a class="btn" href="{{ url_for('sales.maintenance_quotes_list') }}">قائمة العروض</a>
 </div>
 
-{% if not parts_only %}
 <div class="sheet sheet-mq">
   <div class="sheet-top">
     <div class="brand">
@@ -67,6 +62,58 @@
   <div class="sheet-title">عرض سعر — عقد صيانة مصاعد</div>
 
   <div class="sheet-body">
+    <div class="q-sec">
+      <div class="q-sec-h">مواصفات المصعد{% if elev_count %} ({{ elev_count }}){% endif %}{% if survey %} — {{ survey.code }}{% endif %}</div>
+      <div class="q-panel">
+        {% if survey_units %}
+        <table class="data">
+          <colgroup>
+            <col style="width:16%">
+            <col style="width:14%">
+            <col style="width:14%">
+            <col style="width:12%">
+            <col style="width:12%">
+            <col style="width:12%">
+            <col style="width:10%">
+            <col style="width:10%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>المصعد</th>
+              <th>النوع</th>
+              <th>العلامة</th>
+              <th>الحمولة</th>
+              <th>الطوابق</th>
+              <th>الماكينة</th>
+              <th>الباب</th>
+              <th>التحكم</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in survey_units %}
+            <tr>
+              <td>
+                <b>{{ u.unit_label or loop.index }}</b>
+                {% if u.building_name %}<span class="cell-sub">{{ u.building_name }}</span>{% endif %}
+                {% if u.technical_opinion %}<span class="cell-sub">{{ u.technical_opinion }}</span>{% endif %}
+              </td>
+              <td>{{ u.elev_type or '—' }}</td>
+              <td>{{ u.brand or '—' }}{% if u.model %}<span class="cell-sub">{{ u.model }}</span>{% endif %}</td>
+              <td>{% if u.capacity_kg %}{{ u.capacity_kg }} كجم{% else %}—{% endif %}</td>
+              <td>{% if u.floors %}{{ u.floors }}{% if u.stops %}<span class="cell-sub">{{ u.stops }} توقف</span>{% endif %}{% else %}—{% endif %}</td>
+              <td>{{ u.machine_type or '—' }}</td>
+              <td>{{ u.door_type or '—' }}</td>
+              <td>{{ u.control_type or '—' }}{% if u.speed %}<span class="cell-sub">{{ u.speed }}</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="elev-empty">لم تُسجَّل مواصفات المصعد بعد — تُضاف بعد إكمال فحص الفني.</p>
+        {% endif %}
+      </div>
+    </div>
+
     <div class="mq-stats">
       <div class="mq-stat">
         <div class="k">الباقة</div>
@@ -166,46 +213,6 @@
       </div>
     </div>
 
-    {% if survey_units %}
-    <div class="q-sec">
-      <div class="q-sec-h">المصاعد المفحوصة ({{ elev_count }}){% if survey %} — {{ survey.code }}{% endif %}</div>
-      <div class="q-panel">
-        <table class="data">
-          <colgroup>
-            <col style="width:30%">
-            <col style="width:24%">
-            <col style="width:24%">
-            <col style="width:22%">
-          </colgroup>
-          <thead>
-            <tr>
-              <th>المصعد</th>
-              <th>النوع</th>
-              <th>الحمولة / الطوابق</th>
-              <th>الحالة</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for u in survey_units %}
-            <tr>
-              <td>
-                <b>{{ u.unit_label or loop.index }}</b>{% if u.building_name %} · {{ u.building_name }}{% endif %}
-                {% if u.technical_opinion %}<span class="cell-sub">{{ u.technical_opinion }}</span>{% endif %}
-              </td>
-              <td>{{ u.elev_type or '—' }}{% if u.brand %} · {{ u.brand }}{% endif %}</td>
-              <td>{% if u.capacity_kg %}{{ u.capacity_kg }} كجم{% else %}—{% endif %}{% if u.floors %} · {{ u.floors }} طابق{% endif %}</td>
-              <td>
-                {{ u.condition_status or '—' }}
-                {% if u.needs_repair %}<span class="cell-sub">إصلاح خارج العقد{% if u.repair_scope %}: {{ u.repair_scope }}{% endif %}</span>{% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-    </div>
-    {% endif %}
-
     <div class="mq-bottom">
       <div class="mq-terms">
         <b>الشروط والملاحظات</b><br>
@@ -215,7 +222,7 @@
         {% if notes_body %}
         <b>ملاحظات:</b> {{ notes_body }}<br>
         {% endif %}
-        <b>قطع الغيار غير مشمولة في سعر عقد الصيانة</b>{% if spare_parts %}، وعرضها في الصفحة التالية{% else %}، وتُسعَّر وتُفوتر بشكل منفصل{% endif %}.<br>
+        <b>قطع الغيار غير مشمولة في سعر عقد الصيانة</b>، وتُسعَّر وتُفوتر بشكل منفصل.<br>
         {% if not quote.payment_terms and not notes_body %}
         يخضع هذا العرض لشروط ومدة العقد المذكورة أعلاه.
         {% endif %}
@@ -246,87 +253,7 @@
       {% if co and co.email %} · {{ co.email }}{% endif %}
       · هذا العرض ساري لمدة العقد المحددة — الأسعار بالريال السعودي.
     </div>
-    <div class="q-page">صفحة 1{% if spare_parts %} من 2{% endif %}</div>
   </div>
 </div>
-{% endif %}
-
-{% if spare_parts %}
-<div class="sheet sheet-mq sheet-parts{% if not parts_only %} sheet-break{% endif %}">
-  <div class="sheet-top">
-    <div class="brand">
-      <img src="{{ brand_logo_url }}" alt="{{ doc_name }}">
-      <div>
-        <div class="co-name">{{ doc_name }}</div>
-        <div class="co-sub">عرض مستقل عن سعر عقد الصيانة{% if co and co.phone %} · {{ co.phone }}{% endif %}</div>
-      </div>
-    </div>
-    <div class="doc-meta">
-      <div class="line"><span>رقم العرض</span><b dir="ltr">{{ quote.code }}</b></div>
-      <div class="line"><span>التاريخ</span><b>{{ quote.created_at|dmY if quote.created_at else '—' }}</b></div>
-      <div class="line"><span>العميل</span><b>{{ quote.customer.name if quote.customer else '—' }}</b></div>
-    </div>
-  </div>
-  <div class="sheet-title">عرض سعر قطع غيار</div>
-  <div class="sheet-body">
-    <div class="mq-parts-note">قطع الغيار غير مشمولة في سعر عقد الصيانة، وتُسعَّر وتُفوتر بهذا العرض بشكل منفصل.</div>
-    <table class="data">
-      <colgroup>
-        <col style="width:18%">
-        <col style="width:36%">
-        <col style="width:12%">
-        <col style="width:17%">
-        <col style="width:17%">
-      </colgroup>
-      <thead>
-        <tr>
-          <th>نوع القطعة</th>
-          <th>الصنف</th>
-          <th class="num">الكمية</th>
-          <th class="num">سعر الوحدة</th>
-          <th class="num">الإجمالي</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for p in spare_parts %}
-        <tr>
-          <td>{{ p.category or '—' }}</td>
-          <td>{% if p.code %}<b>{{ p.code }}</b> — {% endif %}{{ p.name }}</td>
-          <td class="num">{{ '{:,.2f}'.format(p.qty or 0) }}</td>
-          <td class="num">{{ '{:,.2f}'.format(p.unit_price or 0) }}</td>
-          <td class="num">{{ '{:,.2f}'.format(p.line_total or 0) }}</td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <div class="mq-bottom">
-      <div class="mq-terms">
-        <b>هذا عرض سعر قطع الغيار فقط.</b><br>
-        لا يدخل في إجمالي عقد الصيانة أعلاه، ويُفوتر عند التوريد أو التركيب.
-        {% if co and co.vat_number %}<br><b>الرقم الضريبي:</b> {{ co.vat_number }}{% endif %}
-      </div>
-      <div class="totals">
-        <div class="r"><span>قبل الضريبة</span><b>{{ '{:,.2f}'.format(parts_totals.subtotal or 0) }} ر.س</b></div>
-        <div class="r"><span>ضريبة ({{ '%.0f'|format(parts_totals.tax_pct or 0) }}%)</span><b>{{ '{:,.2f}'.format(parts_totals.tax_amount or 0) }} ر.س</b></div>
-        <div class="g"><span>إجمالي القطع</span><span>{{ '{:,.2f}'.format(parts_totals.total or 0) }} ر.س</span></div>
-      </div>
-    </div>
-    <div class="q-sign" data-parts-stamp="{{ 1 if quote_show_stamp else 0 }}" data-parts-sign="{{ 1 if quote_show_sign else 0 }}">
-      <div class="q-sign-box">
-        {% with seal_class='q-company-seal', quote_show_stamp=quote_show_stamp, quote_show_sign=quote_show_sign %}
-        {% include 'partials/document_company_seal.html' %}
-        {% endwith %}
-        <div class="q-sign-line">ختم وتوقيع الشركة</div>
-      </div>
-      <div class="q-sign-box"><div class="q-sign-line">موافقة العميل</div></div>
-    </div>
-    <div class="q-foot">
-      <b>{{ doc_name }}</b>
-      · عرض قطع غيار تابع لـ {{ quote.code }} — الأسعار بالريال السعودي.
-    </div>
-    <div class="q-page">{% if parts_only %}صفحة مستقلة{% else %}صفحة 2 من 2{% endif %}</div>
-  </div>
-</div>
-{% endif %}
 </body>
 </html>
