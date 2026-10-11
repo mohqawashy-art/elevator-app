@@ -1896,6 +1896,21 @@ def _startup_schema_and_data_sync():
                 ))
                 db.session.commit()
                 app.logger.info('Added contracts.%s column', col_name)
+        if 'maintenance_quotes' in tables:
+            mq_cols = {c['name'] for c in insp.get_columns('maintenance_quotes')}
+            for col_name, column_type in (
+                ('spare_parts_json', 'TEXT'),
+                ('show_stamp', 'BOOLEAN DEFAULT TRUE'),
+                ('show_sign', 'BOOLEAN DEFAULT TRUE'),
+            ):
+                if col_name in mq_cols:
+                    continue
+                db.session.execute(text(
+                    f'ALTER TABLE maintenance_quotes ADD COLUMN {col_name} {column_type}'
+                ))
+                db.session.commit()
+                app.logger.info('Added maintenance_quotes.%s column', col_name)
+                mq_cols.add(col_name)
     except Exception as exc:
         db.session.rollback()
         app.logger.warning('settings/customers column ensure skip: %s', exc)
