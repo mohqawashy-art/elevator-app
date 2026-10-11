@@ -6,35 +6,28 @@
 <title>عرض سعر {{ quote.code }}</title>
 {% include 'partials/quote_print_styles.html' %}
 <style>
-.sheet-mq .sheet-top{padding:8px 12px}
-.sheet-mq .sheet-top .brand img{max-height:40px}
-.sheet-mq .sheet-title{font-size:14px;padding:5px 8px}
-.sheet-mq .sheet-body{padding:8px 10px 10px}
-.sheet-mq .mq-stats{gap:6px;margin-bottom:6px}
-.sheet-mq .mq-stat{padding:5px 6px}
-.sheet-mq .q-sec{margin-top:6px}
-.sheet-mq .q-sec-h{margin-bottom:4px;font-size:12px}
-.sheet-mq .q-sec-h::before{height:13px}
-.sheet-mq .mq-fields td{padding:4px 8px}
-.sheet-mq .mq-package{grid-template-columns:88px 1fr;gap:8px;padding:6px 8px}
-.sheet-mq .mq-package-badge{font-size:14px;padding:6px 4px}
-.sheet-mq .mq-scope-grid{gap:2px 10px}
-.sheet-mq .mq-scope-item{padding:1px 0;font-size:10.5px}
-.sheet-mq .mq-bottom{margin-top:6px;gap:8px}
-.sheet-mq .mq-terms{padding:6px 8px;line-height:1.55}
-.sheet-mq .q-sign{margin-top:8px;gap:12px}
-.sheet-mq .q-sign-box{height:72px}
-.sheet-mq .q-foot{margin-top:6px;padding-top:4px}
-.sheet-mq .mq-parts-note{font-size:11px;line-height:1.5;background:#fff7ed;border:1px solid #f0c48a;border-radius:6px;padding:6px 8px;color:#7a4b12;margin-bottom:6px}
-.sheet-parts{margin-top:0}
-.sheet-mq table.data thead th,.sheet-mq table.data tbody td{padding:4px 8px}
-.sheet-mq .elev-note{display:block;font-size:10px;color:#64748b;font-weight:500;margin-top:2px;max-height:2.4em;overflow:hidden}
+.sheet-mq{width:210mm;max-width:210mm;min-height:297mm;margin:0 auto 16px;overflow:visible}
+.sheet-mq table{width:100%;table-layout:fixed;border-collapse:collapse}
+.sheet-mq th,.sheet-mq td{white-space:normal;overflow-wrap:anywhere;word-break:break-word;vertical-align:top}
+.sheet-mq .mq-fields .lbl{white-space:normal;width:22%}
+.sheet-mq .mq-fields .val{width:28%}
+.sheet-mq td.num,.sheet-mq th.num{overflow-wrap:normal;word-break:normal;white-space:nowrap;text-align:center;font-variant-numeric:tabular-nums}
+.sheet-mq .cell-sub{display:block;margin-top:3px;font-size:11px;line-height:1.45;color:#4b5b73;font-weight:500}
+.sheet-mq .mq-parts-note{font-size:12px;line-height:1.6;background:#fff7ed;border:1px solid #f0c48a;border-radius:8px;padding:8px 10px;color:#7a4b12;margin-bottom:10px}
+.sheet-mq .q-page{margin-top:10px;text-align:center;font-size:11px;color:#6b7a90}
+@media screen{
+  .sheet-break{margin-top:16px}
+}
 @media print{
-  @page{size:A4 portrait;margin:6mm}
+  @page{size:A4 portrait;margin:10mm}
+  html,body{background:#fff!important}
+  .sheet-mq{width:auto;max-width:none;min-height:0;margin:0;overflow:visible;box-shadow:none;border:none}
+  .sheet-break{break-before:page;page-break-before:always}
   .sheet-mq .q-panel,.sheet-mq .q-sign,.sheet-mq .mq-bottom{page-break-inside:auto}
-  .sheet-mq .sheet-top{padding:6px 8px!important}
-  .sheet-mq .sheet-body{padding:6px 8px!important}
-  .sheet-mq .q-sec{margin-top:4px!important}
+  .sheet-mq tr{break-inside:avoid;page-break-inside:avoid}
+  .sheet-top,.sheet-title,.mq-stat.highlight,.totals .g,table.data thead th{
+    -webkit-print-color-adjust:exact;print-color-adjust:exact
+  }
 }
 </style>
 </head>
@@ -181,6 +174,12 @@
       <div class="q-sec-h">المصاعد المفحوصة ({{ elev_count }}){% if survey %} — {{ survey.code }}{% endif %}</div>
       <div class="q-panel">
         <table class="data">
+          <colgroup>
+            <col style="width:30%">
+            <col style="width:24%">
+            <col style="width:24%">
+            <col style="width:22%">
+          </colgroup>
           <thead>
             <tr>
               <th>المصعد</th>
@@ -194,13 +193,13 @@
             <tr>
               <td>
                 <b>{{ u.unit_label or loop.index }}</b>{% if u.building_name %} · {{ u.building_name }}{% endif %}
-                {% if u.technical_opinion %}<span class="elev-note">{{ u.technical_opinion }}</span>{% endif %}
+                {% if u.technical_opinion %}<span class="cell-sub">{{ u.technical_opinion }}</span>{% endif %}
               </td>
               <td>{{ u.elev_type or '—' }}{% if u.brand %} · {{ u.brand }}{% endif %}</td>
-              <td>{% if u.capacity_kg %}{{ u.capacity_kg }} كجم{% else %}—{% endif %}{% if u.floors %} · {{ u.floors }} ط{% endif %}</td>
+              <td>{% if u.capacity_kg %}{{ u.capacity_kg }} كجم{% else %}—{% endif %}{% if u.floors %} · {{ u.floors }} طابق{% endif %}</td>
               <td>
                 {{ u.condition_status or '—' }}
-                {% if u.needs_repair %}<span class="elev-note">إصلاح خارج العقد{% if u.repair_scope %}: {{ u.repair_scope }}{% endif %}</span>{% endif %}
+                {% if u.needs_repair %}<span class="cell-sub">إصلاح خارج العقد{% if u.repair_scope %}: {{ u.repair_scope }}{% endif %}</span>{% endif %}
               </td>
             </tr>
             {% endfor %}
@@ -219,7 +218,7 @@
         {% if notes_body %}
         <b>ملاحظات:</b> {{ notes_body }}<br>
         {% endif %}
-        <b>قطع الغيار غير مشمولة في سعر عقد الصيانة</b>، وتُسعَّر وتُفوتر بشكل منفصل.<br>
+        <b>قطع الغيار غير مشمولة في سعر عقد الصيانة</b>{% if spare_parts %}، وعرضها في الصفحة التالية{% else %}، وتُسعَّر وتُفوتر بشكل منفصل{% endif %}.<br>
         {% if not quote.payment_terms and not notes_body %}
         يخضع هذا العرض لشروط ومدة العقد المذكورة أعلاه.
         {% endif %}
@@ -250,12 +249,13 @@
       {% if co and co.email %} · {{ co.email }}{% endif %}
       · هذا العرض ساري لمدة العقد المحددة — الأسعار بالريال السعودي.
     </div>
+    <div class="q-page">صفحة 1{% if spare_parts %} من 2{% endif %}</div>
   </div>
 </div>
 {% endif %}
 
-{% if parts_only and spare_parts %}
-<div class="sheet sheet-mq sheet-parts">
+{% if spare_parts %}
+<div class="sheet sheet-mq sheet-parts{% if not parts_only %} sheet-break{% endif %}">
   <div class="sheet-top">
     <div class="brand">
       <img src="{{ brand_logo_url }}" alt="{{ doc_name }}">
@@ -274,23 +274,30 @@
   <div class="sheet-body">
     <div class="mq-parts-note">قطع الغيار غير مشمولة في سعر عقد الصيانة، وتُسعَّر وتُفوتر بهذا العرض بشكل منفصل.</div>
     <table class="data">
+      <colgroup>
+        <col style="width:18%">
+        <col style="width:36%">
+        <col style="width:12%">
+        <col style="width:17%">
+        <col style="width:17%">
+      </colgroup>
       <thead>
         <tr>
           <th>نوع القطعة</th>
           <th>الصنف</th>
-          <th style="width:70px">الكمية</th>
-          <th style="width:100px">سعر الوحدة</th>
-          <th style="width:110px">الإجمالي</th>
+          <th class="num">الكمية</th>
+          <th class="num">سعر الوحدة</th>
+          <th class="num">الإجمالي</th>
         </tr>
       </thead>
       <tbody>
         {% for p in spare_parts %}
         <tr>
           <td>{{ p.category or '—' }}</td>
-          <td>{% if p.code %}{{ p.code }} — {% endif %}{{ p.name }}</td>
-          <td>{{ '{:,.2f}'.format(p.qty or 0) }}</td>
-          <td dir="ltr">{{ '{:,.2f}'.format(p.unit_price or 0) }}</td>
-          <td dir="ltr">{{ '{:,.2f}'.format(p.line_total or 0) }}</td>
+          <td>{% if p.code %}<b>{{ p.code }}</b> — {% endif %}{{ p.name }}</td>
+          <td class="num">{{ '{:,.2f}'.format(p.qty or 0) }}</td>
+          <td class="num">{{ '{:,.2f}'.format(p.unit_price or 0) }}</td>
+          <td class="num">{{ '{:,.2f}'.format(p.line_total or 0) }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -320,6 +327,7 @@
       <b>{{ doc_name }}</b>
       · عرض قطع غيار تابع لـ {{ quote.code }} — الأسعار بالريال السعودي.
     </div>
+    <div class="q-page">{% if parts_only %}صفحة مستقلة{% else %}صفحة 2 من 2{% endif %}</div>
   </div>
 </div>
 {% endif %}
