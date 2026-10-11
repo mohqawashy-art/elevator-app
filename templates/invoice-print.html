@@ -5,6 +5,7 @@
 {% include 'partials/liftcore_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ doc_title }} — {{ irn }}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
 <style>
 :root{
   --navy:#1a3a5c;--bg:#eef2f7;--line:#d5dee8;--text:#1a3a5c;
@@ -26,7 +27,7 @@ body{
 .toolbar .btn-wa{background:#25D366;color:#fff;margin-left:8px}
 .toolbar .btn-wa:hover{background:#1da851}
 
-{% if doc_title == 'سند قبض' %}@page{size:A5 landscape;margin:4mm}
+{% if doc_title == 'سند قبض' %}@page{size:A5 landscape;margin:0}
 {% elif is_receipt %}@page{size:A5 portrait;margin:8mm}
 {% else %}@page{size:A4 portrait;margin:10mm}{% endif %}
 
@@ -43,9 +44,11 @@ body.page-a5 .doc{width:148mm;max-width:148mm;min-height:auto}
   .toolbar,.compliance-box{display:none!important}
   body{background:#fff}
   .doc{margin:0;border:none;box-shadow:none;width:100%;max-width:none;min-height:277mm}
-  html,body.page-a5-land{height:auto;background:#fff}
+  body.page-a5-land{margin:0!important;padding:0!important;background:#fff!important}
   body.page-a5-land .doc{
-    width:100%;max-width:none;height:140mm;min-height:140mm;max-height:140mm;margin:0
+    width:210mm!important;max-width:210mm!important;
+    height:148mm!important;min-height:148mm!important;max-height:148mm!important;
+    margin:0!important;border:none!important;box-shadow:none!important
   }
 }
 
@@ -194,38 +197,57 @@ body.page-a5 .items-table{font-size:7px}
 body.page-a5 .qr-side img{width:85px;height:85px}
 
 body.page-a5-land .doc{
-  width:210mm;max-width:210mm;height:140mm;min-height:140mm;max-height:140mm;overflow:hidden
+  width:210mm;max-width:210mm;height:148mm;min-height:148mm;max-height:148mm;overflow:hidden
 }
-body.page-a5-land .doc-body{flex:1;min-height:0}
-body.page-a5-land .inv-head{grid-template-columns:minmax(0,1.25fr) minmax(0,.9fr)}
+body.page-a5-land .doc-body{
+  flex:1;min-height:0;display:grid;
+  grid-template-columns:1.05fr .95fr;
+  grid-template-rows:auto auto auto auto minmax(0,1fr);
+}
+body.page-a5-land .inv-head,
+body.page-a5-land .sec-bar,
+body.page-a5-land .cust-grid,
+body.page-a5-land .items-wrap{grid-column:1 / -1}
+body.page-a5-land .bottom-grid{grid-column:1;grid-row:5;height:100%;border-bottom:none;align-content:start}
+body.page-a5-land .footer-grid{grid-column:2;grid-row:5;height:100%;border-bottom:none;border-right:1px solid var(--line);grid-template-rows:1fr}
+body.page-a5-land .doc-company-seal{grid-column:1;grid-row:5;align-self:end;justify-self:center;margin:0 0 8px}
+body.page-a5-land .inv-head{grid-template-columns:minmax(0,1fr) 78mm}
 body.page-a5-land .inv-brand,
-body.page-a5-land .inv-title-side{min-width:0}
-body.page-a5-land .inv-brand{padding:8px 10px 6px}
-body.page-a5-land .brand-row img{width:auto;max-width:148px;max-height:42px}
-body.page-a5-land .seller-lines{gap:2px;margin-top:4px}
+body.page-a5-land .inv-title-side{min-width:0;overflow:hidden}
+body.page-a5-land .inv-brand{padding:7px 10px 6px}
+body.page-a5-land .brand-row img{width:auto;max-width:120px;max-height:34px}
+body.page-a5-land .seller-lines{gap:1px;margin-top:3px}
 body.page-a5-land .seller-line .val{overflow-wrap:anywhere}
 body.page-a5-land .inv-title-side{
   padding:8px 10px 6px;direction:rtl;align-items:stretch;text-align:right
 }
 body.page-a5-land .inv-title-side .big-title{
-  font-size:20px;direction:rtl;text-align:right
+  font-size:22px;line-height:1.15;direction:rtl;text-align:right;white-space:nowrap
 }
 body.page-a5-land .inv-title-side .big-sub{
-  direction:ltr;text-align:right;unicode-bidi:isolate;width:100%
+  direction:ltr;text-align:right;unicode-bidi:isolate;width:100%;white-space:nowrap;font-size:11px
 }
-body.page-a5-land .facts-table{margin-top:4px}
-body.page-a5-land .sec-bar{padding:3px 10px}
-body.page-a5-land .cust-grid{padding:4px 10px}
+body.page-a5-land .facts-table{margin-top:6px;font-size:10px}
+body.page-a5-land .facts-table th,
+body.page-a5-land .facts-table td{font-size:10px;padding:4px 6px}
+body.page-a5-land .sec-bar{padding:4px 10px;font-size:11px}
+body.page-a5-land .cust-grid{padding:5px 10px;font-size:11px}
+body.page-a5-land .cust-row .k,
+body.page-a5-land .cust-row .v{font-size:11px}
+body.page-a5-land .items-table{font-size:11px}
 body.page-a5-land .items-table thead th,
-body.page-a5-land .items-table tbody td{padding:3px 4px}
-body.page-a5-land .bottom-grid{padding:6px 10px;gap:8px}
-body.page-a5-land .sum-table{min-width:220px;margin-bottom:4px}
-body.page-a5-land .tafqeet-line{padding:4px 8px;max-width:100%}
-body.page-a5-land .footer-grid{flex:1;min-height:0;grid-template-rows:1fr;align-items:stretch}
-body.page-a5-land .footer-box{padding:6px 10px}
-body.page-a5-land .contact-ribbon{margin-top:0;padding:5px 10px}
+body.page-a5-land .items-table tbody td{padding:5px 6px;font-size:11px}
+body.page-a5-land .bottom-grid{display:flex;flex-direction:column;justify-content:flex-start;gap:8px;padding:8px 10px}
+body.page-a5-land .sum-side{width:100%}
+body.page-a5-land .sum-table{width:100%;min-width:0;max-width:none;margin-bottom:0}
+body.page-a5-land .tafqeet-line{max-width:none;width:100%;padding:6px 8px}
+body.page-a5-land .footer-box{padding:8px 10px;font-size:10px}
+body.page-a5-land .footer-box h4,
+body.page-a5-land .footer-box .bank-row,
+body.page-a5-land .footer-box li{font-size:10px}
+body.page-a5-land .contact-ribbon{margin-top:0;padding:5px 10px;flex-shrink:0}
 body.page-a5-land .doc-seal-stamp,
-body.page-a5-land .doc-seal-sign{max-height:34px}
+body.page-a5-land .doc-seal-sign{max-height:32px}
 </style>
 </head>
 <body class="{% if doc_title == 'سند قبض' %}page-a5-land{% elif is_receipt %}page-a5{% else %}page-a4{% endif %}"{% if request.args.get('popup') == '1' or request.args.get('print') == '1' %} data-lc-popup="1"{% endif %}>
@@ -446,7 +468,6 @@ body.page-a5-land .doc-seal-sign{max-height:34px}
     </div>
   </div>
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='document-company-seal.css') }}?v=2">
   {% include 'partials/document_company_seal.html' %}
 
 </div><!-- doc-body -->
