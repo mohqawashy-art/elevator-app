@@ -168,6 +168,59 @@ def spare_parts_totals(parts, tax_pct) -> dict:
     }
 
 
+def nearest_riyal(amount) -> int:
+    """أقرب عدد صحيح، ونصف الريال يُقرَّب للأعلى."""
+    try:
+        n = float(amount or 0)
+    except (TypeError, ValueError):
+        return 0
+    if n >= 0:
+        return int(n + 0.5)
+    return -int(-n + 0.5)
+
+
+def quote_tafqit(amount: int) -> str:
+    from contract_print import amount_in_words
+
+    return f'فقط {amount_in_words(amount)} ريال سعودي لا غير'
+
+
+def quote_money_box(value, total) -> dict:
+    """إجمالي العرض لأقرب ريال، والفرق يتحمّله بند الضريبة حتى يظل الجمع صحيحًا."""
+    total_i = nearest_riyal(total)
+    value_i = nearest_riyal(value)
+    tax_i = total_i - value_i
+    if tax_i < 0:
+        tax_i = 0
+        value_i = total_i
+    return {
+        'value': value_i,
+        'tax': tax_i,
+        'total': total_i,
+        'words': quote_tafqit(total_i),
+    }
+
+
+def spare_parts_print_rows(parts, tax_pct) -> tuple[list[dict], dict]:
+    rows = []
+    for part in parts or []:
+        row = dict(part)
+        row['unit_price'] = nearest_riyal(part.get('unit_price'))
+        row['line_total'] = max(0, nearest_riyal(part.get('line_total')))
+        rows.append(row)
+    subtotal = sum(row['line_total'] for row in rows)
+    pct = money_round(tax_pct)
+    tax = nearest_riyal(subtotal * float(pct or 0) / 100.0)
+    total = subtotal + tax
+    return rows, {
+        'subtotal': subtotal,
+        'tax_pct': pct,
+        'tax_amount': tax,
+        'total': total,
+        'words': quote_tafqit(total),
+    }
+
+
 def survey_spare_parts(units) -> list[dict]:
     """قطع ذُكرت في فحص الفني — للعرض فقط إلى أن يحفظها المكتب."""
     out = []
@@ -886,6 +939,7 @@ def maintenance_quote_print(quote_id):
     package, scope, notes_body = _split_maint_notes(quote.notes if quote else None)
     survey = latest_survey_for_quote(quote.id)
     spare_parts = spare_parts_for_quote(quote, survey_units)
+    parts_rows, parts_box = spare_parts_print_rows(spare_parts, quote.tax_pct)
     parts_only = request.args.get('parts') == '1'
     return render_template(
         'sales/maintenance_quote_print.html',
@@ -893,8 +947,9 @@ def maintenance_quote_print(quote_id):
         quote=quote,
         survey=survey if survey and survey.status == SURVEY_DONE else None,
         survey_units=survey_units,
-        spare_parts=spare_parts,
-        parts_totals=spare_parts_totals(spare_parts, quote.tax_pct),
+        spare_parts=parts_rows,
+        parts_totals=parts_box,
+        quote_money=quote_money_box(quote.value, quote.total),
         quote_show_stamp=_seal_on(quote.show_stamp),
         quote_show_sign=_seal_on(quote.show_sign),
         package=package,

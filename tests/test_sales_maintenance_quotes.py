@@ -11,6 +11,17 @@ from sales.service import (
 from tenant_scope import assign_organization, tenant_query
 
 
+def test_quote_money_rounds_half_up_and_spells_the_total():
+    from sales.routes import nearest_riyal, quote_money_box
+
+    assert nearest_riyal(2300.5) == 2301
+    assert nearest_riyal(2300.4) == 2300
+    box = quote_money_box(2000.4, 2300.6)
+    assert box['total'] == 2301
+    assert box['value'] + box['tax'] == box['total']
+    assert box['words'] == 'فقط ألفان وثلاثمائة وواحد ريال سعودي لا غير'
+
+
 def test_recalc_quote_totals():
     q = MaintenanceQuote(value=1000, tax_pct=15)
     recalc_quote_totals(q)
@@ -60,7 +71,9 @@ def test_maintenance_quote_print_page(client):
     assert r.status_code == 200
     html = r.get_data(as_text=True)
     assert 'MQ-90003' in html
-    assert '2,300.00' in html
+    assert '2,300' in html
+    assert '2,300.00' not in html
+    assert 'فقط ألفان وثلاثمائة ريال سعودي لا غير' in html
     assert 'قياسي' in html
     assert 'عرض سعر — عقد صيانة مصاعد' in html
     assert 'sheet-top' in html
@@ -153,9 +166,11 @@ def test_maintenance_quote_spare_parts_and_seal_flags(client):
     assert 'أبواب' in html
     assert 'sheet-parts sheet-break' in html
     assert 'صفحة 2 من 2' in html
-    assert '230.00' in html
     assert 'size:A4' in html or 'size: A4' in html
-    assert '2,300.00' in html
+    assert '2,300' in html
+    assert '2,300.00' not in html
+    assert 'فقط ألفان وثلاثمائة ريال سعودي لا غير' in html
+    assert 'فقط مئتان وثلاثون ريال سعودي لا غير' in html
     assert 'غير مشمولة في سعر عقد الصيانة' in html
     assert 'data-stamp="0"' in html
     assert 'data-sign="1"' in html

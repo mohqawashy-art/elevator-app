@@ -34,6 +34,7 @@
 .sheet-mq .mq-bottom{margin-top:6px;gap:8px}
 .sheet-mq .mq-terms{padding:6px 8px;line-height:1.45}
 .sheet-mq .totals .g{margin-top:0}
+.sheet-mq .totals .tafqit{padding:6px 10px;font-size:11px;line-height:1.55;font-weight:700;color:#0a2647;background:#f8f4ea}
 .sheet-mq .q-sign{margin-top:10px;gap:12px}
 .sheet-mq .q-sign-box{height:90px}
 .sheet-mq .q-foot{margin-top:6px;padding-top:4px}
@@ -265,9 +266,10 @@
         {% endif %}
       </div>
       <div class="totals">
-        <div class="r"><span>قبل الضريبة</span><b>{{ '{:,.2f}'.format(quote.value or 0) }} ر.س</b></div>
-        <div class="r"><span>ضريبة ({{ '%.0f'|format(quote.tax_pct or 0) }}%)</span><b>{{ '{:,.2f}'.format(quote.tax_amount or 0) }} ر.س</b></div>
-        <div class="g"><span>الإجمالي شامل الضريبة</span><span>{{ '{:,.2f}'.format(quote.total or 0) }} ر.س</span></div>
+        <div class="r"><span>قبل الضريبة</span><b>{{ '{:,}'.format(quote_money.value) }} ر.س</b></div>
+        <div class="r"><span>ضريبة ({{ '%.0f'|format(quote.tax_pct or 0) }}%)</span><b>{{ '{:,}'.format(quote_money.tax) }} ر.س</b></div>
+        <div class="g"><span>الإجمالي شامل الضريبة</span><span>{{ '{:,}'.format(quote_money.total) }} ر.س</span></div>
+        <div class="tafqit">{{ quote_money.words }}</div>
       </div>
     </div>
 
@@ -332,9 +334,9 @@
         <tr>
           <td>{{ p.category or '—' }}</td>
           <td>{% if p.code %}<b>{{ p.code }}</b> — {% endif %}{{ p.name }}</td>
-          <td class="num">{{ '{:,.2f}'.format(p.qty or 0) }}</td>
-          <td class="num">{{ '{:,.2f}'.format(p.unit_price or 0) }}</td>
-          <td class="num">{{ '{:,.2f}'.format(p.line_total or 0) }}</td>
+          <td class="num">{% if p.qty == (p.qty|int) %}{{ '{:,}'.format(p.qty|int) }}{% else %}{{ '{:,.2f}'.format(p.qty or 0) }}{% endif %}</td>
+          <td class="num">{{ '{:,}'.format(p.unit_price or 0) }}</td>
+          <td class="num">{{ '{:,}'.format(p.line_total or 0) }}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -346,9 +348,10 @@
         {% if co and co.vat_number %}<br><b>الرقم الضريبي:</b> {{ co.vat_number }}{% endif %}
       </div>
       <div class="totals">
-        <div class="r"><span>قبل الضريبة</span><b>{{ '{:,.2f}'.format(parts_totals.subtotal or 0) }} ر.س</b></div>
-        <div class="r"><span>ضريبة ({{ '%.0f'|format(parts_totals.tax_pct or 0) }}%)</span><b>{{ '{:,.2f}'.format(parts_totals.tax_amount or 0) }} ر.س</b></div>
-        <div class="g"><span>إجمالي القطع</span><span>{{ '{:,.2f}'.format(parts_totals.total or 0) }} ر.س</span></div>
+        <div class="r"><span>قبل الضريبة</span><b>{{ '{:,}'.format(parts_totals.subtotal or 0) }} ر.س</b></div>
+        <div class="r"><span>ضريبة ({{ '%.0f'|format(parts_totals.tax_pct or 0) }}%)</span><b>{{ '{:,}'.format(parts_totals.tax_amount or 0) }} ر.س</b></div>
+        <div class="g"><span>إجمالي القطع</span><span>{{ '{:,}'.format(parts_totals.total or 0) }} ر.س</span></div>
+        <div class="tafqit">{{ parts_totals.words }}</div>
       </div>
     </div>
     <div class="q-sign">
