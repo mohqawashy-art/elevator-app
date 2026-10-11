@@ -8,7 +8,11 @@
 <style>
 .sheet-mq{width:210mm;max-width:210mm;min-height:297mm;margin:0 auto 16px;overflow:visible}
 .sheet-mq table{width:100%;table-layout:fixed;border-collapse:collapse}
-.sheet-mq th,.sheet-mq td{white-space:normal;overflow-wrap:anywhere;word-break:break-word;vertical-align:top}
+.sheet-mq th,.sheet-mq td{white-space:normal;overflow-wrap:break-word;word-break:normal;vertical-align:top}
+.insp-note{padding:7px 10px;border-bottom:1px solid #edf1f6}
+.insp-note:last-child{border-bottom:none}
+.insp-note-h{font-size:11px;font-weight:700;color:#0a2647;margin-bottom:3px}
+.insp-note-body{margin:0;font-size:12px;line-height:1.6;word-break:normal;overflow-wrap:break-word}
 .sheet-mq .mq-fields .lbl{white-space:normal;width:22%}
 .sheet-mq .mq-fields .val{width:28%}
 .sheet-mq td.num,.sheet-mq th.num{overflow-wrap:normal;word-break:normal;white-space:nowrap;text-align:center;font-variant-numeric:tabular-nums}
@@ -196,34 +200,15 @@
           {% endif %}
         {% endfor %}
         {% if ns.found %}
-        <table class="data">
-          <colgroup>
-            <col style="width:22%">
-            <col style="width:18%">
-            <col style="width:60%">
-          </colgroup>
-          <thead>
-            <tr>
-              <th>المصعد</th>
-              <th>الحالة</th>
-              <th>الملاحظة</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for u in survey_units %}
-            {% if u.technical_opinion or u.condition_status or u.repair_scope or u.needs_repair %}
-            <tr>
-              <td><b>{{ u.unit_label or loop.index }}</b></td>
-              <td>{{ u.condition_status or '—' }}</td>
-              <td>
-                {{ u.technical_opinion or '—' }}
-                {% if u.needs_repair %}<span class="cell-sub">إصلاح خارج العقد{% if u.repair_scope %}: {{ u.repair_scope }}{% endif %}</span>{% endif %}
-              </td>
-            </tr>
-            {% endif %}
-            {% endfor %}
-          </tbody>
-        </table>
+        {% for u in survey_units %}
+        {% if u.technical_opinion or u.condition_status or u.repair_scope or u.needs_repair %}
+        <div class="insp-note">
+          <div class="insp-note-h">{{ u.unit_label or loop.index }}{% if u.condition_status %} · {{ u.condition_status }}{% endif %}</div>
+          {% if u.technical_opinion %}<p class="insp-note-body">{{ u.technical_opinion }}</p>{% endif %}
+          {% if u.needs_repair %}<p class="insp-note-body">إصلاح خارج العقد{% if u.repair_scope %}: {{ u.repair_scope }}{% endif %}</p>{% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
         {% else %}
         <p class="elev-empty">لا توجد ملاحظات فحص.</p>
         {% endif %}
