@@ -199,6 +199,7 @@ def _inventory_items_for_parts() -> list[dict]:
             'code': item.code or '',
             'name': item.name or '',
             'category': item.category or '',
+            'unit': item.unit or '',
             'sell_price': float(item.sell_price or 0),
             'buy_price': float(item.buy_price or 0),
         }

@@ -68,7 +68,7 @@
 .parts-table th{font-size:11px;color:var(--text2);font-weight:700}
 .parts-table input{width:100%;padding:8px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--bg3);color:var(--text1);font-family:inherit}
 .part-search{position:relative}
-.part-search-list{display:none;position:absolute;z-index:40;right:0;left:0;top:calc(100% + 2px);background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);max-height:200px;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.28)}
+.part-search-list{display:none;position:fixed;z-index:5000;background:var(--card);border:1px solid var(--border);border-radius:var(--r-sm);max-height:min(360px,50vh);overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.28)}
 .part-search-list.open{display:block}
 .part-search-list button{display:block;width:100%;text-align:right;background:transparent;border:0;border-bottom:1px solid var(--border);color:var(--text1);padding:7px 8px;font:inherit;font-size:12px;cursor:pointer}
 .part-search-list button small{display:block;color:var(--text3);font-size:11px}
@@ -556,6 +556,14 @@
     var nameEl = row.querySelector('input[name=part_name]');
     var catEl = row.querySelector('input[name=part_category]');
     var priceEl = row.querySelector('input[name=part_price]');
+    function placeList(){
+      if(!list.classList.contains('open') || !q) return;
+      var rect = q.getBoundingClientRect();
+      if(list.parentNode !== document.body) document.body.appendChild(list);
+      list.style.left = Math.max(8, rect.left) + 'px';
+      list.style.width = Math.max(240, rect.width) + 'px';
+      list.style.top = (rect.bottom + 2) + 'px';
+    }
     function paint(items){
       list.innerHTML = '';
       items.forEach(function(it){
@@ -563,7 +571,8 @@
         btn.type = 'button';
         btn.innerHTML = '<b></b><small></small>';
         btn.querySelector('b').textContent = (it.code ? it.code + ' — ' : '') + (it.name || '');
-        btn.querySelector('small').textContent = it.category || '';
+        var meta = [it.category, it.unit].filter(Boolean).join(' · ');
+        btn.querySelector('small').textContent = meta;
         btn.addEventListener('mousedown', function(ev){
           ev.preventDefault();
           idEl.value = it.id || '';
@@ -579,14 +588,17 @@
         list.appendChild(btn);
       });
       list.classList.toggle('open', items.length > 0);
+      placeList();
+    }
+    function itemMatches(it, needle){
+      if(!needle) return true;
+      if(window.LcSearch) return LcSearch.match(needle, [it.code, it.name, it.category, it.unit]);
+      var blob = ((it.code||'') + ' ' + (it.name||'') + ' ' + (it.category||'') + ' ' + (it.unit||'')).toLowerCase();
+      return blob.indexOf(needle.toLowerCase()) >= 0;
     }
     function showMatches(){
-      var needle = q.value.trim().toLowerCase();
-      var found = PART_ITEMS.filter(function(it){
-        var blob = ((it.code||'') + ' ' + (it.name||'') + ' ' + (it.category||'')).toLowerCase();
-        return !needle || blob.indexOf(needle) >= 0;
-      }).slice(0, 12);
-      paint(found);
+      var needle = q.value.trim();
+      paint(PART_ITEMS.filter(function(it){ return itemMatches(it, needle); }));
     }
     if(q && !q.readOnly){
       q.addEventListener('input', function(){
@@ -601,6 +613,8 @@
     row.querySelectorAll('input[name=part_qty],input[name=part_price]').forEach(function(el){
       el.addEventListener('input', recalcParts);
     });
+    list._partRow = row;
+    row._partList = list;
   }
   function recalcParts(){
     var taxPct = Number((document.getElementById('tax_pct')||{}).value)||0;
@@ -635,13 +649,32 @@
       var btn = ev.target.closest('.part-remove');
       if(!btn || locked) return;
       var row = btn.closest('.part-row');
-      if(row) row.remove();
+      if(row){
+        if(row._partList) row._partList.remove();
+        row.remove();
+      }
       recalcParts();
     });
   }
   document.addEventListener('click', function(ev){
-    if(!ev.target.closest('.part-search')) closePartLists(null);
+    if(!ev.target.closest('.part-search') && !ev.target.closest('.part-search-list')) closePartLists(null);
   });
+  if(!window._mqPartListScroll){
+    window._mqPartListScroll = true;
+    var moveOpenLists = function(){
+      document.querySelectorAll('.part-search-list.open').forEach(function(list){
+        var row = list._partRow;
+        var input = row && row.querySelector('.part-q');
+        if(!input) return;
+        var rect = input.getBoundingClientRect();
+        list.style.left = Math.max(8, rect.left) + 'px';
+        list.style.width = Math.max(240, rect.width) + 'px';
+        list.style.top = (rect.bottom + 2) + 'px';
+      });
+    };
+    window.addEventListener('scroll', moveOpenLists, true);
+    window.addEventListener('resize', moveOpenLists);
+  }
   var taxPctEl = document.getElementById('tax_pct');
   if(taxPctEl) taxPctEl.addEventListener('input', recalcParts);
   recalcParts();
