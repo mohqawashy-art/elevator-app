@@ -63,14 +63,19 @@ def test_maintenance_quote_print_page(client):
     assert '2,300.00' in html
     assert 'قياسي' in html
     assert 'عرض سعر — عقد صيانة مصاعد' in html
-    assert 'mq-stats' in html
     assert 'sheet-top' in html
     assert 'q-sign-box' in html
     assert 'document-company-seal.css' in html
     assert 'طباعة / PDF' in html
     assert 'قطع الغيار غير مشمولة في سعر عقد الصيانة' in html
     assert 'مواصفات المصعد' in html
-    assert html.index('مواصفات المصعد') < html.index('بيانات العميل')
+    assert 'ملاحظات الفحص' in html
+    i_client = html.index('بيانات العميل')
+    i_elev = html.index('مواصفات المصعد')
+    i_dur = html.index('مدة العقد وجدول الزيارات')
+    i_notes = html.index('ملاحظات الفحص')
+    i_pkg = html.index('باقة الخدمة')
+    assert i_client < i_elev < i_dur < i_notes < i_pkg
     assert 'عرض سعر قطع غيار' not in html
     assert 'صفحة 2' not in html
     assert 'data-stamp="1"' in html
@@ -136,7 +141,13 @@ def test_maintenance_quote_spare_parts_and_seal_flags(client):
     assert printed.status_code == 200
     assert 'عرض سعر — عقد صيانة مصاعد' in html
     assert 'مواصفات المصعد' in html
-    assert html.index('مواصفات المصعد') < html.index('بيانات العميل')
+    assert 'ملاحظات الفحص' in html
+    i_client = html.index('بيانات العميل')
+    i_elev = html.index('مواصفات المصعد')
+    i_dur = html.index('مدة العقد وجدول الزيارات')
+    i_notes = html.index('ملاحظات الفحص')
+    i_pkg = html.index('باقة الخدمة')
+    assert i_client < i_elev < i_dur < i_notes < i_pkg
     assert 'عرض سعر قطع غيار' not in html
     assert 'باب كابينة' not in html
     assert 'صفحة 2' not in html

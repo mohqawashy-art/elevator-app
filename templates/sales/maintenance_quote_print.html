@@ -85,6 +85,32 @@
 
   <div class="sheet-body">
     <div class="q-sec">
+      <div class="q-sec-h">بيانات العميل والموقع</div>
+      <div class="q-panel">
+        <table class="mq-fields">
+          <tbody>
+            <tr>
+              <td class="lbl">كود العميل</td>
+              <td class="val">{{ customer_code }}</td>
+              <td class="lbl">اسم العميل</td>
+              <td class="val">{{ quote.customer.name if quote.customer else '—' }}</td>
+            </tr>
+            <tr>
+              <td class="lbl">الجوال</td>
+              <td class="val" dir="ltr">{{ quote.customer.phone if quote.customer and quote.customer.phone else '—' }}</td>
+              <td class="lbl">المدينة / الحي</td>
+              <td class="val">{{ quote.city or '—' }}{% if quote.district %} · {{ quote.district }}{% endif %}</td>
+            </tr>
+            <tr>
+              <td class="lbl">العنوان</td>
+              <td class="val" colspan="3">{{ quote.address or '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="q-sec">
       <div class="q-sec-h">مواصفات المصعد{% if elev_count %} ({{ elev_count }}){% endif %}{% if survey %} — {{ survey.code }}{% endif %}</div>
       <div class="q-panel">
         {% if survey_units %}
@@ -114,11 +140,7 @@
           <tbody>
             {% for u in survey_units %}
             <tr>
-              <td>
-                <b>{{ u.unit_label or loop.index }}</b>
-                {% if u.building_name %}<span class="cell-sub">{{ u.building_name }}</span>{% endif %}
-                {% if u.technical_opinion %}<span class="cell-sub cell-clamp">{{ u.technical_opinion }}</span>{% endif %}
-              </td>
+              <td><b>{{ u.unit_label or loop.index }}</b>{% if u.building_name %}<span class="cell-sub">{{ u.building_name }}</span>{% endif %}</td>
               <td>{{ u.elev_type or '—' }}</td>
               <td>{{ u.brand or '—' }}{% if u.model %}<span class="cell-sub">{{ u.model }}</span>{% endif %}</td>
               <td>{% if u.capacity_kg %}{{ u.capacity_kg }} كجم{% else %}—{% endif %}</td>
@@ -133,51 +155,6 @@
         {% else %}
         <p class="elev-empty">لم تُسجَّل مواصفات المصعد بعد — تُضاف بعد إكمال فحص الفني.</p>
         {% endif %}
-      </div>
-    </div>
-
-    <div class="mq-stats">
-      <div class="mq-stat">
-        <div class="k">الباقة</div>
-        <div class="v">{{ package or '—' }}</div>
-      </div>
-      <div class="mq-stat">
-        <div class="k">مدة العقد</div>
-        <div class="v">{{ quote.duration_months or '—' }} شهر</div>
-      </div>
-      <div class="mq-stat">
-        <div class="k">المصاعد</div>
-        <div class="v">{{ elev_count or '—' }}</div>
-      </div>
-      <div class="mq-stat highlight">
-        <div class="k">الإجمالي شامل الضريبة</div>
-        <div class="v" dir="ltr">{{ '{:,.2f}'.format(quote.total or 0) }} ر.س</div>
-      </div>
-    </div>
-
-    <div class="q-sec">
-      <div class="q-sec-h">بيانات العميل والموقع</div>
-      <div class="q-panel">
-        <table class="mq-fields">
-          <tbody>
-            <tr>
-              <td class="lbl">كود العميل</td>
-              <td class="val">{{ customer_code }}</td>
-              <td class="lbl">اسم العميل</td>
-              <td class="val">{{ quote.customer.name if quote.customer else '—' }}</td>
-            </tr>
-            <tr>
-              <td class="lbl">الجوال</td>
-              <td class="val" dir="ltr">{{ quote.customer.phone if quote.customer and quote.customer.phone else '—' }}</td>
-              <td class="lbl">المدينة / الحي</td>
-              <td class="val">{{ quote.city or '—' }}{% if quote.district %} · {{ quote.district }}{% endif %}</td>
-            </tr>
-            <tr>
-              <td class="lbl">العنوان</td>
-              <td class="val" colspan="3">{{ quote.address or '—' }}</td>
-            </tr>
-          </tbody>
-        </table>
       </div>
     </div>
 
@@ -206,6 +183,50 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div class="q-sec">
+      <div class="q-sec-h">ملاحظات الفحص</div>
+      <div class="q-panel">
+        {% set ns = namespace(found=false) %}
+        {% for u in survey_units %}
+          {% if u.technical_opinion or u.condition_status or u.repair_scope or u.needs_repair %}
+            {% set ns.found = true %}
+          {% endif %}
+        {% endfor %}
+        {% if ns.found %}
+        <table class="data">
+          <colgroup>
+            <col style="width:22%">
+            <col style="width:18%">
+            <col style="width:60%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>المصعد</th>
+              <th>الحالة</th>
+              <th>الملاحظة</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for u in survey_units %}
+            {% if u.technical_opinion or u.condition_status or u.repair_scope or u.needs_repair %}
+            <tr>
+              <td><b>{{ u.unit_label or loop.index }}</b></td>
+              <td>{{ u.condition_status or '—' }}</td>
+              <td>
+                {{ u.technical_opinion or '—' }}
+                {% if u.needs_repair %}<span class="cell-sub">إصلاح خارج العقد{% if u.repair_scope %}: {{ u.repair_scope }}{% endif %}</span>{% endif %}
+              </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="elev-empty">لا توجد ملاحظات فحص.</p>
+        {% endif %}
       </div>
     </div>
 
