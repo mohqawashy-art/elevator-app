@@ -60,8 +60,8 @@
   }
 
   function boot() {
-    bind();
-    prefetchNavMenu(10);
+    // صفحات HTML عليها no-store، فالتحميل المسبق لا يُعاد استخدامه
+    // وكان يشغّل أول 10 روابط (الداشبورد والعملاء والعقود…) مع كل تنقّل.
   }
 
   if (document.readyState === 'loading') {

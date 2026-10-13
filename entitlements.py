@@ -141,8 +141,25 @@ def usage_counts(org_id: int) -> dict[str, int]:
 
 
 def has_feature(feature_key: str, org: Organization | None = None) -> bool:
-    ent = resolve_entitlements(org=org)
-    return bool(ent['features'].get(feature_key))
+    """ميزة الباقة. تُحسب مرة واحدة لكل مؤسسة داخل الطلب نفسه."""
+    from flask import g, has_request_context
+
+    if org is None:
+        org_id = current_org_id()
+        org = db.session.get(Organization, org_id) if org_id else None
+    cache_key = getattr(org, 'id', None) or 0
+    if has_request_context():
+        cache = getattr(g, '_lc_feature_flags', None)
+        if isinstance(cache, dict) and cache_key in cache:
+            return bool(cache[cache_key].get(feature_key))
+    flags = resolve_entitlements(org=org).get('features') or {}
+    if has_request_context():
+        cache = getattr(g, '_lc_feature_flags', None)
+        if not isinstance(cache, dict):
+            cache = {}
+        cache[cache_key] = flags
+        g._lc_feature_flags = cache
+    return bool(flags.get(feature_key))
 
 
 def assert_feature(feature_key: str, org: Organization | None = None) -> dict[str, Any]:

@@ -577,6 +577,24 @@ def _resolve_tenant_before_auth():
     return resolve_tenant()
 
 
+def _request_settings():
+    """إعدادات المؤسسة مرة واحدة لكل طلب — القائمة كانت تعيد قراءتها مع كل صلاحية."""
+    from flask import has_request_context
+
+    in_request = has_request_context()
+    if in_request and getattr(g, '_lc_settings_loaded', False):
+        return getattr(g, '_lc_settings', None)
+    try:
+        row = tenant_query(Settings).first()
+    except Exception:
+        db.session.rollback()
+        row = None
+    if in_request:
+        g._lc_settings_loaded = True
+        g._lc_settings = row
+    return row
+
+
 @app.before_request
 def enforce_auth():
     _bootstrap_permissions_schema_once()
@@ -641,11 +659,7 @@ def enforce_auth():
             return None
         from liftcore_rbac import check_rbac
         lang = resolve_user_language(user)
-        s = None
-        try:
-            s = tenant_query(Settings).first()
-        except Exception:
-            db.session.rollback()
+        s = _request_settings()
         rbac_resp = check_rbac(
             user,
             method=request.method,
@@ -791,11 +805,7 @@ def en_datetime_filter(value):
 
 
 def get_app_settings():
-    try:
-        s = tenant_query(Settings).first()
-    except Exception:
-        db.session.rollback()
-        s = None
+    s = _request_settings()
     if not s:
         from tenant_scope import effective_organization_id
 
@@ -805,6 +815,10 @@ def get_app_settings():
         assign_organization(s)
         db.session.add(s)
         db.session.commit()
+        from flask import has_request_context
+        if has_request_context():
+            g._lc_settings_loaded = True
+            g._lc_settings = s
     return s
 
 
@@ -900,12 +914,9 @@ def resolve_user_language(user=None):
         return lang
     if user and getattr(user, 'language', None) in ('ar', 'en'):
         return user.language
-    try:
-        s = tenant_query(Settings).first()
-        if s and getattr(s, 'language', None) in ('ar', 'en'):
-            return s.language
-    except Exception:
-        db.session.rollback()
+    s = _request_settings()
+    if s and getattr(s, 'language', None) in ('ar', 'en'):
+        return s.language
     return 'ar'
 
 LIFTCORE_PRODUCT_LOGO = 'images/liftcore-header-logo.png'
@@ -975,11 +986,7 @@ def _platform_support_context(*, user=None, settings=None, lang: str = 'ar') -> 
 
 @app.context_processor
 def inject_global_template_vars():
-    try:
-        s = tenant_query(Settings).first()
-    except Exception:
-        db.session.rollback()
-        s = None
+    s = _request_settings()
     uid = session.get('user_id')
     user = None
     if uid:
@@ -1138,13 +1145,8 @@ def has_perm(perm: str) -> bool:
     user = current_user()
     if not user:
         return False
-    try:
-        s = tenant_query(Settings).first()
-    except Exception:
-        db.session.rollback()
-        s = None
     from liftcore_permissions import user_has_permission
-    return user_has_permission(user, perm, s)
+    return user_has_permission(user, perm, _request_settings())
 
 
 @app.template_global()
