@@ -73,8 +73,8 @@ def page_slice(rows: list, page: int, per_page: int = PAGE_SIZE):
     return rows[start:start + per_page], total, page
 
 
-def maintenance_visit_query(*, month: str | None, include_open: bool):
-    """زيارات شهر العمل، ومعها الزيارات غير المكتملة حتى لا تختفي المتأخرة."""
+def maintenance_visit_query(*, month: str | None, include_open: bool, all_months: bool = False):
+    """كل الزيارات افتراضياً. شهر محدد يضيّق القائمة، ومع include_open تبقى غير المكتملة ظاهرة."""
     from sqlalchemy import and_, or_
     from sqlalchemy.orm import joinedload
 
@@ -93,6 +93,8 @@ def maintenance_visit_query(*, month: str | None, include_open: bool):
             joinedload(MaintenanceVisit.linked_fault),
         )
     )
+    if all_months:
+        return query, label
     in_month = and_(
         MaintenanceVisit.visit_date >= start,
         MaintenanceVisit.visit_date <= end,

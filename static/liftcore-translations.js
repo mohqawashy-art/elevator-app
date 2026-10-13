@@ -80,6 +80,8 @@ window.__LC_TRANSLATIONS = {
   'اليوم': 'Today',
   'هذا الأسبوع': 'This Week',
   'هذا الشهر': 'This Month',
+  'كل الزيارات': 'All visits',
+  'كل الأعطال': 'All faults',
   'هذه السنة': 'This Year',
   'اختر...': 'Select...',
   '— اختر —': '— Select —',

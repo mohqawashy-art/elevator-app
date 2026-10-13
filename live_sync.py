@@ -377,14 +377,13 @@ def _sync_technicians():
 
 def _sync_maintenance_visits():
     h = _helpers()
-    from flask import request
-
     from list_windows import maintenance_visit_query
     from tenant_scope import tenant_query
 
     query, _label = maintenance_visit_query(
-        month=request.args.get('month'),
+        month=None,
         include_open=True,
+        all_months=True,
     )
     visits = query.all()
     elevators = tenant_query(Elevator).all()
@@ -414,12 +413,12 @@ def _sync_faults():
     from list_windows import PAGE_SIZE, request_page, request_text
     from sqlalchemy import or_
 
-    scope = (request.args.get('scope') or '').strip()
+    scope = (request.args.get('scope') or 'all').strip()
     qtext = request_text(request.args)
     status_filter = (request.args.get('status') or '').strip()
     page = request_page(request.args)
     query = tenant_query(Fault).order_by(Fault.reported_at.desc())
-    if scope != 'all':
+    if scope == 'open':
         query = query.filter(Fault.status.in_(FAULT_OPEN))
     elif status_filter:
         query = query.filter(Fault.status == status_filter)

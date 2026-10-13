@@ -38,7 +38,7 @@ def _shift_month(day: date, delta: int) -> date:
     return date(year, month, 15)
 
 
-def test_visits_window_keeps_open_and_hides_other_months(client):
+def test_visits_page_shows_all_months_by_default(client):
     login_as(client, 'admin')
     today = date.today()
     previous = _shift_month(today, -1)
@@ -78,7 +78,7 @@ def test_visits_window_keeps_open_and_hides_other_months(client):
     html = page.get_data(as_text=True)
     assert 'V-NOW-DONE' in html
     assert 'V-OLD-OPEN' in html
-    assert 'V-PREV-DONE' not in html
+    assert 'V-PREV-DONE' in html
 
     september = client.get(f'/maintenance-visits?month={prev_label}')
     sep_html = september.get_data(as_text=True)
@@ -96,8 +96,14 @@ def test_visits_window_keeps_open_and_hides_other_months(client):
     assert 'V-PREV-DONE' in live_codes
     assert 'V-OLD-OPEN' in live_codes
 
+    sync = client.get('/api/live/sync?page=maintenance-visits')
+    sync_codes = [row['code'] for row in sync.get_json()['data']['VISITS']]
+    assert 'V-NOW-DONE' in sync_codes
+    assert 'V-OLD-OPEN' in sync_codes
+    assert 'V-PREV-DONE' in sync_codes
 
-def test_faults_default_hides_closed_until_history(client):
+
+def test_faults_default_shows_open_and_closed(client):
     login_as(client, 'admin')
     with client.application.app_context():
         oid, _cust, elev = _site('FLT')
@@ -111,22 +117,22 @@ def test_faults_default_hides_closed_until_history(client):
         ))
         db.session.commit()
 
-    open_page = client.get('/faults')
-    assert open_page.status_code == 200
-    open_html = open_page.get_data(as_text=True)
+    all_page = client.get('/faults')
+    assert all_page.status_code == 200
+    all_html = all_page.get_data(as_text=True)
+    assert 'FA-OPEN' in all_html
+    assert 'FA-CLOSED' in all_html
+    assert 'سجل الأعطال كاملاً' not in all_html
+
+    open_only = client.get('/faults?scope=open')
+    open_html = open_only.get_data(as_text=True)
     assert 'FA-OPEN' in open_html
     assert 'FA-CLOSED' not in open_html
-    assert 'سجل الأعطال كاملاً' in open_html
-
-    history = client.get('/faults?scope=all')
-    history_html = history.get_data(as_text=True)
-    assert 'FA-OPEN' in history_html
-    assert 'FA-CLOSED' in history_html
 
     sync = client.get('/api/live/sync?page=faults')
     sync_codes = [row['code'] for row in sync.get_json()['data']['FAULTS']]
     assert 'FA-OPEN' in sync_codes
-    assert 'FA-CLOSED' not in sync_codes
+    assert 'FA-CLOSED' in sync_codes
 
 
 def test_clients_search_returns_the_match_only(client):

@@ -9251,9 +9251,11 @@ def maintenance_visits():
     from visit_cleanup import find_duplicate_visit_ids_from
     from list_windows import maintenance_visit_query
 
+    month = (request.args.get('month') or '').strip()
     visit_query, plan_default = maintenance_visit_query(
-        month=request.args.get('month'),
+        month=month or None,
         include_open=True,
+        all_months=not month,
     )
     visits = visit_query.all()
     from entity_links import natural_code_key
@@ -11546,7 +11548,7 @@ def faults():
     from sqlalchemy.orm import joinedload
     from list_windows import PAGE_SIZE, list_meta_for, request_page, request_text
 
-    scope = (request.args.get('scope') or '').strip()
+    scope = (request.args.get('scope') or 'all').strip()
     qtext = request_text(request.args)
     status_filter = (request.args.get('status') or '').strip()
     page = request_page(request.args)
@@ -11559,7 +11561,7 @@ def faults():
         )
         .order_by(Fault.reported_at.desc())
     )
-    if scope != 'all':
+    if scope == 'open':
         query = query.filter(Fault.status.in_(FAULT_OPEN))
     elif status_filter:
         query = query.filter(Fault.status == status_filter)
@@ -11577,7 +11579,7 @@ def faults():
     faults_list = query.offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).all()
     open_badge = tenant_query(Fault).filter(Fault.status == 'مفتوح').count()
     list_meta = list_meta_for(total, page, extra={
-        'scope': scope or 'open',
+        'scope': scope or 'all',
         'status': status_filter,
         'open_total': open_badge,
     })
