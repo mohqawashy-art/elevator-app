@@ -81,6 +81,7 @@ window.__LC_TRANSLATIONS = {
   'هذا الأسبوع': 'This Week',
   'هذا الشهر': 'This Month',
   'كل الزيارات': 'All visits',
+  'زيارات يوم': 'Visits on',
   'كل الأعطال': 'All faults',
   'أرشيف العقود القديمة': 'Old contracts archive',
   'أرشيف زيارات العقود القديمة': 'Archived visits of old contracts',
