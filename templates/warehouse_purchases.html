@@ -51,6 +51,12 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .btn-primary{background:var(--accent);color:#fff}
 .btn-secondary{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
 .btn-sm{padding:6px 12px;font-size:12px}
+.new-item-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:80;display:none;align-items:center;justify-content:center;padding:20px}
+.new-item-overlay.open{display:flex}
+.new-item-box{width:min(520px,100%);background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:18px}
+.new-item-box h3{font-size:16px;margin-bottom:12px}
+.new-item-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.new-item-error{color:#f87171;font-size:12px;margin-top:8px;min-height:18px}
 .hint{font-size:11px;color:var(--text3);margin-top:10px;line-height:1.6}
 .empty-msg{color:var(--text3);font-size:13px;padding:12px 0}
 table.doc-list{width:100%;border-collapse:collapse;font-size:13px}
@@ -191,7 +197,8 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
         </div>
 
         <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
-          <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ إضافة صنف</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="addLine()">+ سطر صنف</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="openNewItem()">+ صنف جديد</button>
           <button type="submit" class="btn btn-primary">{% if edit_document %}حفظ التعديلات{% else %}حفظ الفاتورة{% endif %}</button>
         </div>
       </form>
@@ -257,6 +264,39 @@ table.data-table tbody td{padding:10px 12px;color:var(--text2);border-bottom:1px
           </tbody>
         </table>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="new-item-overlay" id="new-item-overlay" onclick="if (event.target === this) closeNewItem()">
+  <div class="new-item-box" role="dialog" aria-labelledby="new-item-title">
+    <h3 id="new-item-title">صنف جديد</h3>
+    <input type="hidden" id="new-item-csrf" value="{{ csrf_token() }}">
+    <div class="form-grid">
+      <div class="field form-full">
+        <label>اسم الصنف *</label>
+        <input type="text" id="new-item-name" placeholder="اسم الصنف">
+      </div>
+      <div class="field">
+        <label>التصنيف</label>
+        <select id="new-item-cat">
+          <option>قطع غيار</option>
+          <option>مستهلكات</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>الوحدة</label>
+        <input type="text" id="new-item-unit" value="قطعة" placeholder="قطعة / متر / لتر">
+      </div>
+      <div class="field">
+        <label>سعر الشراء</label>
+        <input type="number" id="new-item-price" min="0" step="0.01" value="0">
+      </div>
+    </div>
+    <div class="new-item-error" id="new-item-error"></div>
+    <div class="new-item-actions">
+      <button type="button" class="btn btn-secondary btn-sm" onclick="closeNewItem()">إلغاء</button>
+      <button type="button" class="btn btn-primary btn-sm" id="new-item-save" onclick="saveNewItem()">حفظ وإضافته للفاتورة</button>
     </div>
   </div>
 </div>
@@ -412,6 +452,86 @@ function loadEditDocument() {
     bindLine(row, line.item_id, line.quantity, line.unit_price);
   });
   updateDocTotal();
+}
+
+function openNewItem() {
+  var box = document.getElementById('new-item-overlay');
+  var err = document.getElementById('new-item-error');
+  if (err) err.textContent = '';
+  var name = document.getElementById('new-item-name');
+  if (name) name.value = '';
+  var price = document.getElementById('new-item-price');
+  if (price) price.value = '0';
+  if (box) box.classList.add('open');
+  if (name) name.focus();
+}
+
+function closeNewItem() {
+  var box = document.getElementById('new-item-overlay');
+  if (box) box.classList.remove('open');
+}
+
+function refreshPurchaseSelects(preferId) {
+  var options = inventorySelectOptions();
+  var assigned = false;
+  document.querySelectorAll('#lines-body input[name="item_id"]').forEach(function (hidden) {
+    if (typeof LcClientSelect === 'undefined' || !LcClientSelect.isUpgraded(hidden.id)) return;
+    var selected = hidden.value || '';
+    if (preferId && !selected && !assigned) {
+      selected = String(preferId);
+      assigned = true;
+    }
+    LcClientSelect.setCustomers(hidden.id, options, selected);
+    if (preferId && String(hidden.value) === String(preferId)) {
+      onPurchaseItemPicked(hidden.closest('.line-row'));
+    }
+  });
+}
+
+function saveNewItem() {
+  var nameEl = document.getElementById('new-item-name');
+  var err = document.getElementById('new-item-error');
+  var name = (nameEl && nameEl.value || '').trim();
+  if (!name) {
+    if (err) err.textContent = 'اسم الصنف مطلوب';
+    return;
+  }
+  var btn = document.getElementById('new-item-save');
+  if (btn) btn.disabled = true;
+  var fd = new FormData();
+  fd.append('csrf_token', (document.getElementById('new-item-csrf') || {}).value || '');
+  fd.append('name', name);
+  fd.append('category', (document.getElementById('new-item-cat') || {}).value || '');
+  fd.append('unit', (document.getElementById('new-item-unit') || {}).value || 'قطعة');
+  fd.append('buy_price', (document.getElementById('new-item-price') || {}).value || '0');
+  fd.append('sell_price', '0');
+  fd.append('current_qty', '0');
+  fd.append('min_qty', '0');
+  var supplier = document.getElementById('supplier');
+  if (supplier && supplier.value) fd.append('supplier', supplier.value);
+  fetch('/inventory/add-quick', { method: 'POST', body: fd, credentials: 'same-origin' })
+    .then(function (r) { return r.json().then(function (data) { return { ok: r.ok, data: data }; }); })
+    .then(function (res) {
+      if (!res.ok || !res.data || !res.data.ok) {
+        if (err) err.textContent = (res.data && res.data.error) || 'تعذّر حفظ الصنف';
+        return;
+      }
+      PURCHASE_ITEMS.push(res.data.item);
+      var empty = null;
+      document.querySelectorAll('#lines-body .line-row').forEach(function (row) {
+        var hidden = row.querySelector('input[name="item_id"]');
+        if (!empty && hidden && !hidden.value) empty = row;
+      });
+      if (!empty) addLine();
+      refreshPurchaseSelects(res.data.item.id);
+      closeNewItem();
+    })
+    .catch(function () {
+      if (err) err.textContent = 'تعذّر حفظ الصنف';
+    })
+    .then(function () {
+      if (btn) btn.disabled = false;
+    });
 }
 
 function addLine() {

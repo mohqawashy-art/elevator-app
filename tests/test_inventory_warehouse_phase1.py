@@ -519,6 +519,33 @@ def test_opening_delete_requires_admin(client):
         assert float(item.current_qty or 0) == 2
 
 
+def test_purchase_invoice_can_add_new_item(client):
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    page = client.get('/warehouse/purchases')
+    assert page.status_code == 200
+    assert 'صنف جديد' in page.get_data(as_text=True)
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+    r = client.post('/inventory/add-quick', data={
+        'csrf_token': 'test-csrf',
+        'name': 'صنف من فاتورة الشراء',
+        'unit': 'قطعة',
+        'category': 'قطع غيار',
+        'buy_price': '12.5',
+    })
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data['ok'] is True
+    assert data['item']['name'] == 'صنف من فاتورة الشراء'
+    assert data['item']['buy_price'] == 12.5
+    with client.application.app_context():
+        item = db.session.get(InventoryItem, data['item']['id'])
+        assert item is not None
+        assert item.code
+
+
 def test_purchase_invoice_post(client):
     from tests.conftest import login_as
 

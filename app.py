@@ -13795,6 +13795,61 @@ def inventory_add():
     db.session.commit()
     return redirect(url_for('inventory'))
 
+
+@app.route('/inventory/add-quick', methods=['POST'])
+def inventory_add_quick():
+    """إنشاء صنف من فاتورة الشراء دون مغادرة الصفحة."""
+    from form_validation import inventory_form_error
+
+    err = inventory_form_error(request.form)
+    if err:
+        return jsonify({'ok': False, 'error': err}), 400
+    name = (request.form.get('name') or '').strip()
+    if not name:
+        return jsonify({'ok': False, 'error': 'يرجى إدخال اسم الصنف'}), 400
+    code = (request.form.get('code') or '').strip() or next_code(InventoryItem, '#', digits=3)
+    if tenant_query(InventoryItem).filter_by(code=code).first():
+        code = next_code(InventoryItem, '#', digits=3)
+    unit = (request.form.get('unit') or 'قطعة').strip() or 'قطعة'
+    try:
+        from inventory_units import normalize_inventory_qty_field, unit_allows_decimals
+        current_qty = normalize_inventory_qty_field(request.form.get('current_qty', 0), unit)
+        min_qty = normalize_inventory_qty_field(request.form.get('min_qty', 0), unit)
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    item = InventoryItem(
+        code=code,
+        name=name,
+        category=(request.form.get('category') or '').strip(),
+        unit=unit,
+        current_qty=current_qty,
+        min_qty=min_qty,
+        buy_price=float(request.form.get('buy_price', 0) or 0),
+        sell_price=float(request.form.get('sell_price', 0) or 0),
+        supplier=(request.form.get('supplier') or '').strip(),
+        location=(request.form.get('location') or '').strip(),
+        notes=(request.form.get('notes') or '').strip(),
+    )
+    assign_organization(item)
+    db.session.add(item)
+    if item.supplier:
+        from supplier_prices import find_or_create_supplier
+        find_or_create_supplier(item.supplier, assign_org_fn=assign_organization)
+    db.session.commit()
+    return jsonify({
+        'ok': True,
+        'item': {
+            'id': item.id,
+            'code': item.code or '',
+            'name': item.name or '',
+            'unit': item.unit or 'قطعة',
+            'qty_decimals': unit_allows_decimals(item.unit),
+            'buy_price': float(item.buy_price or 0),
+            'current_qty': float(item.current_qty or 0),
+        },
+    })
+
+
 def prepare_inventory_item_deletion(item_id: int) -> tuple[bool, str | None]:
     """تنظيف الارتباطات القابلة للحذف والتحقق من العوائق قبل حذف الصنف."""
     po_count = tenant_query(PurchaseOrderLine).filter_by(item_id=item_id).count()
