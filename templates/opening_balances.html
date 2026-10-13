@@ -1,0 +1,105 @@
+{% extends 'accounting_base.html' %}
+{% set page_title = 'قيد افتتاحي' %}
+{% set accounting_tab = 'opening' %}
+{% block accounting_body %}
+<div class="page-header">
+  <div class="page-title">قيد افتتاحي</div>
+  <div class="page-actions">
+    {% if show_pnl %}
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('opening_balances_page') }}">الميزانية فقط</a>
+    {% else %}
+    <a class="btn btn-secondary btn-sm" href="{{ url_for('opening_balances_page', pnl=1) }}">إظهار الإيراد والمصروف</a>
+    {% endif %}
+  </div>
+</div>
+<p class="hint">أرصدة بداية الدفاتر في تاريخ واحد. الأصول مدينة، والالتزامات وحقوق الملكية دائنة، ومجموع المدين يساوي مجموع الدائن. ذمم العملاء تُفصَّل تحت حساب الذمم، ومجموعها يساوي رصيد هذا الحساب. القيد يظهر في القيود اليومية وفي ميزان المراجعة.</p>
+<form method="post" action="{{ url_for('opening_balances_page') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% if show_pnl %}<input type="hidden" name="pnl" value="1">{% endif %}
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label class="filter-label">تاريخ القيد</label>
+      <input class="filter-input" type="date" name="entry_date" value="{{ entry_date }}" required>
+    </div>
+    <div class="filter-group" style="flex:1;min-width:220px">
+      <label class="filter-label">البيان</label>
+      <input class="filter-input" type="text" name="memo" maxlength="400" value="قيد افتتاحي">
+    </div>
+  </div>
+  <div class="table-wrap" style="margin-bottom:16px">
+    <div class="panel-h">حسابات القيد</div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>الحساب</th><th>النوع</th><th>مدين</th><th>دائن</th></tr>
+        </thead>
+        <tbody>
+          {% for a in accounts %}
+          <tr>
+            <td class="td-name"><span class="td-code">{{ a.code }}</span> {{ a.name }}</td>
+            <td>{{ {'asset':'أصل','liability':'التزام','equity':'حقوق ملكية','revenue':'إيراد','expense':'مصروف'}.get(a.account_type, a.account_type) }}</td>
+            <td><input class="filter-input td-num" type="number" name="debit_{{ a.id }}" min="0" step="0.01" style="width:120px"></td>
+            <td><input class="filter-input td-num" type="number" name="credit_{{ a.id }}" min="0" step="0.01" style="width:120px"></td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="table-wrap" style="margin-bottom:16px">
+    <div class="panel-h">تفصيل ذمم العملاء</div>
+    <div class="table-scroll">
+      <table>
+        <thead><tr><th>العميل</th><th>المبلغ عليه</th><th></th></tr></thead>
+        <tbody id="ob-customers">
+          <tr>
+            <td>
+              <select class="filter-select" name="customer_id">
+                <option value="">—</option>
+                {% for c in customers %}<option value="{{ c.id }}">{{ c.code }} — {{ c.name }}</option>{% endfor %}
+              </select>
+            </td>
+            <td><input class="filter-input td-num" type="number" name="opening_amount" min="0" step="0.01" style="width:140px"></td>
+            <td></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="table-footer">
+      <button class="btn btn-secondary btn-sm" type="button" onclick="obAddRow()">عميل آخر</button>
+    </div>
+  </div>
+  {% if can_write %}
+  <button class="btn btn-primary" type="submit">ترحيل القيد الافتتاحي</button>
+  {% endif %}
+</form>
+<div class="table-wrap" style="margin-top:20px">
+  <div class="panel-h">قيود افتتاحية سابقة</div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>القيد</th><th>التاريخ</th><th>البيان</th><th>الحالة</th></tr></thead>
+      <tbody>
+        {% for j in journals %}
+        <tr>
+          <td class="td-code"><a href="{{ url_for('journal_detail', id=j.id) }}">{{ j.code }}</a></td>
+          <td class="td-code">{{ j.entry_date }}</td>
+          <td>{{ j.memo or '—' }}</td>
+          <td>{{ 'مرحّل' if j.status == 'posted' else 'ملغى' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">لا يوجد قيد افتتاحي بعد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+function obAddRow() {
+  var body = document.getElementById('ob-customers');
+  var row = body.rows[0].cloneNode(true);
+  row.querySelectorAll('input').forEach(function (el) { el.value = ''; });
+  row.querySelectorAll('select').forEach(function (el) { el.selectedIndex = 0; });
+  body.appendChild(row);
+}
+</script>
+{% endblock %}

@@ -734,6 +734,22 @@ class FiscalYear(TenantMixin, db.Model):
         return f'<FiscalYear {self.start_date}..{self.end_date} {self.status}>'
 
 
+class CustomerOpeningBalance(TenantMixin, db.Model):
+    """ذمة عميل منقولة من نظام سابق، مربوطة بقيد افتتاحي مرحّل."""
+    __tablename__ = 'customer_opening_balances'
+
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customers.id'), nullable=False, index=True)
+    amount = db.Column(db.Float, nullable=False, default=0)
+    as_of = db.Column(db.Date, nullable=False)
+    journal_id = db.Column(db.Integer, db.ForeignKey('journal_entries.id'), index=True)
+    memo = db.Column(db.String(200))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    customer = db.relationship('Customer', foreign_keys=[customer_id])
+    journal = db.relationship('JournalEntry', foreign_keys=[journal_id])
+
+
 # =============================================
 # 8. المصروفات
 # =============================================
@@ -755,11 +771,13 @@ class Expense(TenantMixin, db.Model):
     proof_path      = db.Column(db.Text)  # إثبات الصرف — مسار واحد أو JSON متعدد
     notes           = db.Column(db.Text)
     account_id      = db.Column(db.Integer, db.ForeignKey('accounts.id'), index=True)
+    contract_id     = db.Column(db.Integer, db.ForeignKey('contracts.id'), index=True)
     created_by_user_id = db.Column(db.Integer)
     created_by_name = db.Column(db.String(100))  # اسم من سجّل العملية (لقطة عند الإنشاء)
     created_at      = db.Column(db.DateTime, default=datetime.utcnow)
 
     account         = db.relationship('Account', foreign_keys=[account_id])
+    contract        = db.relationship('Contract', foreign_keys=[contract_id])
 
     def __repr__(self):
         return f'<Expense {self.code}>'

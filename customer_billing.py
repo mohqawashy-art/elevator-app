@@ -954,6 +954,30 @@ def build_ar_aging(as_of: date | None = None) -> dict:
             'link': f'/parts-billing?highlight={pb.id}',
         })
 
+    from opening_balances import customer_opening_rows
+    for opening in customer_opening_rows():
+        if opening.as_of and opening.as_of > as_of:
+            continue
+        remaining = _round_money(opening.amount)
+        if remaining <= 0.01:
+            continue
+        bucket, days = aging_bucket(opening.as_of, as_of)
+        cust = opening.customer
+        open_docs.append({
+            'customer_id': opening.customer_id or 0,
+            'customer': cust.name if cust else 'بدون عميل',
+            'customer_code': cust.code if cust else '',
+            'kind': 'رصيد افتتاحي',
+            'code': 'OB',
+            'doc_date': opening.as_of.isoformat() if opening.as_of else '',
+            'due_date': opening.as_of.isoformat() if opening.as_of else '',
+            'basis': opening.as_of.isoformat() if opening.as_of else '',
+            'days': days,
+            'bucket': bucket,
+            'remaining': remaining,
+            'link': f'/reports/customer-statement?customer_id={opening.customer_id or ""}',
+        })
+
     customers: dict[int, dict] = {}
     totals = {key: 0.0 for key in _AGING_BUCKETS}
     totals['total'] = 0.0
@@ -1258,6 +1282,24 @@ def build_customer_statement(customer_id: int) -> dict:
     )
 
     debits: list[dict] = []
+    from opening_balances import customer_opening_rows
+    for opening in customer_opening_rows(customer_id):
+        amount = _round_money(opening.amount)
+        if amount <= 0.01:
+            continue
+        debits.append({
+            'date': str(opening.as_of or ''),
+            'code': 'OB',
+            'type': 'رصيد افتتاحي',
+            'description': (opening.memo or 'رصيد افتتاحي')[:200],
+            'debit': amount,
+            'credit': 0,
+            'paid': 0,
+            'remaining': amount,
+            'status': 'افتتاحي',
+            'source_type': 'opening',
+            'source_id': opening.id,
+        })
     invoiced_contract_ids: set[int] = set()
     invoiced_parts_ids: set[int] = set()
     for inv in tax_invoices:

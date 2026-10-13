@@ -1432,6 +1432,8 @@ def expense_to_js_dict(e):
         'has_proof': _fin_proof_has(e),
         'proofs': _fin_proof_js_items(e),
         'notes': e.notes or '',
+        'contract_id': e.contract_id or '',
+        'contract': e.contract.code if getattr(e, 'contract', None) else '—',
         'created_by': created_by_display(e) or '—',
     }
 
@@ -12450,20 +12452,99 @@ def fiscal_year_reopen(year_id):
     return redirect(url_for('fiscal_years_page'))
 
 
+@app.route('/opening-balances', methods=['GET', 'POST'])
+def opening_balances_page():
+    from opening_balances import list_opening_journals, post_opening_balance
+
+    _ensure_tenant_chart()
+    accounts = _postable_accounts()
+    show_pnl = request.values.get('pnl') == '1'
+    visible = [
+        a for a in accounts
+        if show_pnl or (a.account_type or '') in ('asset', 'liability', 'equity')
+    ]
+    if request.method == 'POST':
+        entry_date = _parse_iso_date(request.form.get('entry_date'), default=date.today())
+        memo = (request.form.get('memo') or 'قيد افتتاحي').strip()[:400]
+        lines = []
+        allowed = {a.id for a in accounts}
+        for acc in accounts:
+            try:
+                debit = float(request.form.get(f'debit_{acc.id}') or 0)
+                credit = float(request.form.get(f'credit_{acc.id}') or 0)
+            except (TypeError, ValueError):
+                debit = credit = 0.0
+            if acc.id not in allowed or (debit <= 0 and credit <= 0):
+                continue
+            lines.append((acc.id, debit, credit, None))
+        cust_ids = request.form.getlist('customer_id')
+        cust_amts = request.form.getlist('opening_amount')
+        customers = []
+        for i, raw_id in enumerate(cust_ids):
+            try:
+                cid = int(raw_id) if raw_id else 0
+                amt = float(cust_amts[i] if i < len(cust_amts) else 0)
+            except (TypeError, ValueError):
+                continue
+            if cid and amt > 0:
+                customers.append((cid, amt))
+        try:
+            je = post_opening_balance(entry_date, lines, customers, memo)
+            db.session.commit()
+            flash(f'تم ترحيل الرصيد الافتتاحي {je.code}', 'success')
+            return redirect(url_for('journal_detail', id=je.id))
+        except ClosedFiscalYearError as exc:
+            db.session.rollback()
+            flash(str(exc), 'danger')
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'danger')
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    return render_template(
+        'opening_balances.html',
+        accounts=visible,
+        customers=customers,
+        journals=list_opening_journals(),
+        show_pnl=show_pnl,
+        entry_date=date.today().isoformat(),
+    )
+
+
 # =============================================
 # المصروفات
 # =============================================
+def _expense_contract_id():
+    raw = (request.form.get('contract_id') or '').strip()
+    if not raw:
+        return None
+    try:
+        cid = int(raw)
+    except ValueError:
+        return None
+    return cid if tenant_query(Contract).filter_by(id=cid).first() else None
+
+
 @app.route('/expenses')
 def expenses():
     from chart_of_accounts import EXPENSE_TYPE_OPTIONS
+    from opening_balances import ensure_extra_schema
+    from sqlalchemy.orm import joinedload
 
     _ensure_tenant_chart()
-    exps = tenant_query(Expense).order_by(Expense.expense_date.desc()).all()
+    ensure_extra_schema()
+    exps = (
+        tenant_query(Expense)
+        .options(joinedload(Expense.contract))
+        .order_by(Expense.expense_date.desc())
+        .all()
+    )
+    contracts = tenant_query(Contract).order_by(Contract.code).all()
     return render_template(
         'expenses.html',
         expenses=exps,
         expenses_js=[expense_to_js_dict(e) for e in exps],
         expense_type_options=EXPENSE_TYPE_OPTIONS,
+        contracts=contracts,
     )
 @app.route('/expenses/reclassify', methods=['POST'])
 def expenses_reclassify():
@@ -12502,6 +12583,7 @@ def expense_edit(id):
         e.payment_method = request.form.get('payment_method','')
         e.amount         = float(request.form.get('amount', 0))
         e.reference      = request.form.get('reference','')
+        e.contract_id    = _expense_contract_id()
         try:
             _ensure_tenant_chart()
             e.account_id = resolve_expense_account_id(e.expense_type)
@@ -12544,6 +12626,7 @@ def expense_add():
             amount         = float(request.form.get('amount', 0)),
             reference      = request.form.get('reference',''),
             notes          = notes,
+            contract_id    = _expense_contract_id(),
         )
         try:
             _ensure_tenant_chart()
@@ -15481,6 +15564,23 @@ def report_ar_aging():
         'ar_aging.html',
         report=report,
         as_of=as_of.isoformat() if as_of else '',
+    )
+
+
+@app.route('/reports/contract-profit')
+def report_contract_profit():
+    """ربح كل عقد من الإيراد المحصّل والمصروف المربوط به."""
+    from opening_balances import contract_profit_report
+
+    today = date.today()
+    date_from = _parse_iso_date(request.args.get('from'), default=date(today.year, 1, 1))
+    date_to = _parse_iso_date(request.args.get('to'), default=today)
+    report = contract_profit_report(date_from, date_to)
+    return render_template(
+        'contract_profit.html',
+        report=report,
+        date_from=date_from.isoformat() if date_from else '',
+        date_to=date_to.isoformat() if date_to else '',
     )
 
 

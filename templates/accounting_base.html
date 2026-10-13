@@ -89,12 +89,14 @@ th.th-sort .sort-ind{display:inline-block;margin-inline-start:4px;font-size:10px
     <nav class="subnav">
       <a href="/accounts" class="{{ 'active' if accounting_tab=='accounts' else '' }}">شجرة الحسابات</a>
       <a href="/journals" class="{{ 'active' if accounting_tab=='journals' else '' }}">القيود اليومية</a>
+      <a href="/opening-balances" class="{{ 'active' if accounting_tab=='opening' else '' }}">قيد افتتاحي</a>
       <a href="/ledger" class="{{ 'active' if accounting_tab=='ledger' else '' }}">دفتر الأستاذ</a>
       <a href="/trial-balance" class="{{ 'active' if accounting_tab=='trial' else '' }}">ميزان المراجعة</a>
       <a href="/pnl" class="{{ 'active' if accounting_tab=='pnl' else '' }}">قائمة الدخل</a>
       <a href="/balance-sheet" class="{{ 'active' if accounting_tab=='bs' else '' }}">المركز المالي</a>
       <a href="/fiscal-years" class="{{ 'active' if accounting_tab=='fiscal' else '' }}">إقفال السنة</a>
       <a href="/reports/ar-aging" class="{{ 'active' if accounting_tab=='aging' else '' }}">أعمار الذمم</a>
+      <a href="/reports/contract-profit" class="{{ 'active' if accounting_tab=='profit' else '' }}">ربح العقود</a>
     </nav>
     {% block accounting_body %}{% endblock %}
   </div>

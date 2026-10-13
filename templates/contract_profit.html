@@ -1,0 +1,53 @@
+{% extends 'accounting_base.html' %}
+{% set page_title = 'ربح العقود' %}
+{% set accounting_tab = 'profit' %}
+{% block accounting_body %}
+<div class="page-header">
+  <div class="page-title">ربح العقود</div>
+</div>
+<p class="hint">كل عقد مركز كلفة. الإيراد هو المحصّل بدون الضريبة، والمصروف هو اللي اتسجل على العقد من شاشة المصروفات. الصف «بدون عقد» يجمع اللي مش مربوط بعقد.</p>
+<form class="filters-bar" method="get" action="{{ url_for('report_contract_profit') }}">
+  <div class="filter-group">
+    <label class="filter-label">من</label>
+    <input class="filter-input" type="date" name="from" value="{{ date_from }}">
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">إلى</label>
+    <input class="filter-input" type="date" name="to" value="{{ date_to }}">
+  </div>
+  <button class="btn btn-primary btn-sm" type="submit">تحديث</button>
+</form>
+<div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat-card"><div class="stat-label">الإيراد</div><div class="stat-value green">{{ '%.2f'|format(report.totals.revenue) }}</div></div>
+  <div class="stat-card"><div class="stat-label">المصروف</div><div class="stat-value red">{{ '%.2f'|format(report.totals.expense) }}</div></div>
+  <div class="stat-card"><div class="stat-label">الربح</div><div class="stat-value gold">{{ '%.2f'|format(report.totals.profit) }}</div></div>
+</div>
+<div class="table-wrap">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>العقد</th>
+          <th>العميل</th>
+          <th>الإيراد</th>
+          <th>المصروف</th>
+          <th>الربح</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in report.rows %}
+        <tr>
+          <td class="td-code">{{ row.code }}</td>
+          <td class="td-name">{{ row.customer }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.revenue) }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.expense) }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.profit) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">لا توجد حركة في هذه الفترة.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

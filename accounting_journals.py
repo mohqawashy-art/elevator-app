@@ -44,6 +44,8 @@ def ensure_journal_schema() -> None:
             pass
     from fiscal_years import ensure_fiscal_schema
     ensure_fiscal_schema()
+    from opening_balances import ensure_extra_schema
+    ensure_extra_schema()
     _journal_schema_checked = True
 
 

@@ -252,6 +252,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
               <th class="th-sort" data-sort-col="expense_date">التاريخ <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="expense_type">نوع المصروف <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="description">الوصف <span class="sort-ind"></span></th>
+              <th class="th-sort" data-sort-col="contract">العقد <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="responsible">المسؤول <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="pay_method">طريقة الدفع <span class="sort-ind"></span></th>
               <th class="th-sort" data-sort-col="amount">المبلغ (<span class="lc-sar" role="img" aria-label="ريال"></span>) <span class="sort-ind"></span></th>
@@ -314,6 +315,15 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <div class="field">
           <label>المسؤول</label>
           <input id="m-assigned" placeholder="اسم المسؤول">
+        </div>
+        <div class="field form-full">
+          <label>العقد (مركز الكلفة)</label>
+          <select id="m-contract">
+            <option value="">— بدون عقد —</option>
+            {% for c in contracts or [] %}
+            <option value="{{ c.id }}">{{ c.code }}{% if c.customer %} — {{ c.customer.name }}{% endif %}</option>
+            {% endfor %}
+          </select>
         </div>
         <div class="field">
           <label>المرجع / رقم الفاتورة</label>
@@ -416,6 +426,7 @@ function renderTable(data) {
       <td style="direction:ltr;font-family:var(--font-en)">${e.expense_date}</td>
       <td>${D(e.expense_type)}</td>
       <td>${D(e.description||'—')}</td>
+      <td>${D(e.contract && e.contract !== '—' ? e.contract : '—')}</td>
       <td>${D(e.responsible||'—')}</td>
       <td>${D(e.pay_method)}</td>
       <td style="font-family:var(--font-en);color:var(--danger)">${e.amount.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></td>
@@ -442,7 +453,7 @@ function applyFilters() {
   const fd = document.getElementById('f-from')?.value || '';
   const td = document.getElementById('f-to')?.value || '';
   filtered = EXPENSES.filter(e =>
-    LcSearch.match(s, [e.code, e.description, e.expense_type, e.responsible, e.created_by, e.notes, e.reference, e.pay_method]) &&
+    LcSearch.match(s, [e.code, e.description, e.expense_type, e.responsible, e.created_by, e.notes, e.reference, e.pay_method, e.contract]) &&
     lcAllows('f-type', e.expense_type, {
       aliases: {
         'محروقات': ['وقود'],
@@ -509,6 +520,7 @@ function openModal(editId) {
     document.getElementById('m-amount').value = '';
     document.getElementById('m-pay').value = 'كاش';
     document.getElementById('m-assigned').value = '';
+    document.getElementById('m-contract').value = '';
     document.getElementById('m-attach').value = '';
     document.getElementById('m-notes').value = '';
     clearExpenseProofFields();
@@ -547,6 +559,7 @@ function saveRecord() {
   fd.append('amount', amount);
   fd.append('reference', document.getElementById('m-attach').value);
   fd.append('notes', document.getElementById('m-notes').value);
+  fd.append('contract_id', document.getElementById('m-contract').value);
   if (proofInput && window.LiftCoreMultiAttach) {
     LiftCoreMultiAttach.appendToFormData(fd, proofInput, 'proof_file');
   }
@@ -570,6 +583,7 @@ function editExpense(id) {
   document.getElementById('m-amount').value = e.amount || '';
   document.getElementById('m-pay').value = e.pay_method || 'كاش';
   document.getElementById('m-assigned').value = e.responsible || '';
+  document.getElementById('m-contract').value = e.contract_id || '';
   document.getElementById('m-attach').value = e.reference || '';
   document.getElementById('m-notes').value = e.notes || '';
   var proofInp = document.getElementById('m-proof');
@@ -596,6 +610,7 @@ function viewExpense(id) {
       <div class="view-item"><div class="view-label">المبلغ</div><div class="view-val" style="font-family:var(--font-en);color:var(--danger)">${e.amount.toLocaleString()} <span class="lc-sar" role="img" aria-label="ريال"></span></div></div>
       <div class="view-item"><div class="view-label">المسؤول</div><div class="view-val">${escHtml(e.responsible || '—')}</div></div>
       <div class="view-item"><div class="view-label">طريقة الدفع</div><div class="view-val">${escHtml(e.pay_method)}</div></div>
+      <div class="view-item"><div class="view-label">العقد</div><div class="view-val">${escHtml(e.contract && e.contract !== '—' ? e.contract : '—')}</div></div>
       <div class="view-item"><div class="view-label">المرجع</div><div class="view-val" style="font-family:var(--font-en)">${escHtml(e.reference || '—')}</div></div>
       <div class="view-item"><div class="view-label">إثبات الصرف</div><div class="view-val">${proofHtml}</div></div>
       <div class="view-item"><div class="view-label">سجّله</div><div class="view-val">${escHtml(e.created_by || '—')}</div></div>
