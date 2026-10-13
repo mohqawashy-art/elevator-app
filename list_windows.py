@@ -73,11 +73,13 @@ def page_slice(rows: list, page: int, per_page: int = PAGE_SIZE):
     return rows[start:start + per_page], total, page
 
 
-def maintenance_visit_query(*, month: str | None, include_open: bool, all_months: bool = False):
+def maintenance_visit_query(*, month: str | None, include_open: bool, all_months: bool = False, archive: bool | None = None):
     """كل الزيارات افتراضياً. شهر محدد يضيّق القائمة، ومع include_open تبقى غير المكتملة ظاهرة."""
+    from flask import has_request_context, request
     from sqlalchemy import and_, or_
     from sqlalchemy.orm import joinedload
 
+    from contract_archive import apply_visit_archive_filter, request_wants_archive
     from models import Elevator, MaintenanceVisit
     from operations import VISIT_DONE, exclude_fault_visits
     from tenant_scope import tenant_query
@@ -93,6 +95,9 @@ def maintenance_visit_query(*, month: str | None, include_open: bool, all_months
             joinedload(MaintenanceVisit.linked_fault),
         )
     )
+    if archive is None and has_request_context():
+        archive = request_wants_archive(request.args)
+    query = apply_visit_archive_filter(query, archive=bool(archive))
     if all_months:
         return query, label
     in_month = and_(

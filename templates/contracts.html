@@ -417,7 +417,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <option>غير مدفوع</option>
         <option>متأخر</option>
       </select>
-      <button type="button" class="btn btn-secondary btn-sm" id="btn-show-renewed" onclick="toggleShowRenewedContracts()" style="display:none" title="إظهار العقود القديمة التي تم تجديدها">عرض العقود المجددة</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-show-renewed" onclick="toggleShowRenewedContracts()" style="display:none" title="استدعاء العقود المنتهية والمجددة من الأرشيف — بدون حذف">أرشيف العقود القديمة</button>
     </div>
     {% include 'partials/list_pager.html' %}
 
@@ -1180,12 +1180,14 @@ function isRenewedSupersededContract(c) {
   return c && (c.renewed || getContractDisplayStatus(c) === 'تم تجديده');
 }
 
-var SHOW_RENEWED_CONTRACTS = !!(window.LIST_META && LIST_META.renewed);
+var SHOW_RENEWED_CONTRACTS = !!(window.LIST_META && (LIST_META.archive || LIST_META.renewed));
 
 function shouldHideRenewedContract(c) {
   if (SHOW_RENEWED_CONTRACTS) return false;
   var statusFilter = (document.getElementById('f-status') && document.getElementById('f-status').value) || '';
-  if (statusFilter === 'تم تجديده') return false;
+  if (statusFilter === 'تم تجديده' || statusFilter === 'منتهي' || statusFilter === 'ملغي') return false;
+  var display = getContractDisplayStatus(c);
+  if (display === 'منتهي' || display === 'تم تجديده' || display === 'ملغي') return true;
   return isRenewedSupersededContract(c);
 }
 
@@ -1241,13 +1243,14 @@ function updateRenewedToggleButton() {
   btn.style.display = '';
   btn.classList.toggle('active', SHOW_RENEWED_CONTRACTS);
   btn.textContent = SHOW_RENEWED_CONTRACTS
-    ? ('إخفاء العقود المجددة (' + n + ')')
-    : ('عرض العقود المجددة (' + n + ')');
+    ? ('العقود الحالية (' + n + ' في الأرشيف)')
+    : ('أرشيف العقود القديمة (' + n + ')');
 }
 
 function toggleShowRenewedContracts() {
-  if (window.LIST_META && LIST_META.server && window.lcListParam) {
-    lcListParam('renewed', LIST_META.renewed ? '' : '1');
+  if (window.LIST_META && LIST_META.server && window.lcListGo) {
+    var on = !!(LIST_META.archive || LIST_META.renewed);
+    lcListGo({ archive: on ? '' : '1', renewed: '', status: '', page: '1' });
     return;
   }
   SHOW_RENEWED_CONTRACTS = !SHOW_RENEWED_CONTRACTS;

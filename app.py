@@ -7807,29 +7807,23 @@ def contracts():
     )
     from list_windows import PAGE_SIZE, list_meta_for, page_slice, request_page, request_text
 
+    from contract_archive import display_is_archived, include_contract_in_list, request_wants_archive
+
     contracts_list = contracts_for_scope(contracts_list, 'maintenance')
     renewed_ids = _annotate_contract_renewals(contracts_list)
     qtext = request_text(request.args).casefold()
     status_filter = (request.args.get('status') or '').strip()
-    show_renewed = request.args.get('renewed') == '1'
+    show_archive = request_wants_archive(request.args)
     due_only = request.args.get('due') == '1'
     visible = []
     map_points = []
-    renewed_count = sum(1 for contract in contracts_list if contract.id in renewed_ids)
+    archive_count = 0
     stats = {'total': 0, 'active': 0, 'expired': 0, 'expiring': 0, 'total_val': 0.0, 'unpaid': 0.0}
     for contract in contracts_list:
-        if contract.id in renewed_ids and not show_renewed:
-            continue
         display = contract_display_status(contract, renewed_ids=renewed_ids)
         customer = contract.customer
         customer_name = (customer.name if customer else '') or ''
-        if qtext and qtext not in f'{contract.code or ""} {customer_name}'.casefold():
-            continue
-        if status_filter and display != status_filter:
-            continue
         remaining = max(float(contract.total or 0) - float(getattr(contract, 'paid_amount', 0) or 0), 0)
-        if due_only and remaining <= 0.01:
-            continue
         stats['total'] += 1
         if display == 'نشط':
             stats['active'] += 1
@@ -7837,8 +7831,16 @@ def contracts():
             stats['expired'] += 1
         elif display == 'على وشك الانتهاء':
             stats['expiring'] += 1
+        if display_is_archived(display):
+            archive_count += 1
         stats['total_val'] += float(contract.total or 0)
         stats['unpaid'] += remaining
+        if qtext and qtext not in f'{contract.code or ""} {customer_name}'.casefold():
+            continue
+        if due_only and remaining <= 0.01:
+            continue
+        if not include_contract_in_list(display, archive=show_archive, status_filter=status_filter):
+            continue
         map_points.append({
             'id': contract.id,
             'code': contract.code or '',
@@ -7867,8 +7869,9 @@ def contracts():
     list_meta = list_meta_for(total, page, extra={
         'stats': stats,
         'status': status_filter,
-        'renewed': show_renewed,
-        'renewed_count': renewed_count,
+        'archive': show_archive,
+        'renewed': show_archive,
+        'renewed_count': archive_count,
         'due': due_only,
     })
     resp = make_response(render_template(
@@ -9251,11 +9254,15 @@ def maintenance_visits():
     from visit_cleanup import find_duplicate_visit_ids_from
     from list_windows import maintenance_visit_query
 
+    from contract_archive import request_wants_archive
+
     month = (request.args.get('month') or '').strip()
+    archive = request_wants_archive(request.args)
     visit_query, plan_default = maintenance_visit_query(
-        month=month or None,
-        include_open=True,
-        all_months=not month,
+        month=None if archive else (month or None),
+        include_open=not archive,
+        all_months=archive or not month,
+        archive=archive,
     )
     visits = visit_query.all()
     from entity_links import natural_code_key
@@ -9315,6 +9322,7 @@ def maintenance_visits():
         plan_districts=list_districts(),
         duplicate_visit_ids=duplicate_visit_ids,
         pending_visit_customer_wa=session.pop('pending_visit_customer_wa', '') or '',
+        visit_archive=archive,
     )
 
 def build_elevator_profile(elevator_id):
@@ -11546,11 +11554,13 @@ def faults():
     from fault_report import FAULT_TYPE_OPTIONS
     from sqlalchemy import or_
     from sqlalchemy.orm import joinedload
+    from contract_archive import apply_fault_archive_filter, request_wants_archive
     from list_windows import PAGE_SIZE, list_meta_for, request_page, request_text
 
     scope = (request.args.get('scope') or 'all').strip()
     qtext = request_text(request.args)
     status_filter = (request.args.get('status') or '').strip()
+    archive = request_wants_archive(request.args)
     page = request_page(request.args)
     query = (
         tenant_query(Fault)
@@ -11561,6 +11571,7 @@ def faults():
         )
         .order_by(Fault.reported_at.desc())
     )
+    query = apply_fault_archive_filter(query, archive=archive)
     if scope == 'open':
         query = query.filter(Fault.status.in_(FAULT_OPEN))
     elif status_filter:
@@ -11582,6 +11593,7 @@ def faults():
         'scope': scope or 'all',
         'status': status_filter,
         'open_total': open_badge,
+        'archive': archive,
     })
     elevators = tenant_query(Elevator).options(joinedload(Elevator.customer)).all()
     customers = tenant_query(Customer).order_by(Customer.name).all()
