@@ -94,6 +94,7 @@ th.th-sort .sort-ind{display:inline-block;margin-inline-start:4px;font-size:10px
       <a href="/pnl" class="{{ 'active' if accounting_tab=='pnl' else '' }}">قائمة الدخل</a>
       <a href="/balance-sheet" class="{{ 'active' if accounting_tab=='bs' else '' }}">المركز المالي</a>
       <a href="/fiscal-years" class="{{ 'active' if accounting_tab=='fiscal' else '' }}">إقفال السنة</a>
+      <a href="/reports/ar-aging" class="{{ 'active' if accounting_tab=='aging' else '' }}">أعمار الذمم</a>
     </nav>
     {% block accounting_body %}{% endblock %}
   </div>

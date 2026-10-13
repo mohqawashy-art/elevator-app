@@ -819,6 +819,177 @@ def customer_uncollected_ops(customer_id: int) -> list[dict]:
     return tenant_uncollected_ops(customer_id=customer_id)
 
 
+_AGING_BUCKETS = ('current', 'd30', 'd60', 'd90', 'over')
+_CANCELLED_INVOICE_STATUSES = frozenset({'ملغاة', 'ملغي', 'ملغى'})
+
+
+def aging_bucket(basis: date | None, as_of: date) -> tuple[str, int]:
+    """جاري ما لم يُستحق بعد، ثم 1–30 و31–60 و61–90 وأكثر من 90."""
+    if basis is None or basis >= as_of:
+        return 'current', 0
+    days = (as_of - basis).days
+    if days <= 30:
+        return 'd30', days
+    if days <= 60:
+        return 'd60', days
+    if days <= 90:
+        return 'd90', days
+    return 'over', days
+
+
+def build_ar_aging(as_of: date | None = None) -> dict:
+    """أعمار الذمم من العقود والفواتير وقطع الغيار غير المحصّلة، بدون تكرار."""
+    as_of = as_of or date.today()
+    from sqlalchemy.orm import joinedload
+
+    invoices = (
+        tenant_query(Invoice)
+        .options(joinedload(Invoice.customer))
+        .order_by(Invoice.invoice_date.asc(), Invoice.id.asc())
+        .all()
+    )
+    invoiced_contracts: set[int] = set()
+    invoiced_parts: set[int] = set()
+    open_docs: list[dict] = []
+
+    for inv in invoices:
+        if is_receipt_voucher(inv.invoice_type) or is_payment_voucher(inv.invoice_type):
+            continue
+        if getattr(inv, 'revenue_id', None):
+            continue
+        if 'إشعار' in (inv.invoice_type or ''):
+            continue
+        if (inv.status or '') in _CANCELLED_INVOICE_STATUSES:
+            continue
+        if inv.invoice_date and inv.invoice_date > as_of:
+            continue
+        if inv.contract_id:
+            invoiced_contracts.add(int(inv.contract_id))
+        if getattr(inv, 'parts_billing_id', None):
+            invoiced_parts.add(int(inv.parts_billing_id))
+        remaining = invoice_remaining(inv)
+        if remaining <= 0.01:
+            continue
+        basis = inv.due_date or inv.invoice_date
+        bucket, days = aging_bucket(basis, as_of)
+        cust = inv.customer
+        open_docs.append({
+            'customer_id': inv.customer_id or 0,
+            'customer': cust.name if cust else 'بدون عميل',
+            'customer_code': cust.code if cust else '',
+            'kind': 'فاتورة',
+            'code': inv.code,
+            'doc_date': inv.invoice_date.isoformat() if inv.invoice_date else '',
+            'due_date': inv.due_date.isoformat() if inv.due_date else '',
+            'basis': basis.isoformat() if basis else '',
+            'days': days,
+            'bucket': bucket,
+            'remaining': remaining,
+            'link': f'/invoices/{inv.id}/print',
+        })
+
+    contracts = (
+        tenant_query(Contract)
+        .options(joinedload(Contract.customer))
+        .order_by(Contract.start_date.asc(), Contract.id.asc())
+        .all()
+    )
+    for contract in contracts:
+        if contract.id in invoiced_contracts:
+            continue
+        if (contract.status or '').strip() in _NON_COLLECTIBLE_STATUSES:
+            continue
+        remaining = contract_remaining(contract)
+        if remaining <= 0.01:
+            continue
+        if contract.start_date and contract.start_date > as_of:
+            continue
+        basis = contract.due_date or contract.start_date
+        bucket, days = aging_bucket(basis, as_of)
+        cust = contract.customer
+        open_docs.append({
+            'customer_id': contract.customer_id or 0,
+            'customer': cust.name if cust else 'بدون عميل',
+            'customer_code': cust.code if cust else '',
+            'kind': 'عقد',
+            'code': contract.code,
+            'doc_date': contract.start_date.isoformat() if contract.start_date else '',
+            'due_date': contract.due_date.isoformat() if contract.due_date else '',
+            'basis': basis.isoformat() if basis else '',
+            'days': days,
+            'bucket': bucket,
+            'remaining': remaining,
+            'link': f'/contracts?highlight={contract.id}',
+        })
+
+    parts_rows = (
+        tenant_query(PartsBilling)
+        .options(joinedload(PartsBilling.customer))
+        .order_by(PartsBilling.billing_date.asc(), PartsBilling.id.asc())
+        .all()
+    )
+    for pb in parts_rows:
+        if pb.id in invoiced_parts:
+            continue
+        remaining = parts_remaining(pb)
+        if remaining <= 0.01:
+            continue
+        if pb.billing_date and pb.billing_date > as_of:
+            continue
+        basis = pb.billing_date
+        bucket, days = aging_bucket(basis, as_of)
+        cust = pb.customer
+        open_docs.append({
+            'customer_id': pb.customer_id or 0,
+            'customer': cust.name if cust else 'بدون عميل',
+            'customer_code': cust.code if cust else '',
+            'kind': 'قطع غيار',
+            'code': pb.code,
+            'doc_date': pb.billing_date.isoformat() if pb.billing_date else '',
+            'due_date': '',
+            'basis': basis.isoformat() if basis else '',
+            'days': days,
+            'bucket': bucket,
+            'remaining': remaining,
+            'link': f'/parts-billing?highlight={pb.id}',
+        })
+
+    customers: dict[int, dict] = {}
+    totals = {key: 0.0 for key in _AGING_BUCKETS}
+    totals['total'] = 0.0
+    for doc in open_docs:
+        cid = int(doc['customer_id'] or 0)
+        row = customers.get(cid)
+        if row is None:
+            row = {
+                'customer_id': cid,
+                'customer': doc['customer'],
+                'customer_code': doc['customer_code'],
+                'current': 0.0,
+                'd30': 0.0,
+                'd60': 0.0,
+                'd90': 0.0,
+                'over': 0.0,
+                'total': 0.0,
+            }
+            customers[cid] = row
+        row[doc['bucket']] = _round_money(row[doc['bucket']] + doc['remaining'])
+        row['total'] = _round_money(row['total'] + doc['remaining'])
+        totals[doc['bucket']] = _round_money(totals[doc['bucket']] + doc['remaining'])
+        totals['total'] = _round_money(totals['total'] + doc['remaining'])
+
+    customer_rows = sorted(customers.values(), key=lambda r: (-r['total'], r['customer'] or ''))
+    open_docs.sort(key=lambda r: (-r['days'], r['customer'] or '', r['code'] or ''))
+    return {
+        'as_of': as_of.isoformat(),
+        'customers': customer_rows,
+        'documents': open_docs,
+        'totals': totals,
+        'customer_count': len(customer_rows),
+        'document_count': len(open_docs),
+    }
+
+
 def apply_payment_to_source(
     source_type: str,
     source_id: int,

@@ -15470,6 +15470,20 @@ def report_customer_profitability():
     )
 
 
+@app.route('/reports/ar-aging')
+def report_ar_aging():
+    """أعمار الذمم: جاري، 1–30، 31–60، 61–90، وأكثر من 90."""
+    from customer_billing import build_ar_aging
+
+    as_of = _parse_iso_date(request.args.get('as_of'), default=date.today())
+    report = build_ar_aging(as_of)
+    return render_template(
+        'ar_aging.html',
+        report=report,
+        as_of=as_of.isoformat() if as_of else '',
+    )
+
+
 @app.route('/reports/customer-statement')
 def report_customer_statement():
     """كشف حساب عميل — مدين/دائن/رصيد مستحق."""

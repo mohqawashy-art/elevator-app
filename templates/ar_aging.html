@@ -1,0 +1,95 @@
+{% extends 'accounting_base.html' %}
+{% set page_title = 'أعمار الذمم' %}
+{% set accounting_tab = 'aging' %}
+{% block accounting_body %}
+<div class="page-header">
+  <div class="page-title">أعمار الذمم <span>{{ report.customer_count }} عميل · {{ report.document_count }} مستند</span></div>
+  <div class="page-actions">
+    <a class="btn btn-secondary btn-sm" href="/reports">كل التقارير</a>
+    <button class="btn btn-secondary btn-sm" type="button" onclick="window.print()">طباعة</button>
+  </div>
+</div>
+<p class="hint">المتبقي الحالي على العملاء. «جاري» لم يُستحق بعد، ثم 1–30 و31–60 و61–90 وأكثر من 90 يوماً من تاريخ الاستحقاق حتى التاريخ المختار. المستند الصادر بعد هذا التاريخ لا يظهر، والعقد الذي له فاتورة يُحسب من الفاتورة مرة واحدة.</p>
+<form class="filters-bar" method="get" action="{{ url_for('report_ar_aging') }}">
+  <div class="filter-group">
+    <label class="filter-label">حتى تاريخ</label>
+    <input class="filter-input" type="date" name="as_of" value="{{ as_of }}">
+  </div>
+  <button class="btn btn-primary btn-sm" type="submit">تحديث</button>
+</form>
+<div class="stats-row" style="grid-template-columns:repeat(5,1fr)">
+  <div class="stat-card"><div class="stat-label">جاري</div><div class="stat-value green">{{ '%.2f'|format(report.totals.current) }}</div></div>
+  <div class="stat-card"><div class="stat-label">1–30</div><div class="stat-value blue">{{ '%.2f'|format(report.totals.d30) }}</div></div>
+  <div class="stat-card"><div class="stat-label">31–60</div><div class="stat-value gold">{{ '%.2f'|format(report.totals.d60) }}</div></div>
+  <div class="stat-card"><div class="stat-label">61–90</div><div class="stat-value" style="color:var(--warning)">{{ '%.2f'|format(report.totals.d90) }}</div></div>
+  <div class="stat-card"><div class="stat-label">أكثر من 90</div><div class="stat-value red">{{ '%.2f'|format(report.totals.over) }}</div></div>
+</div>
+<div class="table-wrap" style="margin-bottom:20px">
+  <div class="panel-h">حسب العميل — الإجمالي {{ '%.2f'|format(report.totals.total) }}</div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>العميل</th>
+          <th>جاري</th>
+          <th>1–30</th>
+          <th>31–60</th>
+          <th>61–90</th>
+          <th>أكثر من 90</th>
+          <th>الإجمالي</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in report.customers %}
+        <tr>
+          <td class="td-name">
+            {% if row.customer_id %}
+            <a href="{{ url_for('report_customer_statement') }}?customer_id={{ row.customer_id }}">{{ row.customer_code }} — {{ row.customer }}</a>
+            {% else %}{{ row.customer }}{% endif %}
+          </td>
+          <td class="td-num">{{ '%.2f'|format(row.current) }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.d30) }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.d60) }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.d90) }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.over) }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.total) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7">لا توجد ذمم مفتوحة في هذا التاريخ.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<div class="table-wrap">
+  <div class="panel-h">المستندات المفتوحة</div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>العميل</th>
+          <th>النوع</th>
+          <th>المستند</th>
+          <th>الاستحقاق</th>
+          <th>أيام التأخير</th>
+          <th>المتبقي</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for doc in report.documents %}
+        <tr>
+          <td class="td-name">{{ doc.customer }}</td>
+          <td>{{ doc.kind }}</td>
+          <td class="td-code"><a href="{{ doc.link }}">{{ doc.code }}</a></td>
+          <td class="td-code">{{ doc.due_date or doc.doc_date or '—' }}</td>
+          <td class="td-num">{{ doc.days if doc.bucket != 'current' else '—' }}</td>
+          <td class="td-num">{{ '%.2f'|format(doc.remaining) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6">لا توجد مستندات مفتوحة.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
