@@ -1,0 +1,11 @@
+{% if list_meta and list_meta.server and list_meta.pages > 1 %}
+<div class="filters-bar" style="margin-top:10px">
+  {% if list_meta.prev %}
+  <a class="btn btn-secondary btn-sm" href="{{ list_meta.prev }}">السابق</a>
+  {% endif %}
+  <span class="hint" style="margin:0">صفحة {{ list_meta.page }} من {{ list_meta.pages }} — {{ list_meta.total }} سجل</span>
+  {% if list_meta.next %}
+  <a class="btn btn-secondary btn-sm" href="{{ list_meta.next }}">التالي</a>
+  {% endif %}
+</div>
+{% endif %}

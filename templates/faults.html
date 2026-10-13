@@ -335,7 +335,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="filters-bar">
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
-          <input type="text" class="search-input" id="search-input" placeholder="بحث بالكود أو العميل أو الوصف..." oninput="filterTable()">
+          <input type="text" class="search-input" id="search-input" value="{{ list_meta.q|e if list_meta else '' }}" placeholder="بحث بالكود أو العميل أو الوصف..." oninput="lcListSearch(this)">
         </div>
         <select class="filter-select" id="f-client" onchange="filterTable()">
           <option value="">كل العملاء</option>
@@ -349,14 +349,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <option value="عادية">عادية</option>
           <option value="منخفضة">منخفضة</option>
         </select>
-        <select class="filter-select" id="f-status" onchange="filterTable()">
+        <select class="filter-select" id="f-status" onchange="onFaultStatusFilter(this)">
           <option value="">كل الحالات</option>
-          <option value="مفتوح">مفتوح</option>
-          <option value="قيد المعالجة">قيد المعالجة</option>
-          <option value="انتظار قطع">انتظار قطع</option>
-          <option value="تم الاصلاح">تم الاصلاح</option>
-          <option value="محلول">محلول</option>
-          <option value="مغلق">مغلق</option>
+          {% for label in ['مفتوح', 'قيد المعالجة', 'انتظار قطع', 'تم الاصلاح', 'محلول', 'مغلق'] %}
+          <option value="{{ label }}" {% if list_meta and list_meta.status == label %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
         </select>
         <select class="filter-select" id="f-category" onchange="filterTable()">
           <option value="">كل الأنواع</option>
@@ -371,6 +368,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         </select>
         <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-fault-filters" onclick="clearAllFaultFilters()" style="display:none">مسح الفلاتر</button>
       </div>
+      {% if list_meta and list_meta.scope != 'all' %}
+      <p class="hint">الأعطال المفتوحة. <a href="?scope=all">سجل الأعطال كاملاً</a></p>
+      {% else %}
+      <p class="hint">سجل الأعطال. <a href="?">الأعطال المفتوحة</a></p>
+      {% endif %}
+      {% include 'partials/list_pager.html' %}
       <div id="fault-filter-hint" style="display:none;margin:-8px 0 12px;font-size:12px;color:var(--warning)"></div>
 
       <div class="table-wrap">
@@ -604,6 +607,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <script>
 var FAULTS = {{ faults_js|tojson }};
+var LIST_META = {{ list_meta|tojson if list_meta else 'null' }};
 var CUSTOMERS = {{ customers_js|tojson }};
 var ELEVATORS = {{ elevators_js|tojson }};
 var TECHNICIANS = {{ technicians_js|tojson }};
@@ -612,6 +616,20 @@ const NEXT_FAULT_CODE = {{ next_fault_code|tojson }};
 const FAULT_TECHS = {{ fault_technicians_js|tojson }};
 const PENDING_TECH_WA = {{ (pending_whatsapp or '')|tojson }};
 const PENDING_TECH_FAULT_ID = {{ (pending_whatsapp_fault_id or none)|tojson }};
+
+function onFaultStatusFilter(el) {
+  var value = (el && el.value) || '';
+  var closed = value === 'تم الاصلاح' || value === 'محلول' || value === 'مغلق';
+  if (window.LIST_META && LIST_META.server && window.lcListGo && closed) {
+    lcListGo({ scope: 'all', status: value, page: '1' });
+    return;
+  }
+  if (window.LIST_META && LIST_META.server && LIST_META.scope === 'all' && window.lcListParam) {
+    lcListParam('status', value);
+    return;
+  }
+  filterTable();
+}
 
 function filterFromAlert(text) {
   const st = document.getElementById('f-status');
@@ -928,7 +946,9 @@ function loadFaultPartsPanel(lines) {
 }
 
 function updateSidebarBadge() {
-  const open = FAULTS.filter(f => f.status === 'مفتوح').length;
+  const open = (window.LIST_META && LIST_META.open_total != null)
+    ? LIST_META.open_total
+    : FAULTS.filter(f => f.status === 'مفتوح').length;
   const badge = document.querySelector('.nav-badge');
   if (badge) badge.textContent = open;
 }
@@ -1053,18 +1073,21 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
-  var pg = tablePager ? tablePager.apply(data, FAULTS.length) : { rows: data };
+  var masterTotal = (window.LIST_META && LIST_META.server) ? LIST_META.total : FAULTS.length;
+  var serverPage = window.LIST_META && LIST_META.server;
+  var pg = (tablePager && !serverPage) ? tablePager.apply(data, masterTotal) : { rows: data };
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
   const D = window.lcDisp || (s => s);
   const LC = window.LiftCoreDisplay;
+  var shownTotal = serverPage ? LIST_META.total : data.length;
   if (LC) {
-    LC.setCountEl('faults-count', LC.fmtFaultsCount(data.length));
-    if (!tablePager) LC.setCountEl('table-info', LC.fmtShowing(data.length, FAULTS.length));
+    LC.setCountEl('faults-count', LC.fmtFaultsCount(shownTotal));
+    if (!tablePager || serverPage) LC.setCountEl('table-info', LC.fmtShowing(data.length, masterTotal));
   } else {
-    document.getElementById('faults-count').innerHTML = '<span class="lc-num">' + data.length + '</span> عطل';
+    document.getElementById('faults-count').innerHTML = '<span class="lc-num">' + shownTotal + '</span> عطل';
     const info = document.getElementById('table-info');
-    if (info && !tablePager) info.innerHTML = 'عرض <span class="lc-num">' + data.length + '</span> من <span class="lc-num">' + FAULTS.length + '</span>';
+    if (info && (!tablePager || serverPage)) info.innerHTML = 'عرض <span class="lc-num">' + data.length + '</span> من <span class="lc-num">' + masterTotal + '</span>';
   }
   tbody.innerHTML = pg.rows.map(f=>`
     <tr data-fault-id="${f.id}">

@@ -390,7 +390,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
     <div class="filters-bar">
       <div class="search-wrap">
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
-        <input type="text" class="search-input" id="search-input" placeholder="بحث بالكود أو اسم العميل..." oninput="filterTable()">
+        <input type="text" class="search-input" id="search-input" value="{{ list_meta.q|e if list_meta else '' }}" placeholder="بحث بالكود أو اسم العميل..." oninput="lcListSearch(this)">
       </div>
       <select class="filter-select" id="f-client" onchange="filterTable()">
         <option value="">كل العملاء</option>
@@ -404,13 +404,11 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <option>{{ t }}</option>
         {% endfor %}
       </select>
-      <select class="filter-select" id="f-status" onchange="filterTable()">
+      <select class="filter-select" id="f-status" onchange="lcListParam('status', this.value)">
         <option value="">كل الحالات</option>
-        <option>نشط</option>
-        <option>على وشك الانتهاء</option>
-        <option>تم تجديده</option>
-        <option>منتهي</option>
-        <option>ملغي</option>
+        {% for label in ['نشط', 'على وشك الانتهاء', 'تم تجديده', 'منتهي', 'ملغي'] %}
+        <option {% if list_meta and list_meta.status == label %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
       </select>
       <select class="filter-select" id="f-invoice" onchange="filterTable()">
         <option value="">حالة الفاتورة</option>
@@ -421,6 +419,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       </select>
       <button type="button" class="btn btn-secondary btn-sm" id="btn-show-renewed" onclick="toggleShowRenewedContracts()" style="display:none" title="إظهار العقود القديمة التي تم تجديدها">عرض العقود المجددة</button>
     </div>
+    {% include 'partials/list_pager.html' %}
 
     <!-- TABLE -->
     <div class="table-wrap">
@@ -821,6 +820,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 <script>
 // ===== البيانات من Flask =====
 var CONTRACTS = {{ contracts_js|tojson }};
+var CONTRACT_MAP = {{ contract_map_js|tojson if contract_map_js is defined else '[]' }};
+var LIST_META = {{ list_meta|tojson if list_meta else 'null' }};
 var CONTRACT_SCOPE = {{ (contract_scope or '')|tojson }};
 
 var CUSTOMERS = {{ customers_js|tojson }};
@@ -1179,7 +1180,7 @@ function isRenewedSupersededContract(c) {
   return c && (c.renewed || getContractDisplayStatus(c) === 'تم تجديده');
 }
 
-var SHOW_RENEWED_CONTRACTS = false;
+var SHOW_RENEWED_CONTRACTS = !!(window.LIST_META && LIST_META.renewed);
 
 function shouldHideRenewedContract(c) {
   if (SHOW_RENEWED_CONTRACTS) return false;
@@ -1193,6 +1194,14 @@ function contractsVisiblePool() {
 }
 
 function contractsMapPool() {
+  if (window.CONTRACT_MAP && CONTRACT_MAP.length) {
+    if (Array.isArray(filtered) && filtered.length !== CONTRACTS.length) {
+      var ids = {};
+      filtered.forEach(function (c) { ids[c.id] = true; });
+      return CONTRACT_MAP.filter(function (c) { return ids[c.id]; });
+    }
+    return CONTRACT_MAP;
+  }
   return Array.isArray(filtered) ? filtered : contractsVisiblePool();
 }
 
@@ -1217,6 +1226,7 @@ function contractsForStats() {
 }
 
 function renewedContractsCount() {
+  if (window.LIST_META && LIST_META.renewed_count != null) return LIST_META.renewed_count;
   return CONTRACTS.filter(isRenewedSupersededContract).length;
 }
 
@@ -1236,6 +1246,10 @@ function updateRenewedToggleButton() {
 }
 
 function toggleShowRenewedContracts() {
+  if (window.LIST_META && LIST_META.server && window.lcListParam) {
+    lcListParam('renewed', LIST_META.renewed ? '' : '1');
+    return;
+  }
   SHOW_RENEWED_CONTRACTS = !SHOW_RENEWED_CONTRACTS;
   updateRenewedToggleButton();
   filterTable();
@@ -1251,15 +1265,26 @@ function contractNeedsCollection(c) {
 
 // ===== إحصائيات =====
 function updateStats() {
-  var pool = contractsForStats();
-  var total = pool.length;
-  var active = pool.filter(function(c) { return getContractDisplayStatus(c) === 'نشط'; }).length;
-  var expired = pool.filter(function(c) { return getContractDisplayStatus(c) === 'منتهي'; }).length;
-  var expiring = pool.filter(function(c) { return getContractDisplayStatus(c) === 'على وشك الانتهاء'; }).length;
-  var totalVal = sumMoneyAmounts(pool.map(function(c) { return c.total; }));
-  var unpaid = sumMoneyAmounts(pool.filter(function(c) {
-    return contractOutstanding(c) > 0.01;
-  }).map(function(c) { return contractOutstanding(c); }));
+  var total, active, expired, expiring, totalVal, unpaid;
+  var stats = window.LIST_META && LIST_META.stats;
+  if (stats) {
+    total = stats.total;
+    active = stats.active;
+    expired = stats.expired;
+    expiring = stats.expiring;
+    totalVal = stats.total_val;
+    unpaid = stats.unpaid;
+  } else {
+    var pool = contractsForStats();
+    total = pool.length;
+    active = pool.filter(function(c) { return getContractDisplayStatus(c) === 'نشط'; }).length;
+    expired = pool.filter(function(c) { return getContractDisplayStatus(c) === 'منتهي'; }).length;
+    expiring = pool.filter(function(c) { return getContractDisplayStatus(c) === 'على وشك الانتهاء'; }).length;
+    totalVal = sumMoneyAmounts(pool.map(function(c) { return c.total; }));
+    unpaid = sumMoneyAmounts(pool.filter(function(c) {
+      return contractOutstanding(c) > 0.01;
+    }).map(function(c) { return contractOutstanding(c); }));
+  }
 
   document.getElementById('stat-total').textContent = total;
   document.getElementById('stat-active').textContent = active;
@@ -1551,6 +1576,14 @@ function printContractDrill() {
 }
 
 function openContractDrill(type, cardEl) {
+  if (window.LIST_META && LIST_META.server && window.lcListGo) {
+    if (type === 'active') lcListGo({ status: 'نشط', due: '', page: '1' });
+    else if (type === 'expired') lcListGo({ status: 'منتهي', due: '', page: '1' });
+    else if (type === 'expiring') lcListGo({ status: 'على وشك الانتهاء', due: '', page: '1' });
+    else if (type === 'unpaid') lcListGo({ due: '1', status: '', page: '1' });
+    else lcListGo({ status: '', due: '', page: '1' });
+    return;
+  }
   var rows = getContractsByDrill(type);
   document.querySelectorAll('.stat-mini').forEach(function(el) { el.classList.remove('active'); });
   if (cardEl) cardEl.classList.add('active');
@@ -1570,18 +1603,20 @@ function renderTable(data) {
     data = tableSort.apply(data);
     tableSort.updateIndicators();
   }
-  var poolLen = contractsVisiblePool().length;
-  var pg = tablePager ? tablePager.apply(data, poolLen) : { rows: data };
+  var poolLen = (window.LIST_META && LIST_META.server) ? LIST_META.total : contractsVisiblePool().length;
+  var serverPage = window.LIST_META && LIST_META.server;
+  var pg = (tablePager && !serverPage) ? tablePager.apply(data, poolLen) : { rows: data };
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
   var D = lcDisp;
   var LC = window.LiftCoreDisplay;
+  var shownTotal = serverPage ? LIST_META.total : data.length;
   if (LC) {
-    LC.setCountEl('contracts-count', LC.fmtContractsCount(data.length));
-    if (!tablePager) LC.setCountEl('table-info', LC.fmtShowing(data.length, poolLen));
+    LC.setCountEl('contracts-count', LC.fmtContractsCount(shownTotal));
+    if (!tablePager || serverPage) LC.setCountEl('table-info', LC.fmtShowing(data.length, poolLen));
   } else {
-    document.getElementById('contracts-count').textContent = data.length + ' عقد';
-    if (!tablePager) document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + poolLen;
+    document.getElementById('contracts-count').textContent = shownTotal + ' عقد';
+    if (!tablePager || serverPage) document.getElementById('table-info').textContent = 'عرض ' + data.length + ' من ' + poolLen;
   }
   tbody.innerHTML = pg.rows.map(function(c) {
     var disp = getContractDisplayStatus(c);
@@ -2257,7 +2292,13 @@ function openContractLocation(id) {
 
 function viewContract(id) {
   var c = CONTRACTS.find(function(x) { return x.id === id; });
-  if (!c) return;
+  if (!c) {
+    var point = (window.CONTRACT_MAP || []).find(function(x) { return x.id === id; });
+    if (point && point.code) {
+      location.href = '/contracts?z=5&scope=maintenance&q=' + encodeURIComponent(point.code);
+    }
+    return;
+  }
   currentViewId = id;
   document.getElementById('view-title').textContent = c.code + ' — ' + c.customer;
   var locHtml = LiftCoreLocation.renderLocationBlock({

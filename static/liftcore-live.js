@@ -204,7 +204,17 @@
     var key = pageKey();
     if (!key || syncing) return;
     syncing = true;
-    global.fetch('/api/live/sync?page=' + encodeURIComponent(key), { credentials: 'same-origin' })
+    var syncUrl = '/api/live/sync?page=' + encodeURIComponent(key);
+    var monthEl = global.document.getElementById('work-month');
+    if (monthEl && monthEl.value) syncUrl += '&month=' + encodeURIComponent(monthEl.value);
+    try {
+      var params = new URLSearchParams(global.location.search);
+      ['scope', 'q', 'status', 'page', 'contract', 'renewed', 'due'].forEach(function (key) {
+        var value = params.get(key);
+        if (value) syncUrl += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(value);
+      });
+    } catch (e) { /* ignore */ }
+    global.fetch(syncUrl, { credentials: 'same-origin' })
       .then(function (r) {
         if (r.status === 401) return null;
         if (r.status === 423) {

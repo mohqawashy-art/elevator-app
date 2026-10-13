@@ -39,7 +39,7 @@ def test_contracts_page_excludes_installation_contracts(client):
         db.session.add_all([install, maint])
         db.session.commit()
 
-    resp = client.get('/contracts?scope=maintenance&z=4')
+    resp = client.get('/contracts?scope=maintenance&z=5')
     assert resp.status_code == 200
     body = resp.get_data(as_text=True)
     assert 'CN-88887' in body

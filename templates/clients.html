@@ -439,17 +439,21 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
       <div class="filters-bar">
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="4.5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
-          <input type="text" class="search-input" id="search-input" placeholder="بحث بالاسم أو الهاتف أو الكود..." oninput="filterTable()">
+          <input type="text" class="search-input" id="search-input" value="{{ list_meta.q|e if list_meta else '' }}" placeholder="بحث بالاسم أو الهاتف أو الكود..." oninput="lcListSearch(this)">
         </div>
-        <select class="filter-select" id="f-contract" onchange="filterTable()">
+        <select class="filter-select" id="f-contract" onchange="lcListParam('contract', this.value)">
           <option value="">حالة العقد</option>
-          <option>نشط</option><option>على وشك الانتهاء</option><option>تم تجديده</option><option>منتهي</option><option>ملغي</option><option>بدون عقد</option>
+          {% for label in ['نشط', 'على وشك الانتهاء', 'تم تجديده', 'منتهي', 'ملغي', 'بدون عقد'] %}
+          <option {% if list_meta and list_meta.contract == label %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
         </select>
-        <select class="filter-select" id="f-status" onchange="filterTable()">
+        <select class="filter-select" id="f-status" onchange="lcListParam('status', this.value)">
           <option value="">الحالة</option>
-          <option>نشط</option><option>غير نشط</option>
+          <option {% if list_meta and list_meta.status == 'نشط' %}selected{% endif %}>نشط</option>
+          <option {% if list_meta and list_meta.status == 'غير نشط' %}selected{% endif %}>غير نشط</option>
         </select>
       </div>
+      {% include 'partials/list_pager.html' %}
 
       <!-- الجدول -->
       <div class="table-wrap">
@@ -573,6 +577,7 @@ html[dir="ltr"] .search-input{font-family:var(--font-en);direction:ltr;padding:8
 <script>
 // ===== البيانات من Flask =====
 var CUSTOMERS = {{ customers_js|tojson }};
+var LIST_META = {{ list_meta|tojson if list_meta else 'null' }};
 var CLIENT_SCOPE = {{ (client_scope or '')|tojson }};
 
 const NEXT_CODE = {{ next_client_code|tojson }};
@@ -1121,12 +1126,25 @@ document.addEventListener('click', function (e) {
 
 // ===== إحصائيات =====
 function updateStats() {
+  var stats = window.LIST_META && LIST_META.stats;
+  if (stats) {
+    document.getElementById('stat-total').textContent = stats.total;
+    document.getElementById('stat-active').textContent = stats.active;
+    document.getElementById('stat-nocontract').textContent = stats.nocontract;
+    return;
+  }
   document.getElementById('stat-total').textContent      = CUSTOMERS.length;
   document.getElementById('stat-active').textContent     = CUSTOMERS.filter(function(c){ return clientAccountStatus(c)==='نشط'; }).length;
   document.getElementById('stat-nocontract').textContent = CUSTOMERS.filter(function(c){ return c.contract_status==='بدون عقد'; }).length;
 }
 
 function openClientDrill(type, cardEl) {
+  if (window.LIST_META && LIST_META.server && window.lcListGo) {
+    if (type === 'active') lcListGo({ status: 'نشط', contract: '', page: '1' });
+    else if (type === 'nocontract') lcListGo({ contract: 'بدون عقد', status: '', page: '1' });
+    else lcListGo({ status: '', contract: '', page: '1' });
+    return;
+  }
   document.querySelectorAll('.stat-mini').forEach(function(el){ el.classList.remove('active'); });
   if (cardEl) cardEl.classList.add('active');
   var rows = CUSTOMERS.slice();
@@ -1233,7 +1251,8 @@ function renderTable(data) {
     tableSort.updateIndicators();
   }
   renderedRows = data || [];
-  var pg = tablePager ? tablePager.apply(data, CUSTOMERS.length) : {
+  var masterTotal = (window.LIST_META && LIST_META.server) ? LIST_META.total : CUSTOMERS.length;
+  var pg = (tablePager && !(window.LIST_META && LIST_META.server)) ? tablePager.apply(data, masterTotal) : {
     rows: data,
     start: data.length ? 1 : 0,
     end: data.length,
@@ -1241,13 +1260,14 @@ function renderTable(data) {
     masterTotal: CUSTOMERS.length,
   };
   const tbody = document.getElementById('table-body');
+  var shownTotal = (window.LIST_META && LIST_META.server) ? LIST_META.total : data.length;
   document.getElementById('clients-count').textContent = window.LiftCoreDisplay
-    ? LiftCoreDisplay.fmtClientsCount(data.length)
-    : (data.length + ' عميل');
-  if (!tablePager) {
+    ? LiftCoreDisplay.fmtClientsCount(shownTotal)
+    : (shownTotal + ' عميل');
+  if (!tablePager || (window.LIST_META && LIST_META.server)) {
     document.getElementById('table-info').textContent = window.LiftCoreDisplay
-      ? LiftCoreDisplay.fmtShowing(data.length, CUSTOMERS.length)
-      : ('عرض ' + data.length + ' من ' + CUSTOMERS.length);
+      ? LiftCoreDisplay.fmtShowing(data.length, masterTotal)
+      : ('عرض ' + data.length + ' من ' + masterTotal);
   }
   if(!pg.rows.length) {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;color:var(--text3)">' + lcDisp('لا توجد بيانات — اضغط إضافة عميل للبدء') + '</td></tr>';

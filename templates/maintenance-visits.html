@@ -369,9 +369,9 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div class="filters-bar">
         <div class="filter-month-nav">
           <button type="button" class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(-1)" title="الشهر السابق">‹</button>
-          <input type="month" class="date-input" id="work-month" value="{{ plan_default_month }}" onchange="applyWorkMonth(); filterTableByWorkMonth()">
+          <input type="month" class="date-input" id="work-month" value="{{ plan_default_month }}" onchange="loadVisitWindow(this.value)">
           <button type="button" class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(1)" title="الشهر التالي">›</button>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="goWorkMonthToday(); filterTableByWorkMonth()">هذا الشهر</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="goWorkMonthToday(); loadVisitWindow(document.getElementById('work-month').value)">هذا الشهر</button>
         </div>
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
@@ -396,6 +396,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <input type="date" lang="en-GB" class="date-input filter-input" id="f-date-from" onchange="filterTable()" title="من تاريخ">
         <input type="date" lang="en-GB" class="date-input filter-input" id="f-date-to" onchange="filterTable()" title="إلى تاريخ">
       </div>
+      <p class="hint">الشهر المعروض والزيارات غير المكتملة. الأسهم تفتح شهراً آخر من السجل.</p>
 
       <div class="table-wrap">
         <div class="table-scroll">
@@ -1039,6 +1040,22 @@ function renderTable(data) {
   if (window.LiftCoreNav) LiftCoreNav.bindOpenTabLinks(tbody);
 }
 
+function visitIsLive(v) {
+  var s = (v && v.status) || '';
+  return s !== 'مكتملة' && s !== 'ملغاة' && s !== 'ملغية';
+}
+
+function loadVisitWindow(ym) {
+  if (!ym) { filterTableByWorkMonth(); return; }
+  fetch('/api/maintenance/visits?month=' + encodeURIComponent(ym) + '&live=1', { credentials: 'same-origin' })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+      if (data && Array.isArray(data.visits)) VISITS.splice(0, VISITS.length, ...data.visits);
+      filterTableByWorkMonth();
+    })
+    .catch(function () { filterTableByWorkMonth(); });
+}
+
 function filterTable() {
   if (activeVisitFilter) {
     activeVisitFilter = null;
@@ -1054,8 +1071,8 @@ function filterTable() {
     lcAllows('f-tech', v.technician) &&
     lcAllows('f-type', v.visit_type) &&
     lcAllows('f-status', v.status, { aliases: { 'جاري التنفيذ': ['جارية', 'مُرسلة للفني', 'عند العميل', 'أنهى العمل عند العميل'] } }) &&
-    (!fd || v.visit_date >= fd) &&
-    (!td || v.visit_date <= td)
+    (visitIsLive(v) || !fd || v.visit_date >= fd) &&
+    (visitIsLive(v) || !td || v.visit_date <= td)
   );
   if (tablePager) tablePager.resetPage();
   renderTable(filtered);
@@ -1731,8 +1748,7 @@ function shiftWorkMonth(delta) {
   if (m < 1) { m = 12; y--; }
   if (m > 12) { m = 1; y++; }
   inp.value = y + '-' + String(m).padStart(2, '0');
-  applyWorkMonth();
-  filterTableByWorkMonth();
+  loadVisitWindow(inp.value);
 }
 
 function goWorkMonthToday() {

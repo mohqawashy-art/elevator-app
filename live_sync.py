@@ -122,7 +122,29 @@ def _sync_dashboard():
 
 def _sync_clients():
     h = _helpers()
-    customers = Customer.query.order_by(Customer.id.desc()).all()
+    from flask import request
+    from sqlalchemy import or_
+
+    from list_windows import PAGE_SIZE, request_page, request_text
+    from tenant_scope import tenant_query
+
+    qtext = request_text(request.args)
+    status_filter = (request.args.get('status') or '').strip()
+    contract_filter = (request.args.get('contract') or '').strip()
+    page = request_page(request.args)
+    query = tenant_query(Customer)
+    if qtext:
+        needle = f'%{qtext}%'
+        query = query.filter(or_(
+            Customer.name.ilike(needle),
+            Customer.name_en.ilike(needle),
+            Customer.code.ilike(needle),
+            Customer.phone.ilike(needle),
+            Customer.phone2.ilike(needle),
+        ))
+    if status_filter in ('نشط', 'غير نشط'):
+        query = query.filter(Customer.status == status_filter)
+    customers = query.order_by(Customer.id.desc()).all()
     rows = []
     for c in customers:
         rows.append({
@@ -157,24 +179,55 @@ def _sync_clients():
             'maps_url': c.maps_url or '',
             'building_photo_url': h.upload_url(c.building_photo_path),
         })
-    return {'CUSTOMERS': rows}
+        if contract_filter and (rows[-1].get('contract_status') or '') != contract_filter:
+            rows.pop()
+    start = (page - 1) * PAGE_SIZE
+    return {'CUSTOMERS': rows[start:start + PAGE_SIZE]}
 
 
 def _sync_contracts():
     h = _helpers()
-    contracts = Contract.query.order_by(Contract.id.desc()).all()
+    from flask import request
+
+    from contract_codes import contracts_for_scope
+    from list_windows import PAGE_SIZE, page_slice, request_page, request_text
+    from tenant_scope import tenant_query
+
+    contracts = contracts_for_scope(
+        tenant_query(Contract).order_by(Contract.id.desc()).all(),
+        'maintenance',
+    )
     renewed_ids = h._annotate_contract_renewals(contracts)
-    customers = Customer.query.order_by(Customer.name).all()
-    all_elevators = Elevator.query.all()
+    qtext = request_text(request.args).casefold()
+    status_filter = (request.args.get('status') or '').strip()
+    show_renewed = request.args.get('renewed') == '1'
+    due_only = request.args.get('due') == '1'
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    all_elevators = tenant_query(Elevator).all()
     elevator_by_id = {e.id: e for e in all_elevators}
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
         for e in all_elevators
     }
-    rows = []
+    visible = []
     for c in contracts:
-        row = h.contract_to_js_dict(c, renewed_ids=renewed_ids, elevator_by_id=elevator_by_id)
-        rows.append(row)
+        if c.id in renewed_ids and not show_renewed:
+            continue
+        display = h.contract_display_status(c, renewed_ids=renewed_ids)
+        customer_name = (c.customer.name if c.customer else '') or ''
+        if qtext and qtext not in f'{c.code or ""} {customer_name}'.casefold():
+            continue
+        if status_filter and display != status_filter:
+            continue
+        remaining = max(float(c.total or 0) - float(getattr(c, 'paid_amount', 0) or 0), 0)
+        if due_only and remaining <= 0.01:
+            continue
+        visible.append(c)
+    page_rows, _total, _page = page_slice(visible, request_page(request.args), PAGE_SIZE)
+    rows = [
+        h.contract_to_js_dict(c, renewed_ids=renewed_ids, elevator_by_id=elevator_by_id)
+        for c in page_rows
+    ]
     cust_rows = [{
         'id': c.id,
         'name': c.name,
@@ -194,8 +247,32 @@ def _sync_contracts():
 
 def _sync_elevators():
     h = _helpers()
-    elevs = Elevator.query.order_by(Elevator.id.desc()).all()
-    customers = Customer.query.order_by(Customer.name).all()
+    from flask import request
+    from sqlalchemy import or_
+
+    from list_windows import PAGE_SIZE, request_page, request_text
+    from tenant_scope import tenant_query
+
+    qtext = request_text(request.args)
+    status_filter = (request.args.get('status') or '').strip()
+    page = request_page(request.args)
+    query = tenant_query(Elevator)
+    if qtext:
+        needle = f'%{qtext}%'
+        query = query.filter(or_(
+            Elevator.code.ilike(needle),
+            Elevator.building_name.ilike(needle),
+            Elevator.customer.has(Customer.name.ilike(needle)),
+        ))
+    if status_filter:
+        query = query.filter(Elevator.status == status_filter)
+    elevs = (
+        query.order_by(Elevator.id.desc())
+        .offset((page - 1) * PAGE_SIZE)
+        .limit(PAGE_SIZE)
+        .all()
+    )
+    customers = tenant_query(Customer).order_by(Customer.name).all()
     rows = []
     for e in elevs:
         rows.append({
@@ -300,22 +377,26 @@ def _sync_technicians():
 
 def _sync_maintenance_visits():
     h = _helpers()
-    from operations import is_fault_visit_type
+    from flask import request
 
-    visits = [
-        v for v in MaintenanceVisit.query.order_by(MaintenanceVisit.visit_date.desc()).all()
-        if not is_fault_visit_type(v.visit_type)
-    ]
-    elevators = Elevator.query.all()
-    customers = Customer.query.order_by(Customer.name).all()
-    contracts = Contract.query.order_by(Contract.start_date.desc()).all()
-    technicians = Technician.query.filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).all()
+    from list_windows import maintenance_visit_query
+    from tenant_scope import tenant_query
+
+    query, _label = maintenance_visit_query(
+        month=request.args.get('month'),
+        include_open=True,
+    )
+    visits = query.all()
+    elevators = tenant_query(Elevator).all()
+    customers = tenant_query(Customer).order_by(Customer.name).all()
+    contracts = tenant_query(Contract).order_by(Contract.start_date.desc()).all()
+    technicians = tenant_query(Technician).filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).all()
     return {
         'VISITS': h._visits_js_list(visits),
         'CUSTOMERS': [{'id': c.id, 'code': c.code, 'name': c.name} for c in customers],
         'ELEVATORS': [{
-            'id': e.id, 'code': e.code, 'customer_id': e.customer_id,
-            'customer': e.customer.name if e.customer else '',
+            'id': e.id, 'code': e.code or '', 'customer_id': e.customer_id,
+            'building': e.building_name or '',
         } for e in elevators],
         'CONTRACTS': [{'id': c.id, 'code': c.code, 'customer_id': c.customer_id} for c in contracts],
         'TECHNICIANS': [{'id': t.id, 'name': t.name} for t in technicians],
@@ -325,9 +406,34 @@ def _sync_maintenance_visits():
 
 def _sync_faults():
     h = _helpers()
-    faults = Fault.query.order_by(Fault.reported_at.desc()).all()
-    elevators = Elevator.query.all()
-    customers = Customer.query.order_by(Customer.name).all()
+    from flask import request
+
+    from operations import FAULT_OPEN
+    from tenant_scope import tenant_query
+
+    from list_windows import PAGE_SIZE, request_page, request_text
+    from sqlalchemy import or_
+
+    scope = (request.args.get('scope') or '').strip()
+    qtext = request_text(request.args)
+    status_filter = (request.args.get('status') or '').strip()
+    page = request_page(request.args)
+    query = tenant_query(Fault).order_by(Fault.reported_at.desc())
+    if scope != 'all':
+        query = query.filter(Fault.status.in_(FAULT_OPEN))
+    elif status_filter:
+        query = query.filter(Fault.status == status_filter)
+    if qtext:
+        needle = f'%{qtext}%'
+        query = query.filter(or_(
+            Fault.code.ilike(needle),
+            Fault.description.ilike(needle),
+            Fault.fault_type.ilike(needle),
+            Fault.elevator.has(Elevator.customer.has(Customer.name.ilike(needle))),
+        ))
+    faults = query.offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).all()
+    elevators = tenant_query(Elevator).all()
+    customers = tenant_query(Customer).order_by(Customer.name).all()
     inventory_items = InventoryItem.query.order_by(InventoryItem.name).all()
     technicians = Technician.query.filter(Technician.status.in_(['نشط', 'متاح', 'مشغول'])).all()
     return {

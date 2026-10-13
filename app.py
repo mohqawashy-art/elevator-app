@@ -1370,6 +1370,29 @@ def client_to_js_dict(c, *, scope: str | None = None):
     }
 
 
+def _elevator_map_point(e, site=None):
+    """نقطة خريطة خفيفة — كل المصاعد، من غير تفاصيل بطاقة المصعد."""
+    cust = e.customer
+    lat = lng = ''
+    if site:
+        lat, lng = site[0], site[1]
+    elif cust:
+        lat, lng = cust.lat or '', cust.lng or ''
+    return {
+        'id': e.id,
+        'code': e.code or '',
+        'customer_id': e.customer_id,
+        'customer': cust.name if cust else '',
+        'customer_status': (cust.status if cust else '') or 'نشط',
+        'building': e.building_name or '',
+        'elev_type': e.elev_type or '',
+        'door_type': e.door_type or '',
+        'status': e.status or '',
+        'lat': lat or '',
+        'lng': lng or '',
+    }
+
+
 def elevator_to_js_dict(e, *, site=None):
     """تسلسل مصعد لـ JSON (مع علاقة العميل). site: (lat, lng, maps_url) إن وُجد."""
     if site is None:
@@ -4860,41 +4883,33 @@ def get_dashboard_stats():
     today = date.today()
     in_30_days = today + timedelta(days=30)
 
-    from customer_billing import (
-        is_payment_voucher,
-        is_receipt_voucher,
-        tenant_outstanding_collectible,
-    )
+    from customer_billing import tenant_outstanding_collectible
 
     outstanding = tenant_outstanding_collectible(today=today)
 
-    # فواتير ضريبية فقط (بدون سندات قبض/صرف) — المتبقي = الإجمالي − المدفوع
-    tax_invoices = [
-        inv for inv in tenant_query(Invoice).all()
-        if not is_receipt_voucher(inv.invoice_type)
-        and not is_payment_voucher(inv.invoice_type)
-        and not getattr(inv, 'revenue_id', None)
-    ]
-    total_invoices = sum(_money_round(inv.total) for inv in tax_invoices)
-    paid_invoices = sum(
-        _money_round(getattr(inv, 'paid_amount', 0) or 0)
-        for inv in tax_invoices
+    # فواتير ضريبية فقط (بدون سندات قبض/صرف) — مجاميع SQL حتى لا تُحمَّل كل الفواتير
+    from sqlalchemy import func, or_
+    remainder = func.coalesce(Invoice.total, 0) - func.coalesce(Invoice.paid_amount, 0)
+    tax_q = tenant_query(Invoice).filter(
+        Invoice.revenue_id.is_(None),
+        or_(
+            Invoice.invoice_type.is_(None),
+            Invoice.invoice_type == '',
+            ~Invoice.invoice_type.contains('سند'),
+        ),
     )
-    unpaid_total = sum(
-        max(_money_round(inv.total) - _money_round(getattr(inv, 'paid_amount', 0) or 0), 0)
-        for inv in tax_invoices
-        if max(_money_round(inv.total) - _money_round(getattr(inv, 'paid_amount', 0) or 0), 0) > 0.01
+    total_invoices = _money_round(tax_q.with_entities(func.coalesce(func.sum(Invoice.total), 0)).scalar())
+    paid_invoices = _money_round(tax_q.with_entities(func.coalesce(func.sum(Invoice.paid_amount), 0)).scalar())
+    unpaid_total = _money_round(
+        tax_q.filter(remainder > 0.01).with_entities(func.coalesce(func.sum(remainder), 0)).scalar()
     )
-    overdue_invoices = [
-        inv for inv in tax_invoices
-        if inv.due_date and inv.due_date < today
-        and max(_money_round(inv.total) - _money_round(getattr(inv, 'paid_amount', 0) or 0), 0) > 0.01
-    ]
-    overdue_total = sum(
-        max(_money_round(inv.total) - _money_round(getattr(inv, 'paid_amount', 0) or 0), 0)
-        for inv in overdue_invoices
+    overdue_q = tax_q.filter(
+        Invoice.due_date.isnot(None),
+        Invoice.due_date < today,
+        remainder > 0.01,
     )
-    overdue_count = len(overdue_invoices)
+    overdue_total = _money_round(overdue_q.with_entities(func.coalesce(func.sum(remainder), 0)).scalar())
+    overdue_count = overdue_q.order_by(None).count()
 
     expiring_contracts = _contracts_expiring_display_status(today)
 
@@ -5551,21 +5566,81 @@ def clients():
 
     from contract_codes import customer_matches_scope
 
+    from list_windows import PAGE_SIZE, list_meta_for, page_slice, request_page, request_text
+    from sqlalchemy import or_
+
     client_scope = (request.args.get('scope') or '').strip().lower()
     if client_scope not in ('maintenance', 'installation'):
         client_scope = ''
-    customers = (
-        tenant_query(Customer)
-        .options(joinedload(Customer.elevators), joinedload(Customer.contracts))
-        .order_by(Customer.id.desc())
-        .all()
+    qtext = request_text(request.args)
+    status_filter = (request.args.get('status') or '').strip()
+    contract_filter = (request.args.get('contract') or '').strip()
+    page = request_page(request.args)
+    query = tenant_query(Customer)
+    if qtext:
+        needle = f'%{qtext}%'
+        query = query.filter(or_(
+            Customer.name.ilike(needle),
+            Customer.name_en.ilike(needle),
+            Customer.code.ilike(needle),
+            Customer.phone.ilike(needle),
+            Customer.phone2.ilike(needle),
+        ))
+    if status_filter in ('نشط', 'غير نشط'):
+        query = query.filter(Customer.status == status_filter)
+    eager = (
+        joinedload(Customer.elevators),
+        joinedload(Customer.contracts),
     )
-    if client_scope:
-        customers = [c for c in customers if customer_matches_scope(c, client_scope)]
+    if contract_filter or client_scope:
+        loaded = query.options(*eager).order_by(Customer.id.desc()).all()
+        if client_scope:
+            loaded = [c for c in loaded if customer_matches_scope(c, client_scope)]
+        dicts = [client_to_js_dict(c, scope=client_scope or None) for c in loaded]
+        if contract_filter:
+            dicts = [row for row in dicts if (row.get('contract_status') or '') == contract_filter]
+        page_rows, total, page = page_slice(dicts, page, PAGE_SIZE)
+    else:
+        # ترقيم على المعرفات أولاً حتى لا يقصّ حدّ الصفحة صفوف العملاء بسبب ربط المصاعد والعقود
+        total = query.order_by(None).count()
+        pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE) if total else 1
+        page = min(page, pages)
+        id_rows = (
+            query.with_entities(Customer.id)
+            .order_by(Customer.id.desc())
+            .offset((page - 1) * PAGE_SIZE)
+            .limit(PAGE_SIZE)
+            .all()
+        )
+        ids = [row[0] for row in id_rows]
+        by_id = {}
+        if ids:
+            for customer in (
+                tenant_query(Customer)
+                .options(*eager)
+                .filter(Customer.id.in_(ids))
+                .all()
+            ):
+                by_id[customer.id] = customer
+        loaded = [by_id[i] for i in ids if i in by_id]
+        page_rows = [client_to_js_dict(c, scope=client_scope or None) for c in loaded]
+    customers = loaded if not (contract_filter or client_scope) else [
+        c for c in loaded if c.id in {row['id'] for row in page_rows}
+    ]
+    list_meta = list_meta_for(total, page, extra={
+        'stats': {
+            'total': tenant_query(Customer).count(),
+            'active': tenant_query(Customer).filter(Customer.status == 'نشط').count(),
+            'nocontract': tenant_query(Customer).filter(~Customer.contracts.any()).count(),
+        },
+        'status': status_filter,
+        'contract': contract_filter,
+    })
     return render_template(
         'clients.html',
         customers=customers,
-        customers_js=[client_to_js_dict(c, scope=client_scope or None) for c in customers],
+        customers_js=page_rows,
+        list_meta=list_meta,
         next_client_code=next_code(Customer, 'C-', digits=4),
         client_scope=client_scope,
         clients_page_title=(
@@ -6526,18 +6601,48 @@ def _parse_int(value):
 def elevators():
     from sqlalchemy.orm import joinedload
 
-    elevs = (
-        tenant_query(Elevator)
-        .options(joinedload(Elevator.customer))
-        .order_by(Elevator.id.desc())
-        .all()
-    )
+    from list_windows import PAGE_SIZE, list_meta_for, request_page, request_text
+    from sqlalchemy import func, or_
+
+    qtext = request_text(request.args)
+    status_filter = (request.args.get('status') or '').strip()
+    page = request_page(request.args)
+    query = tenant_query(Elevator).options(joinedload(Elevator.customer))
+    if qtext:
+        needle = f'%{qtext}%'
+        query = query.filter(or_(
+            Elevator.code.ilike(needle),
+            Elevator.building_name.ilike(needle),
+            Elevator.customer.has(Customer.name.ilike(needle)),
+        ))
+    if status_filter:
+        query = query.filter(Elevator.status == status_filter)
+    elevs = query.order_by(Elevator.id.desc()).all()
+    total = len(elevs)
+    pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE) if total else 1
+    page = min(page, pages)
+    page_rows = elevs[(page - 1) * PAGE_SIZE:page * PAGE_SIZE]
     customers = tenant_query(Customer).order_by(Customer.name).all()
     site_map = _elevator_site_coords_map(elevs)
+    status_counts = dict(
+        tenant_query(Elevator).with_entities(Elevator.status, func.count()).group_by(Elevator.status).all()
+    )
+    list_meta = list_meta_for(total, page, extra={
+        'status': status_filter,
+        'stats': {
+            'total': sum(status_counts.values()),
+            'active': int(status_counts.get('نشط') or 0),
+            'maintenance': int(status_counts.get('تحت الصيانة') or 0),
+            'stopped': int(status_counts.get('متوقف') or 0),
+            'oos': int(status_counts.get('خارج الخدمة') or 0),
+        },
+    })
     return render_template(
         'elevators.html',
-        elevators=elevs,
-        elevators_js=[elevator_to_js_dict(e, site=site_map.get(e.id)) for e in elevs],
+        elevators=page_rows,
+        elevators_js=[elevator_to_js_dict(e, site=site_map.get(e.id)) for e in page_rows],
+        elev_map_js=[_elevator_map_point(e, site_map.get(e.id)) for e in elevs],
+        list_meta=list_meta,
         customers=customers,
         customers_js=[
             {
@@ -7679,15 +7784,16 @@ def contracts():
 
     from contract_codes import MAINTENANCE_CONTRACT_TYPES, contracts_for_scope
 
+    contract_scope = (request.args.get('scope') or 'maintenance').strip().lower()
+    if contract_scope == 'installation':
+        return redirect(url_for('installation.contracts_list'))
+
     # إجبار المتصفح على URL جديد لكسر كاش الصفحة القديمة التي ترفض القيمة 0
     if request.args.get('z') != '5':
         args = request.args.to_dict(flat=True)
         args['z'] = '5'
         return redirect(url_for('contracts', **args))
 
-    contract_scope = (request.args.get('scope') or 'maintenance').strip().lower()
-    if contract_scope == 'installation':
-        return redirect(url_for('installation.contracts_list'))
     if contract_scope != 'maintenance':
         args = request.args.to_dict(flat=True)
         args['scope'] = 'maintenance'
@@ -7699,8 +7805,58 @@ def contracts():
         .order_by(Contract.id.desc())
         .all()
     )
+    from list_windows import PAGE_SIZE, list_meta_for, page_slice, request_page, request_text
+
     contracts_list = contracts_for_scope(contracts_list, 'maintenance')
     renewed_ids = _annotate_contract_renewals(contracts_list)
+    qtext = request_text(request.args).casefold()
+    status_filter = (request.args.get('status') or '').strip()
+    show_renewed = request.args.get('renewed') == '1'
+    due_only = request.args.get('due') == '1'
+    visible = []
+    map_points = []
+    renewed_count = sum(1 for contract in contracts_list if contract.id in renewed_ids)
+    stats = {'total': 0, 'active': 0, 'expired': 0, 'expiring': 0, 'total_val': 0.0, 'unpaid': 0.0}
+    for contract in contracts_list:
+        if contract.id in renewed_ids and not show_renewed:
+            continue
+        display = contract_display_status(contract, renewed_ids=renewed_ids)
+        customer = contract.customer
+        customer_name = (customer.name if customer else '') or ''
+        if qtext and qtext not in f'{contract.code or ""} {customer_name}'.casefold():
+            continue
+        if status_filter and display != status_filter:
+            continue
+        remaining = max(float(contract.total or 0) - float(getattr(contract, 'paid_amount', 0) or 0), 0)
+        if due_only and remaining <= 0.01:
+            continue
+        stats['total'] += 1
+        if display == 'نشط':
+            stats['active'] += 1
+        elif display == 'منتهي':
+            stats['expired'] += 1
+        elif display == 'على وشك الانتهاء':
+            stats['expiring'] += 1
+        stats['total_val'] += float(contract.total or 0)
+        stats['unpaid'] += remaining
+        map_points.append({
+            'id': contract.id,
+            'code': contract.code or '',
+            'customer_id': contract.customer_id,
+            'customer': customer_name,
+            'customer_status': (customer.status if customer else '') or 'نشط',
+            'status': contract.status or 'نشط',
+            'end_date': contract.end_date.isoformat() if contract.end_date else '',
+            'renewed': contract.id in renewed_ids,
+            'lat': (getattr(contract, 'lat', None) or '') or ((customer.lat if customer else '') or ''),
+            'lng': (getattr(contract, 'lng', None) or '') or ((customer.lng if customer else '') or ''),
+            'district': (customer.district if customer else '') or '',
+        })
+        visible.append(contract)
+    stats['total_val'] = round(stats['total_val'], 2)
+    stats['unpaid'] = round(stats['unpaid'], 2)
+    page = request_page(request.args)
+    page_rows, total, page = page_slice(visible, page, PAGE_SIZE)
     customers = tenant_query(Customer).order_by(Customer.name).all()
     all_elevators = tenant_query(Elevator).all()
     elevator_by_id = {e.id: e for e in all_elevators}
@@ -7708,13 +7864,22 @@ def contracts():
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
         for e in all_elevators
     }
+    list_meta = list_meta_for(total, page, extra={
+        'stats': stats,
+        'status': status_filter,
+        'renewed': show_renewed,
+        'renewed_count': renewed_count,
+        'due': due_only,
+    })
     resp = make_response(render_template(
         'contracts.html',
-        contracts=contracts_list,
+        contracts=page_rows,
         contracts_js=[
             contract_to_js_dict(c, renewed_ids=renewed_ids, elevator_by_id=elevator_by_id)
-            for c in contracts_list
+            for c in page_rows
         ],
+        contract_map_js=map_points,
+        list_meta=list_meta,
         customers_js=[contract_customer_js_dict(c) for c in customers],
         elev_lookup=elev_lookup,
         next_contract_codes={
@@ -9081,18 +9246,16 @@ def api_field_today_tracking():
 # =============================================
 @app.route('/maintenance-visits')
 def maintenance_visits():
-    from operations import exclude_fault_visits, list_districts, visit_alerts, visit_stats
+    from operations import list_districts, visit_alerts, visit_stats
     from sqlalchemy.orm import joinedload
     from visit_cleanup import find_duplicate_visit_ids_from
+    from list_windows import maintenance_visit_query
 
-    visits = exclude_fault_visits(
-        tenant_query(MaintenanceVisit).options(
-            joinedload(MaintenanceVisit.elevator).joinedload(Elevator.customer),
-            joinedload(MaintenanceVisit.technician),
-            joinedload(MaintenanceVisit.contract),
-            joinedload(MaintenanceVisit.linked_fault),
-        )
-    ).all()
+    visit_query, plan_default = maintenance_visit_query(
+        month=request.args.get('month'),
+        include_open=True,
+    )
+    visits = visit_query.all()
     from entity_links import natural_code_key
     visits = sorted(
         visits,
@@ -9105,7 +9268,6 @@ def maintenance_visits():
         Technician.status.in_(['نشط', 'متاح', 'مشغول'])
     ).all()
     today = date.today()
-    plan_default = f'{today.year}-{today.month:02d}'
     month_end = today.replace(day=monthrange(today.year, today.month)[1])
     maint_techs = [t for t in technicians if (t.team or 'عام') in ('صيانة', 'عام')] or list(technicians)
     from maintenance_teams import list_all_teams, team_to_dict
@@ -9113,7 +9275,6 @@ def maintenance_visits():
     maint_teams = [team_to_dict(t) for t in teams_all if t.active]
     all_teams = [team_to_dict(t) for t in teams_all]
     duplicate_visit_ids = find_duplicate_visit_ids_from(visits)
-    elev_site = _elevator_site_coords_map(elevators)
     return render_template(
         'maintenance-visits.html',
         visits=visits,
@@ -9123,7 +9284,15 @@ def maintenance_visits():
         technicians=technicians,
         visits_js=_visits_js_list(visits),
         customers_js=[{'id': c.id, 'code': c.code, 'name': c.name} for c in customers],
-        elevators_js=[elevator_to_js_dict(e, site=elev_site.get(e.id)) for e in elevators],
+        elevators_js=[
+            {
+                'id': e.id,
+                'code': e.code or '',
+                'customer_id': e.customer_id,
+                'building': e.building_name or '',
+            }
+            for e in elevators
+        ],
         contracts_js=[
             {'id': c.id, 'code': c.code, 'customer_id': c.customer_id} for c in contracts
         ],
@@ -9472,24 +9641,16 @@ def visit_delete(id):
 @app.route('/api/maintenance/visits', methods=['GET'])
 def api_maintenance_visits():
     """قائمة زيارات شهر معيّن — لتحديث الجدول بعد تخطيط الشهر."""
-    from operations import exclude_fault_visits
+    from list_windows import maintenance_visit_query
 
     month = request.args.get('month', '').strip()
-    q = exclude_fault_visits(
-        tenant_query(MaintenanceVisit).order_by(MaintenanceVisit.visit_date.desc())
+    if month and '-' not in month:
+        return jsonify({'error': 'صيغة الشهر غير صحيحة (YYYY-MM)'}), 400
+    query, label = maintenance_visit_query(
+        month=month or None,
+        include_open=request.args.get('live') == '1',
     )
-    if month and '-' in month:
-        try:
-            year, m = map(int, month.split('-', 1))
-            start = date(year, m, 1)
-            end = date(year, m, monthrange(year, m)[1])
-            q = q.filter(
-                MaintenanceVisit.visit_date >= start,
-                MaintenanceVisit.visit_date <= end,
-            )
-        except (TypeError, ValueError):
-            return jsonify({'error': 'صيغة الشهر غير صحيحة (YYYY-MM)'}), 400
-    return jsonify({'visits': _visits_js_list(q.all()), 'month': month})
+    return jsonify({'visits': _visits_js_list(query.all()), 'month': label})
 
 
 @app.route('/api/maintenance/plan', methods=['GET'])
@@ -11379,11 +11540,17 @@ def whatsapp_webhook():
 
 @app.route('/faults')
 def faults():
-    from operations import fault_alerts, fault_stats
+    from operations import FAULT_OPEN, fault_alerts, fault_stats
     from fault_report import FAULT_TYPE_OPTIONS
+    from sqlalchemy import or_
     from sqlalchemy.orm import joinedload
+    from list_windows import PAGE_SIZE, list_meta_for, request_page, request_text
 
-    faults_list = (
+    scope = (request.args.get('scope') or '').strip()
+    qtext = request_text(request.args)
+    status_filter = (request.args.get('status') or '').strip()
+    page = request_page(request.args)
+    query = (
         tenant_query(Fault)
         .options(
             joinedload(Fault.elevator).joinedload(Elevator.customer),
@@ -11391,8 +11558,29 @@ def faults():
             joinedload(Fault.linked_visit),
         )
         .order_by(Fault.reported_at.desc())
-        .all()
     )
+    if scope != 'all':
+        query = query.filter(Fault.status.in_(FAULT_OPEN))
+    elif status_filter:
+        query = query.filter(Fault.status == status_filter)
+    if qtext:
+        needle = f'%{qtext}%'
+        query = query.filter(or_(
+            Fault.code.ilike(needle),
+            Fault.description.ilike(needle),
+            Fault.fault_type.ilike(needle),
+            Fault.elevator.has(Elevator.customer.has(Customer.name.ilike(needle))),
+        ))
+    total = query.count()
+    pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE) if total else 1
+    page = min(page, pages)
+    faults_list = query.offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).all()
+    open_badge = tenant_query(Fault).filter(Fault.status == 'مفتوح').count()
+    list_meta = list_meta_for(total, page, extra={
+        'scope': scope or 'open',
+        'status': status_filter,
+        'open_total': open_badge,
+    })
     elevators = tenant_query(Elevator).options(joinedload(Elevator.customer)).all()
     customers = tenant_query(Customer).order_by(Customer.name).all()
     inventory_items = tenant_query(InventoryItem).order_by(InventoryItem.name).all()
@@ -11405,6 +11593,7 @@ def faults():
     return render_template(
         'faults.html',
         faults=faults_list,
+        list_meta=list_meta,
         elevators=elevators,
         customers=customers,
         technicians=technicians,
