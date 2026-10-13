@@ -22,6 +22,8 @@ body{background:var(--bg);color:var(--text1);min-height:100vh}
 .lines-table th{padding:8px 10px;text-align:right;background:var(--bg3);color:var(--text3);font-size:11px;border-bottom:1px solid var(--border)}
 .lines-table td{padding:8px 10px;border-bottom:1px solid rgba(100,160,255,.06);vertical-align:middle}
 .lines-table input{width:100%;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar)}
+.field .lc-client-select{width:100%}
+.field .lc-client-select-input{width:100%;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1);font-family:var(--font-ar);font-size:13px}
 .issue-item-cell .lc-client-select{position:relative;min-width:200px}
 .issue-item-cell .lc-client-select-input{width:100%;font-size:12px;padding:8px 10px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r-sm);color:var(--text1)}
 .issue-item-cell .lc-client-select-list{z-index:400;max-height:220px;overflow-y:auto}
@@ -390,21 +392,62 @@ function validateIssueForm() {
   return true;
 }
 
-document.getElementById('issue-contract').innerHTML = '<option value="">—</option>' + (MAINT_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'"'+(EDIT_DOCUMENT && String(EDIT_DOCUMENT.contract_id||'')===String(r.id)?' selected':'')+'>'+(r.name||r.code)+'</option>';}).join('');
-document.getElementById('issue-install').innerHTML = '<option value="">—</option>' + (INSTALL_CONTRACTS||[]).map(function(r){return '<option value="'+r.id+'"'+(EDIT_DOCUMENT && String(EDIT_DOCUMENT.install_contract_id||'')===String(r.id)?' selected':'')+'>'+(r.name||r.code)+'</option>';}).join('');
-syncIssueFields();
+function toSearchRows(rows) {
+  return (rows || []).map(function (r) {
+    return { id: String(r.id), code: r.code || '', name: r.name || r.code || '' };
+  });
+}
+
+var issueLookupsMounted = false;
+function mountIssueLookups() {
+  if (issueLookupsMounted || typeof LcClientSelect === 'undefined') return;
+  var contractSel = document.getElementById('issue-contract');
+  var installSel = document.getElementById('issue-install');
+  if (contractSel && contractSel.tagName === 'SELECT') {
+    var contractId = EDIT_DOCUMENT ? String(EDIT_DOCUMENT.contract_id || '') : '';
+    contractSel.innerHTML = '<option value="">—</option>' + (MAINT_CONTRACTS || []).map(function (r) {
+      return '<option value="' + r.id + '"' + (contractId === String(r.id) ? ' selected' : '') + '>' + (r.name || r.code) + '</option>';
+    }).join('');
+  }
+  if (installSel && installSel.tagName === 'SELECT') {
+    var installId = EDIT_DOCUMENT ? String(EDIT_DOCUMENT.install_contract_id || '') : '';
+    installSel.innerHTML = '<option value="">—</option>' + (INSTALL_CONTRACTS || []).map(function (r) {
+      return '<option value="' + r.id + '"' + (installId === String(r.id) ? ' selected' : '') + '>' + (r.name || r.code) + '</option>';
+    }).join('');
+  }
+  LcClientSelect.upgradeSelect('issue-target', { placeholder: 'ابحث عن نوع الصرف...' });
+  LcClientSelect.upgradeSelect('issue-technician', { placeholder: 'ابحث باسم الفني...' });
+  LcClientSelect.upgradeSelect('issue-contract', {
+    placeholder: 'ابحث باسم العميل أو رقم العقد...',
+    customers: toSearchRows(MAINT_CONTRACTS),
+    selectedId: EDIT_DOCUMENT ? (EDIT_DOCUMENT.contract_id || '') : '',
+  });
+  LcClientSelect.upgradeSelect('issue-install', {
+    placeholder: 'ابحث باسم العميل أو عقد التركيب...',
+    customers: toSearchRows(INSTALL_CONTRACTS),
+    selectedId: EDIT_DOCUMENT ? (EDIT_DOCUMENT.install_contract_id || '') : '',
+  });
+  issueLookupsMounted = true;
+  syncIssueFields();
+}
+
+mountIssueLookups();
 if (EDIT_DOCUMENT) loadEditDocument();
 else document.querySelectorAll('.line-row').forEach(function (row) { bindLine(row); });
 updateDocTotal();
 document.getElementById('issue-form').addEventListener('submit', function (e) {
   if (!validateIssueForm()) e.preventDefault();
 });
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', remountIssueItemSelects);
-} else {
+function bootIssuePage() {
+  mountIssueLookups();
   remountIssueItemSelects();
 }
-window.addEventListener('load', remountIssueItemSelects);
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootIssuePage);
+} else {
+  bootIssuePage();
+}
+window.addEventListener('load', bootIssuePage);
 </script>
 </body>
 </html>
