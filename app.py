@@ -7,6 +7,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 from models import db, Customer, Elevator, Contract, ContractElevator, Technician, TechnicianDocument
 from models import MaintenanceVisit, Fault, Revenue, Expense, Invoice, Account
 from models import JournalEntry, JournalLine
+from fiscal_years import ClosedFiscalYearError
 from models import MaintenanceTeam
 from models import VisitTechnician, FaultTechnician, WhatsAppInbox
 from models import InventoryItem, StockMovement, PartsBilling, Settings, User, Signatory
@@ -11834,6 +11835,10 @@ def revenue_edit(id):
     try:
         from accounting_journals import post_revenue_journal
         post_revenue_journal(r)
+    except ClosedFiscalYearError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+        return redirect(url_for('revenues'))
     except Exception:
         app.logger.exception('post_revenue_journal on edit failed')
     db.session.commit()
@@ -11860,6 +11865,10 @@ def revenue_add():
     try:
         from accounting_journals import post_revenue_journal
         post_revenue_journal(r)
+    except ClosedFiscalYearError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+        return redirect(url_for('revenues'))
     except Exception:
         app.logger.exception('post_revenue_journal on add failed')
     db.session.commit()
@@ -11877,6 +11886,10 @@ def revenue_delete(id):
     try:
         from accounting_journals import void_revenue_journal
         void_revenue_journal(r.id)
+    except ClosedFiscalYearError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+        return redirect(url_for('revenues'))
     except Exception:
         app.logger.exception('void_revenue_journal failed')
     # سند القبض يشير للإيراد (FK) — احذفه أولاً وإلا يفشل الحذف
@@ -12218,12 +12231,17 @@ def journal_new():
         entry_date = _parse_iso_date(request.form.get('entry_date'), default=date.today())
         memo = (request.form.get('memo') or '').strip()[:400]
         lines = _parse_manual_journal_lines(accounts)
-        je = create_manual_journal(
-            entry_date=entry_date,
-            memo=memo,
-            lines=lines,
-            kind=kind,
-        )
+        try:
+            je = create_manual_journal(
+                entry_date=entry_date,
+                memo=memo,
+                lines=lines,
+                kind=kind,
+            )
+        except ClosedFiscalYearError as exc:
+            db.session.rollback()
+            flash(str(exc), 'danger')
+            return render_template('journal_form.html', accounts=accounts, form=request.form)
         if not je:
             flash('القيد غير متوازن أو ناقص — أدخل سطرين على الأقل بتساوي المدين والدائن.', 'danger')
             return render_template(
@@ -12243,7 +12261,12 @@ def journal_void(id):
 
     _ensure_tenant_chart()
     ensure_journal_schema()
-    ok = void_manual_journal(id)
+    try:
+        ok = void_manual_journal(id)
+    except ClosedFiscalYearError as exc:
+        db.session.rollback()
+        flash(str(exc), 'danger')
+        return redirect(url_for('journal_detail', id=id))
     if ok:
         db.session.commit()
         flash('تم إلغاء القيد', 'success')
@@ -12370,6 +12393,63 @@ def balance_sheet():
     )
 
 
+@app.route('/fiscal-years', methods=['GET', 'POST'])
+def fiscal_years_page():
+    from fiscal_years import close_fiscal_year, list_fiscal_years, preview_close
+
+    _ensure_tenant_chart()
+    prior = date.today().year - 1
+    start = _parse_iso_date(request.values.get('start'), default=date(prior, 1, 1))
+    end = _parse_iso_date(request.values.get('end'), default=date(prior, 12, 31))
+    if request.method == 'POST' and (request.form.get('action') or '') == 'close':
+        try:
+            year = close_fiscal_year(start, end)
+            db.session.commit()
+            flash(
+                f'تم إقفال السنة من {year.start_date.isoformat()} إلى {year.end_date.isoformat()} — صافي {year.net_income:.2f}',
+                'success',
+            )
+            return redirect(url_for('fiscal_years_page'))
+        except ValueError as exc:
+            db.session.rollback()
+            flash(str(exc), 'danger')
+    preview = None
+    preview_error = None
+    try:
+        preview = preview_close(start, end)
+    except ValueError as exc:
+        preview_error = str(exc)
+    years = list_fiscal_years()
+    latest_closed_id = next((y.id for y in years if y.status == 'closed'), None)
+    return render_template(
+        'fiscal_years.html',
+        years=years,
+        preview=preview,
+        preview_error=preview_error,
+        start=start.isoformat() if start else '',
+        end=end.isoformat() if end else '',
+        latest_closed_id=latest_closed_id,
+    )
+
+
+@app.route('/fiscal-years/<int:year_id>/reopen', methods=['POST'])
+def fiscal_year_reopen(year_id):
+    from fiscal_years import reopen_fiscal_year
+
+    _ensure_tenant_chart()
+    try:
+        year = reopen_fiscal_year(year_id)
+        db.session.commit()
+        flash(
+            f'أُعيد فتح السنة من {year.start_date.isoformat()} إلى {year.end_date.isoformat()}',
+            'success',
+        )
+    except ValueError as exc:
+        db.session.rollback()
+        flash(str(exc), 'danger')
+    return redirect(url_for('fiscal_years_page'))
+
+
 # =============================================
 # المصروفات
 # =============================================
@@ -12431,6 +12511,8 @@ def expense_edit(id):
         try:
             from accounting_journals import post_expense_journal
             post_expense_journal(e)
+        except ClosedFiscalYearError:
+            raise
         except Exception:
             app.logger.exception('post_expense_journal on edit failed')
         db.session.commit()
@@ -12476,6 +12558,8 @@ def expense_add():
         try:
             from accounting_journals import post_expense_journal
             post_expense_journal(e)
+        except ClosedFiscalYearError:
+            raise
         except Exception:
             app.logger.exception('post_expense_journal on add failed')
         db.session.commit()
@@ -12494,6 +12578,10 @@ def expense_delete(id):
     try:
         from accounting_journals import void_expense_journal
         void_expense_journal(e.id)
+    except ClosedFiscalYearError as exc:
+        db.session.rollback()
+        flash(str(exc), 'error')
+        return redirect(url_for('expenses'))
     except Exception:
         app.logger.exception('void_expense_journal failed')
     _remove_fin_proof(e)

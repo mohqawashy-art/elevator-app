@@ -43,6 +43,7 @@
             {% elif j.source_type == 'expense' %}مصروف
             {% elif j.source_type == 'opening' %}افتتاحي
             {% elif j.source_type == 'manual' %}يدوي
+            {% elif j.source_type == 'year_close' %}إقفال سنة
             {% else %}{{ j.source_type or '—' }}{% endif %}
             {% if j.source_id %}<span style="color:var(--text3);font-family:var(--font-en)"> #{{ j.source_id }}</span>{% endif %}
           </td>

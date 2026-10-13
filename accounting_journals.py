@@ -42,6 +42,8 @@ def ensure_journal_schema() -> None:
             db.session.expire_all()
         except Exception:
             pass
+    from fiscal_years import ensure_fiscal_schema
+    ensure_fiscal_schema()
     _journal_schema_checked = True
 
 
@@ -61,7 +63,9 @@ def _void_source_journals(source_type: str, source_id: int) -> int:
         .filter_by(source_type=source_type, source_id=source_id, status='posted')
     )
     n = 0
+    from fiscal_years import assert_date_open
     for je in q.all():
+        assert_date_open(je.entry_date)
         je.status = 'void'
         n += 1
     return n
@@ -99,6 +103,9 @@ def _create_entry(
     if not cleaned or total_d <= 0 or total_d != total_c:
         return None
 
+    if source_type != 'year_close':
+        from fiscal_years import assert_date_open
+        assert_date_open(entry_date)
     if source_id:
         _void_source_journals(source_type, source_id)
     je = JournalEntry(
@@ -305,6 +312,8 @@ def void_manual_journal(journal_id: int) -> bool:
     je = tenant_query(JournalEntry).filter_by(id=journal_id).first()
     if not je or je.status != 'posted' or (je.source_type or '') not in MANUAL_SOURCE_TYPES:
         return False
+    from fiscal_years import assert_date_open
+    assert_date_open(je.entry_date)
     je.status = 'void'
     return True
 
@@ -492,7 +501,11 @@ def income_statement(date_from: date | None = None, date_to: date | None = None)
         )
         .join(JournalLine, JournalLine.account_id == Account.id)
         .join(JournalEntry, JournalEntry.id == JournalLine.journal_id)
-        .filter(JournalEntry.status == 'posted', Account.account_type.in_(['revenue', 'expense']))
+        .filter(
+            JournalEntry.status == 'posted',
+            JournalEntry.source_type.is_distinct_from('year_close'),
+            Account.account_type.in_(['revenue', 'expense']),
+        )
     )
     oid = effective_organization_id()
     if oid:
@@ -520,7 +533,11 @@ def income_statement(date_from: date | None = None, date_to: date | None = None)
         )
         .join(JournalLine, JournalLine.account_id == Account.id)
         .join(JournalEntry, JournalEntry.id == JournalLine.journal_id)
-        .filter(JournalEntry.status == 'posted', Account.account_type.in_(['revenue', 'expense']))
+        .filter(
+            JournalEntry.status == 'posted',
+            JournalEntry.source_type.is_distinct_from('year_close'),
+            Account.account_type.in_(['revenue', 'expense']),
+        )
     )
     if oid:
         detail_q = detail_q.filter(Account.organization_id == oid, JournalEntry.organization_id == oid)
@@ -605,7 +622,12 @@ def balance_sheet(as_of: date | None = None) -> dict:
         sections[at].append({'code': r['code'], 'name': r['name'], 'amount': bal})
         totals[at] = _round2(totals[at] + bal)
 
-    pnl = income_statement(date_to=as_of)
+    from datetime import timedelta
+    from fiscal_years import last_closed_end
+
+    closed_end = last_closed_end(as_of)
+    pnl_from = (closed_end + timedelta(days=1)) if closed_end else None
+    pnl = income_statement(date_from=pnl_from, date_to=as_of)
     net = pnl['net']
     if net:
         sections['equity'].append({'code': 'NI', 'name': 'صافي الدخل (الفترة)', 'amount': net})

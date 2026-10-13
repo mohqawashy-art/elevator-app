@@ -225,6 +225,7 @@ PATH_PAGE_RULES: tuple[tuple[str, str], ...] = (
     ('/trial-balance', 'revenues'),
     ('/pnl', 'revenues'),
     ('/balance-sheet', 'revenues'),
+    ('/fiscal-years', 'revenues'),
     ('/expenses', 'expenses'),
     ('/invoices', 'invoices'),
     ('/inventory', 'inventory'),

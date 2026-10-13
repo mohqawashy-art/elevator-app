@@ -710,6 +710,30 @@ class JournalLine(TenantMixin, db.Model):
         return f'<JournalLine j={self.journal_id} a={self.account_id}>'
 
 
+class FiscalYear(TenantMixin, db.Model):
+    """سنة مالية مغلقة. أرصدة الميزانية تبقى، والإيراد والمصروف يُقفلان في الأرباح المبقاة."""
+    __tablename__ = 'fiscal_years'
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'start_date', 'end_date', name='uq_fiscal_year_org_range'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    # closed | open (أُعيد فتحها)
+    status = db.Column(db.String(20), default='closed', index=True)
+    net_income = db.Column(db.Float, default=0)
+    journal_id = db.Column(db.Integer, db.ForeignKey('journal_entries.id'), index=True)
+    closed_at = db.Column(db.DateTime)
+    closed_by_name = db.Column(db.String(100))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    journal = db.relationship('JournalEntry', foreign_keys=[journal_id])
+
+    def __repr__(self):
+        return f'<FiscalYear {self.start_date}..{self.end_date} {self.status}>'
+
+
 # =============================================
 # 8. المصروفات
 # =============================================

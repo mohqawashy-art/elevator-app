@@ -80,7 +80,7 @@ DEFAULT_CHART: list[tuple] = [
     ('3000', 'حقوق الملكية', 'Equity', 'equity', None, None, False, 3000),
     ('3100', 'رأس المال', 'Capital', 'equity', '3000', 'capital', True, 3100),
     ('3200', 'جاري الشركاء', "Partners' Current Account", 'equity', '3000', None, True, 3200),
-    ('3300', 'أرباح مبقاة', 'Retained Earnings', 'equity', '3000', None, True, 3300),
+    ('3300', 'أرباح مبقاة', 'Retained Earnings', 'equity', '3000', 'retained_earnings', True, 3300),
 
     ('4000', 'الإيرادات', 'Revenue', 'revenue', None, None, False, 4000),
     ('4100', 'إيراد الصيانة', 'Maintenance Revenue', 'revenue', '4000', None, False, 4100),

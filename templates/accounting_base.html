@@ -93,6 +93,7 @@ th.th-sort .sort-ind{display:inline-block;margin-inline-start:4px;font-size:10px
       <a href="/trial-balance" class="{{ 'active' if accounting_tab=='trial' else '' }}">ميزان المراجعة</a>
       <a href="/pnl" class="{{ 'active' if accounting_tab=='pnl' else '' }}">قائمة الدخل</a>
       <a href="/balance-sheet" class="{{ 'active' if accounting_tab=='bs' else '' }}">المركز المالي</a>
+      <a href="/fiscal-years" class="{{ 'active' if accounting_tab=='fiscal' else '' }}">إقفال السنة</a>
     </nav>
     {% block accounting_body %}{% endblock %}
   </div>

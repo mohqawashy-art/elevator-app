@@ -1,0 +1,111 @@
+{% extends 'accounting_base.html' %}
+{% set page_title = 'إقفال السنة المالية' %}
+{% set accounting_tab = 'fiscal' %}
+{% block accounting_body %}
+<div class="page-header">
+  <div class="page-title">إقفال السنة المالية</div>
+</div>
+<p class="hint">يقفل الإيراد والمصروف في حساب الأرباح المبقاة (3300) ويقفل الفترة حتى لا يُضاف أو يُلغى قيد داخلها. قائمة الدخل تظل تعرض نتيجة السنة. أعد فتح آخر سنة فقط إذا احتجت تصحيحاً.</p>
+
+<form class="filters-bar" method="get" action="{{ url_for('fiscal_years_page') }}">
+  <div class="filter-group">
+    <label class="filter-label">من</label>
+    <input class="filter-input" type="date" name="start" value="{{ start }}" required>
+  </div>
+  <div class="filter-group">
+    <label class="filter-label">إلى</label>
+    <input class="filter-input" type="date" name="end" value="{{ end }}" required>
+  </div>
+  <button class="btn btn-secondary btn-sm" type="submit">معاينة</button>
+</form>
+
+{% if preview_error %}
+<p class="hint" style="color:var(--danger)">{{ preview_error }}</p>
+{% elif preview %}
+<div class="stats-row" style="grid-template-columns:repeat(3,1fr)">
+  <div class="stat-card"><div class="stat-label">الإيراد</div><div class="stat-value green">{{ '%.2f'|format(preview.revenue) }}</div></div>
+  <div class="stat-card"><div class="stat-label">المصروف</div><div class="stat-value red">{{ '%.2f'|format(preview.expense) }}</div></div>
+  <div class="stat-card"><div class="stat-label">صافي الدخل</div><div class="stat-value gold">{{ '%.2f'|format(preview.net) }}</div></div>
+</div>
+<div class="table-wrap" style="margin-bottom:16px">
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>الكود</th>
+          <th>الحساب</th>
+          <th>النوع</th>
+          <th>المبلغ</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in preview.lines %}
+        <tr>
+          <td class="td-code">{{ row.code }}</td>
+          <td class="td-name">{{ row.name }}</td>
+          <td>{{ 'إيراد' if row.account_type == 'revenue' else 'مصروف' }}</td>
+          <td class="td-num">{{ '%.2f'|format(row.amount) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4">لا توجد حركة إيراد أو مصروف في هذه الفترة.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% if can_write %}
+<form method="post" action="{{ url_for('fiscal_years_page') }}" onsubmit="return confirm('إقفال السنة ينقل صافي الدخل إلى الأرباح المبقاة ويمنع تعديل القيود داخل الفترة. متابعة؟');">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="action" value="close">
+  <input type="hidden" name="start" value="{{ start }}">
+  <input type="hidden" name="end" value="{{ end }}">
+  <button class="btn btn-primary" type="submit">إقفال السنة</button>
+</form>
+{% endif %}
+{% endif %}
+
+<div class="table-wrap" style="margin-top:20px">
+  <div class="panel-h">السنوات المسجّلة</div>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th>من</th>
+          <th>إلى</th>
+          <th>الحالة</th>
+          <th>صافي الدخل</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for y in years %}
+        <tr>
+          <td class="td-code">{{ y.start_date.isoformat() }}</td>
+          <td class="td-code">{{ y.end_date.isoformat() }}</td>
+          <td>
+            {% if y.status == 'closed' %}
+            <span class="badge badge-gold">مقفلة</span>
+            {% else %}
+            <span class="badge badge-gray">مفتوحة</span>
+            {% endif %}
+          </td>
+          <td class="td-num">{{ '%.2f'|format(y.net_income or 0) }}</td>
+          <td>
+            {% if can_write and y.status == 'closed' and y.id == latest_closed_id %}
+            <form method="post" action="{{ url_for('fiscal_year_reopen', year_id=y.id) }}" onsubmit="return confirm('إعادة الفتح تلغي قيد الإقفال وتسمح بتعديل الفترة. متابعة؟');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-secondary btn-sm" type="submit">إعادة فتح</button>
+            </form>
+            {% elif y.journal_id %}
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('journal_detail', id=y.journal_id) }}">قيد الإقفال</a>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5">لم تُقفل سنة بعد.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

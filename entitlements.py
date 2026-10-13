@@ -167,6 +167,7 @@ _PATH_FEATURE_RULES: tuple[tuple[tuple[str, ...], str], ...] = (
             '/trial-balance',
             '/pnl',
             '/balance-sheet',
+            '/fiscal-years',
             '/reports/financial',
             '/reports/financial-health',
         ),
