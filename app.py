@@ -6797,17 +6797,70 @@ def elevator_edit(id):
     db.session.commit()
     return redirect(url_for('elevators'))
 
+def prepare_elevator_deletion(elevator_id: int) -> tuple[bool, str | None]:
+    """يمنع حذف مصعد له شغل حقيقي، ويفك الربط الاختياري قبل الحذف."""
+    visits = tenant_query(MaintenanceVisit).filter_by(elevator_id=elevator_id).count()
+    faults = tenant_query(Fault).filter_by(elevator_id=elevator_id).count()
+    if visits or faults:
+        parts = []
+        if visits:
+            parts.append(f'{visits} زيارة')
+        if faults:
+            parts.append(f'{faults} عطل')
+        return False, 'لا يمكن حذف المصعد لارتباطه بـ: ' + ' و'.join(parts) + '.'
+
+    tenant_query(ContractElevator).filter_by(elevator_id=elevator_id).delete(
+        synchronize_session=False
+    )
+    tenant_query(WhatsAppInbox).filter_by(elevator_id=elevator_id).update(
+        {WhatsAppInbox.elevator_id: None}, synchronize_session=False
+    )
+    tenant_query(StockMovement).filter_by(elevator_id=elevator_id).update(
+        {StockMovement.elevator_id: None}, synchronize_session=False
+    )
+    tenant_query(PartsBilling).filter_by(elevator_id=elevator_id).update(
+        {PartsBilling.elevator_id: None}, synchronize_session=False
+    )
+    from models import MaintenanceQuoteElevator, MaintenanceQuoteSurveyUnit
+    tenant_query(MaintenanceQuoteElevator).filter_by(elevator_id=elevator_id).delete(
+        synchronize_session=False
+    )
+    tenant_query(MaintenanceQuoteSurveyUnit).filter_by(elevator_id=elevator_id).update(
+        {MaintenanceQuoteSurveyUnit.elevator_id: None}, synchronize_session=False
+    )
+    return True, None
+
+
 @app.route('/elevators/delete/<int:id>', methods=['POST'])
 def elevator_delete(id):
     err = enforce_admin_delete()
     if err:
         return err
     e = tenant_get_or_404(Elevator, id)
+    as_json = _admin_delete_wants_json()
+    ok, block_msg = prepare_elevator_deletion(e.id)
+    if not ok:
+        if as_json:
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('delete_blocked', 409, message_ar=block_msg)
+        flash(block_msg, 'error')
+        return redirect(url_for('elevators'))
     customer = e.customer
-    db.session.delete(e)
-    db.session.flush()
-    sync_customer_from_elevators(customer)
-    db.session.commit()
+    try:
+        db.session.delete(e)
+        db.session.flush()
+        sync_customer_from_elevators(customer)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        msg = 'تعذّر حذف المصعد — يوجد بيانات مرتبطة به في النظام.'
+        if as_json:
+            from liftcore_api_i18n import api_json_error
+            return api_json_error('delete_failed', 409, message_ar=msg)
+        flash(msg, 'error')
+        return redirect(url_for('elevators'))
+    if as_json:
+        return jsonify({'ok': True})
     return redirect(url_for('elevators'))
 
 @app.route('/api/elevators/<int:customer_id>')
