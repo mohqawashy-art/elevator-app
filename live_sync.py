@@ -201,7 +201,7 @@ def _sync_contracts():
     renewed_ids = h._annotate_contract_renewals(contracts)
     qtext = request_text(request.args).casefold()
     status_filter = (request.args.get('status') or '').strip()
-    hide_expired = request_hide_expired(request.args)
+    hide_expired = request_hide_expired(request.args, request.cookies)
     due_only = request.args.get('due') == '1'
     customers = tenant_query(Customer).order_by(Customer.name).all()
     all_elevators = tenant_query(Elevator).all()

@@ -8223,7 +8223,8 @@ def contracts():
     renewed_ids = _annotate_contract_renewals(contracts_list)
     qtext = request_text(request.args).casefold()
     status_filter = (request.args.get('status') or '').strip()
-    hide_expired = request_hide_expired(request.args)
+    hide_expired = request_hide_expired(request.args, request.cookies)
+    hide_expired_explicit = 'hide_expired' in request.args
     due_only = request.args.get('due') == '1'
     visible = []
     map_points = []
@@ -8320,7 +8321,8 @@ def contracts():
     resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     resp.headers['Pragma'] = 'no-cache'
     resp.headers['Expires'] = '0'
-    return resp
+    from list_windows import apply_hide_expired_cookie
+    return apply_hide_expired_cookie(resp, hide_expired, explicit=hide_expired_explicit)
 
 
 @app.route('/contracts/template')

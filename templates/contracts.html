@@ -1192,7 +1192,7 @@ function isHiddenExpiredContract(c) {
 
 function toggleHideExpiredContracts() {
   var url = new URL(window.location.href);
-  if (url.searchParams.get('hide_expired') === '1') url.searchParams.delete('hide_expired');
+  if (hideExpiredContractsOn()) url.searchParams.set('hide_expired', '0');
   else url.searchParams.set('hide_expired', '1');
   url.searchParams.set('page', '1');
   window.location.href = url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '');

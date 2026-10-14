@@ -30,9 +30,45 @@ def request_per_page(args) -> int:
     return n if n in PAGE_SIZE_OPTIONS else PAGE_SIZE
 
 
-def request_hide_expired(args) -> bool:
+HIDE_EXPIRED_COOKIE = 'lc_hide_expired'
+
+
+def request_hide_expired(args, cookies=None) -> bool:
+    """إخفاء المنتهي يبقى بعد مغادرة الصفحة: الرابط أولاً، ثم الكوكي."""
     raw = (args.get('hide_expired') or '').strip().lower()
-    return raw in ('1', 'true', 'yes')
+    if raw in ('1', 'true', 'yes'):
+        return True
+    if raw in ('0', 'false', 'no'):
+        return False
+    if cookies is None:
+        try:
+            from flask import request
+            cookies = request.cookies
+        except Exception:
+            cookies = {}
+    return (cookies.get(HIDE_EXPIRED_COOKIE) or '').strip() == '1'
+
+
+def apply_hide_expired_cookie(response, hide_expired: bool, *, explicit: bool = False):
+    """يثبّت الاختيار عند الضغط الصريح، ويقرأه تلقائياً عند الرجوع للعقود."""
+    if not explicit:
+        return response
+    try:
+        from flask import request, current_app
+        secure = bool(
+            current_app.config.get('SESSION_COOKIE_SECURE')
+            or request.is_secure
+        )
+    except Exception:
+        secure = False
+    if hide_expired:
+        response.set_cookie(
+            HIDE_EXPIRED_COOKIE, '1',
+            max_age=400 * 24 * 3600, path='/', samesite='Lax', secure=secure,
+        )
+    else:
+        response.delete_cookie(HIDE_EXPIRED_COOKIE, path='/')
+    return response
 
 
 def request_sort(

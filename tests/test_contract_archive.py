@@ -140,10 +140,29 @@ def test_hide_expired_contracts_button(client):
         )
         db.session.add(renewed)
         db.session.commit()
-    hidden_ren = client.get('/contracts?z=5&hide_expired=1').get_data(as_text=True)
-    assert 'CN-ARCH-REN' not in hidden_ren
-    shown_ren = client.get('/contracts?z=5').get_data(as_text=True)
+    hidden_ren = client.get('/contracts?z=5&hide_expired=1')
+    assert 'CN-ARCH-REN' not in hidden_ren.get_data(as_text=True)
+    shown_ren = client.get('/contracts?z=5&hide_expired=0').get_data(as_text=True)
     assert 'CN-ARCH-REN' in shown_ren
+
+
+def test_hide_expired_survives_leaving_the_page(client):
+    _seed_old_and_new(client)
+    hidden = client.get('/contracts?z=5&hide_expired=1')
+    assert hidden.status_code == 200
+    assert 'CN-ARCH-OLD' not in hidden.get_data(as_text=True)
+
+    back = client.get('/contracts?z=5')
+    back_html = back.get_data(as_text=True)
+    assert 'CN-ARCH-NEW' in back_html
+    assert 'CN-ARCH-OLD' not in back_html
+    assert 'إظهار العقود المنتهية' in back_html
+
+    shown = client.get('/contracts?z=5&hide_expired=0')
+    shown_html = shown.get_data(as_text=True)
+    assert 'CN-ARCH-OLD' in shown_html
+    again = client.get('/contracts?z=5')
+    assert 'CN-ARCH-OLD' in again.get_data(as_text=True)
 
 
 def test_all_visits_visible_by_default(client):
