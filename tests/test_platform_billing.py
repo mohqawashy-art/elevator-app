@@ -2,10 +2,15 @@
 from datetime import datetime, timedelta
 
 from app import app, db, hash_password
-from models import Organization, PlatformPayment, Settings, User
+from models import Organization, PlatformExpense, PlatformInvoice, PlatformPayment, Settings, User
 from platform_billing import (
+    account_statement,
+    add_expense,
+    apply_free_tenant_policy,
+    books_snapshot,
     effective_amount,
     extend_trial,
+    issue_invoice,
     plan_price,
     record_payment,
     refresh_billing_status,
@@ -131,3 +136,101 @@ def test_refresh_overdue():
         status = refresh_billing_status(org, commit=True)
         assert status == 'overdue'
         assert effective_amount(org) == round(2399 / 12, 2)
+
+
+def test_jama_and_demo_are_free_and_zero_revenue():
+    client = _client()
+    with app.app_context():
+        jama = Organization(slug='jama', name='جما', status='active', plan='liftcore')
+        demo = Organization(slug='demo', name='Demo', status='trial', plan='basic', notes='[DEMO] trial')
+        db.session.add_all([jama, demo])
+        db.session.commit()
+        db.session.add(PlatformPayment(organization_id=jama.id, amount=2399, method='transfer', reference='OLD-JAMA'))
+        db.session.add(PlatformPayment(organization_id=demo.id, amount=199, method='transfer', reference='OLD-DEMO'))
+        db.session.commit()
+
+        apply_free_tenant_policy(jama)
+        apply_free_tenant_policy(demo)
+        db.session.commit()
+
+        jama = Organization.query.filter_by(slug='jama').first()
+        demo = Organization.query.filter_by(slug='demo').first()
+        assert jama.billing_status == 'complimentary'
+        assert demo.billing_status == 'complimentary'
+        assert effective_amount(jama) == 0
+        assert effective_amount(demo) == 0
+        assert jama.current_period_end is not None
+        assert PlatformPayment.query.filter_by(organization_id=jama.id).first().amount == 0
+        assert PlatformPayment.query.filter_by(organization_id=demo.id).first().amount == 0
+
+        paid = record_payment(jama, amount=2399, method='transfer', reference='TRY-JAMA')
+        assert paid['ok']
+        assert paid['payment'].amount == 0
+        assert paid['payment'].method == 'complimentary'
+
+        denied = issue_invoice(jama, amount=2399)
+        assert not denied['ok']
+
+        books = books_snapshot(year=datetime.utcnow().year)
+        assert books['revenue'] == 0
+
+
+def test_invoice_receipt_statement_and_pnl():
+    client = _client()
+    with app.app_context():
+        org = Organization.query.filter_by(slug='billco').first()
+        issued = issue_invoice(org, amount=2399, description='اشتراك سنوي')
+        assert issued['ok']
+        inv = issued['invoice']
+        assert inv.code.startswith('NSQ-INV-')
+        assert inv.status == 'unpaid'
+        assert abs(inv.total - 2399) < 0.01
+        assert inv.tax_amount > 0
+
+        paid = record_payment(org, amount=2399, method='transfer', reference='BANK-INV', invoice_id=inv.id)
+        assert paid['ok']
+        assert paid['payment'].receipt_code.startswith('NSQ-RCP-')
+        inv = db.session.get(PlatformInvoice, inv.id)
+        assert inv.status == 'paid'
+
+        st = account_statement(org)
+        assert st['debit'] == 2399
+        assert st['credit'] == 2399
+        assert st['balance'] == 0
+
+        exp = add_expense(amount=400, description='استضافة Hetzner', category='hosting')
+        assert exp['ok']
+        books = books_snapshot(year=datetime.utcnow().year)
+        assert books['revenue'] == 2399
+        assert books['expenses'] == 400
+        assert books['net'] == 1999
+
+
+def test_invoice_print_has_nasaq_letterhead():
+    client = _client()
+    _login(client)
+    r = client.get('/platform/invoices/sample', base_url=ADMIN_URL)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'nasaq-core-logo.png' in body
+    assert '4031239017' in body
+    assert 'حي العوالي' in body
+    assert 'طريق الطائف' in body
+    assert 'info@liftcoreapp.com' in body
+    assert 'مؤسسة نسق كور' in body
+    assert '<div class="t">فاتورة</div>' in body
+    assert 'TAX INVOICE' not in body
+    assert 'ضريبة القيمة المضافة' not in body
+
+
+def test_billing_page_shows_nasq_core_books():
+    client = _client()
+    _login(client)
+    r = client.get('/platform/billing', base_url=ADMIN_URL)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'نسق كور' in body
+    assert 'بيان الأرباح' in body
+    assert 'Bill Co' in body
+    assert 'color-scheme:light' in body
+    assert 'background:#111925' not in body

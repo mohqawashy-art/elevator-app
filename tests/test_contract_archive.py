@@ -1,4 +1,4 @@
-"""أرشيف العقود المنتهية: البيانات تبقى وتُستدعى بالفلتر فقط."""
+"""العقود المنتهية والزيارات والأعطال القديمة تظهر في القوائم الافتراضية."""
 from datetime import date, datetime, timedelta
 
 from models import Contract, ContractElevator, Customer, Elevator, Fault, MaintenanceVisit, db
@@ -98,50 +98,117 @@ def _seed_old_and_new(client):
         db.session.commit()
 
 
-def test_expired_contract_hidden_until_old_filter(client):
+def test_expired_and_active_contracts_visible_by_default(client):
     _seed_old_and_new(client)
     page = client.get('/contracts?z=5')
     html = page.get_data(as_text=True)
     assert 'CN-ARCH-NEW' in html
-    assert 'CN-ARCH-OLD' not in html
+    assert 'CN-ARCH-OLD' in html
+    assert 'أرشيف العقود القديمة' not in html
 
     expired = client.get('/contracts?z=5&status=منتهي')
     expired_html = expired.get_data(as_text=True)
     assert 'CN-ARCH-OLD' in expired_html
     assert 'CN-ARCH-NEW' not in expired_html
-
-    archive = client.get('/contracts?z=5&archive=1')
-    archive_html = archive.get_data(as_text=True)
-    assert 'CN-ARCH-OLD' in archive_html
-    assert 'CN-ARCH-NEW' not in archive_html
-    assert 'إخفاء العقود المنتهية' in archive_html
-    assert 'إظهار العقود المنتهية' in html
-    btn = html.split('id="btn-show-renewed"', 1)[1][:220]
-    assert 'display:none' not in btn
+    assert 'إخفاء العقود المنتهية' in html
+    assert 'toggleHideExpiredContracts' in html
 
 
-def test_old_contract_visits_stay_on_server_behind_archive_filter(client):
+def test_hide_expired_contracts_button(client):
+    _seed_old_and_new(client)
+    hidden = client.get('/contracts?z=5&hide_expired=1')
+    hidden_html = hidden.get_data(as_text=True)
+    assert 'CN-ARCH-NEW' in hidden_html
+    assert 'CN-ARCH-OLD' not in hidden_html
+    assert 'إظهار العقود المنتهية' in hidden_html
+
+    still = client.get('/contracts?z=5&hide_expired=1&status=منتهي')
+    still_html = still.get_data(as_text=True)
+    assert 'CN-ARCH-OLD' in still_html
+
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        cust = Customer.query.filter_by(code='C-ARCH').first()
+        renewed = Contract(
+            organization_id=oid,
+            code='CN-ARCH-REN',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=date.today() - timedelta(days=400),
+            end_date=date.today() - timedelta(days=10),
+            status='تم تجديده',
+        )
+        db.session.add(renewed)
+        db.session.commit()
+    hidden_ren = client.get('/contracts?z=5&hide_expired=1').get_data(as_text=True)
+    assert 'CN-ARCH-REN' not in hidden_ren
+    shown_ren = client.get('/contracts?z=5').get_data(as_text=True)
+    assert 'CN-ARCH-REN' in shown_ren
+
+
+def test_all_visits_visible_by_default(client):
     _seed_old_and_new(client)
     page = client.get('/maintenance-visits')
     html = page.get_data(as_text=True)
     assert 'VI-ARCH-NEW' in html
     assert 'VI-ARCH-LIVE' in html
-    assert 'VI-ARCH-OLD' not in html
-
-    archive = client.get('/maintenance-visits?archive=1')
-    archive_html = archive.get_data(as_text=True)
-    assert 'VI-ARCH-OLD' in archive_html
-    assert 'VI-ARCH-LIVE' in archive_html
-    assert 'VI-ARCH-NEW' not in archive_html
+    assert 'VI-ARCH-OLD' in html
+    assert 'أرشيف العقود القديمة' not in html
 
 
-def test_old_contract_faults_archived_open_ones_stay_visible(client):
+def test_all_faults_visible_by_default(client):
     _seed_old_and_new(client)
     page = client.get('/faults')
     html = page.get_data(as_text=True)
     assert 'FA-ARCH-OPEN' in html
-    assert 'FA-ARCH-OLD' not in html
+    assert 'FA-ARCH-OLD' in html
+    assert 'أرشيف العقود القديمة' not in html
 
-    archive = client.get('/faults?archive=1')
-    archive_html = archive.get_data(as_text=True)
-    assert 'FA-ARCH-OLD' in archive_html
+
+def test_contracts_sort_by_end_date(client):
+    from app import sort_contracts_for_list
+
+    _seed_old_and_new(client)
+    today = date.today()
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        cust = Customer.query.filter_by(code='C-ARCH').first()
+        older = Contract(
+            organization_id=oid,
+            code='CN-ARCH-OLDER',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=today - timedelta(days=1200),
+            end_date=today - timedelta(days=400),
+            status='منتهي',
+        )
+        db.session.add(older)
+        db.session.commit()
+
+    asc = client.get('/contracts?z=5&sort=end_date&dir=asc')
+    asc_html = asc.get_data(as_text=True)
+    assert asc_html.find('CN-ARCH-OLDER') < asc_html.find('CN-ARCH-OLD"')
+
+    desc = client.get('/contracts?z=5&sort=end_date&dir=desc')
+    desc_html = desc.get_data(as_text=True)
+    assert desc_html.find('CN-ARCH-OLD"') < desc_html.find('CN-ARCH-OLDER')
+
+    with client.application.app_context():
+        rows = [
+            Contract(code='CN-2', end_date=today - timedelta(days=10)),
+            Contract(code='CN-1', end_date=today - timedelta(days=80)),
+        ]
+        ordered = sort_contracts_for_list(rows, 'end_date', 'asc')
+        assert [c.code for c in ordered] == ['CN-1', 'CN-2']
+        ordered = sort_contracts_for_list(rows, 'end_date', 'desc')
+        assert [c.code for c in ordered] == ['CN-2', 'CN-1']
+
+
+def test_contracts_page_size_in_list_meta(client):
+    _seed_old_and_new(client)
+    page = client.get('/contracts?z=5&per=20')
+    html = page.get_data(as_text=True)
+    assert '"per_page": 20' in html or '"per_page":20' in html
+    default = client.get('/contracts?z=5')
+    default_html = default.get_data(as_text=True)
+    assert '"per_page": 10' in default_html or '"per_page":10' in default_html

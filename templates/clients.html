@@ -1252,7 +1252,7 @@ function renderTable(data) {
   }
   renderedRows = data || [];
   var masterTotal = (window.LIST_META && LIST_META.server) ? LIST_META.total : CUSTOMERS.length;
-  var pg = (tablePager && !(window.LIST_META && LIST_META.server)) ? tablePager.apply(data, masterTotal) : {
+  var pg = tablePager ? tablePager.apply(data, masterTotal) : {
     rows: data,
     start: data.length ? 1 : 0,
     end: data.length,
@@ -1264,7 +1264,7 @@ function renderTable(data) {
   document.getElementById('clients-count').textContent = window.LiftCoreDisplay
     ? LiftCoreDisplay.fmtClientsCount(shownTotal)
     : (shownTotal + ' عميل');
-  if (!tablePager || (window.LIST_META && LIST_META.server)) {
+  if (!tablePager) {
     document.getElementById('table-info').textContent = window.LiftCoreDisplay
       ? LiftCoreDisplay.fmtShowing(data.length, masterTotal)
       : ('عرض ' + data.length + ' من ' + masterTotal);

@@ -1,0 +1,27 @@
+{% extends 'platform/print_doc.html' %}
+{% block body %}
+<div class="meta">
+  <div><div class="k">استلمنا من</div><div class="v">{{ org.name }} · <code>{{ org.slug }}</code></div></div>
+  <div><div class="k">التاريخ</div><div class="v">{{ payment.paid_at.strftime('%Y-%m-%d') if payment.paid_at else '—' }}</div></div>
+  <div><div class="k">طريقة القبض</div><div class="v">{{ method_ar }}</div></div>
+  <div><div class="k">المرجع</div><div class="v">{{ payment.reference or '—' }}</div></div>
+  {% if invoice %}
+  <div><div class="k">مقابل فاتورة</div><div class="v">{{ invoice.code }}</div></div>
+  {% endif %}
+  <div><div class="k">فترة الاشتراك</div><div class="v">{{ payment.period_start.strftime('%Y-%m-%d') if payment.period_start else '—' }} → {{ payment.period_end.strftime('%Y-%m-%d') if payment.period_end else '—' }}</div></div>
+</div>
+<table class="lines">
+  <thead><tr><th>البيان</th><th>المبلغ</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>سداد اشتراك LiftCore{% if payment.plan %} — {{ payment.plan }}{% endif %}</td>
+      <td>{{ '%.2f'|format(payment.amount) }} {{ payment.currency or 'SAR' }}</td>
+    </tr>
+  </tbody>
+</table>
+<table class="totals">
+  <tr class="sum"><td>المبلغ المقبوض</td><td>{{ '%.2f'|format(payment.amount) }} ر.س</td></tr>
+</table>
+{% if payment.note %}<p class="note">{{ payment.note }}</p>{% endif %}
+<p class="note">سند قبض صادر عن {{ company.legal_name }} مقابل اشتراك منتج LiftCore.</p>
+{% endblock %}

@@ -1985,6 +1985,13 @@ def _startup_schema_and_data_sync():
         db.session.rollback()
         app.logger.warning('Permissions schema ensure skip: %s', exc)
     try:
+        from platform_billing import apply_all_free_tenant_policies, ensure_platform_books_schema
+        ensure_platform_books_schema()
+        apply_all_free_tenant_policies(commit=True)
+    except Exception as extra:
+        db.session.rollback()
+        app.logger.warning('Nasq Core books schema ensure skip: %s', extra)
+    try:
         from technician_assignments import backfill_technician_assignments
         backfill_technician_assignments()
     except Exception as exc:
@@ -4138,6 +4145,9 @@ def platform_org_detail(org_id):
         admin=detail['admin'],
         invites=detail['invites'],
         payments=detail.get('payments') or [],
+        invoices=detail.get('invoices') or [],
+        unpaid_invoices=detail.get('unpaid_invoices') or [],
+        complimentary_locked=detail.get('complimentary_locked') or False,
         billing_amount=detail.get('billing_amount') or 0,
         login_url=detail['login_url'],
         plans=detail['plans'],
@@ -4272,7 +4282,11 @@ def platform_billing():
     user = _require_platform_console_user()
     if not user:
         return redirect(url_for('login'))
-    overview = billing_overview(300)
+    try:
+        year = int(request.args.get('year') or 0) or None
+    except (TypeError, ValueError):
+        year = None
+    overview = billing_overview(300, year=year)
     return render_template(
         'platform/billing.html',
         nav='billing',
@@ -4280,6 +4294,9 @@ def platform_billing():
         stats=overview['stats'],
         plan_prices=overview['plan_prices'],
         plan_prices_yearly=overview['plan_prices_yearly'],
+        books=overview.get('books') or {},
+        company=overview.get('company') or {},
+        expense_categories=overview.get('expense_categories') or [],
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
     )
@@ -4550,6 +4567,13 @@ def platform_org_payment(org_id):
         months = int(request.form.get('months') or 1)
     except (TypeError, ValueError):
         months = 1
+    invoice_id = None
+    invoice_raw = (request.form.get('invoice_id') or '').strip()
+    if invoice_raw:
+        try:
+            invoice_id = int(invoice_raw)
+        except (TypeError, ValueError):
+            invoice_id = None
     result = record_payment(
         org,
         amount=request.form.get('amount'),
@@ -4558,6 +4582,7 @@ def platform_org_payment(org_id):
         note=request.form.get('note') or '',
         months=months,
         recorded_by_user_id=user.id,
+        invoice_id=invoice_id,
     )
     if result.get('ok'):
         session['plat_notice'] = 'تم تسجيل الدفعة وتجديد فترة الاشتراك.'
@@ -4579,6 +4604,263 @@ def platform_org_payment(org_id):
         session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل تسجيل الدفعة.'])
         session['plat_notice_type'] = 'warn'
     return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/orgs/<int:org_id>/invoice', methods=['POST'])
+def platform_org_invoice(org_id):
+    from models import Organization
+    from platform_admin import is_admin_host
+    from platform_billing import issue_invoice
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+    amount_raw = (request.form.get('amount') or '').strip()
+    amount = None
+    if amount_raw:
+        try:
+            amount = float(amount_raw)
+        except ValueError:
+            session['plat_notice'] = 'مبلغ الفاتورة غير صالح.'
+            session['plat_notice_type'] = 'warn'
+            return redirect(url_for('platform_org_detail', org_id=org_id))
+    result = issue_invoice(
+        org,
+        amount=amount,
+        description=request.form.get('description') or '',
+        notes=request.form.get('notes') or '',
+        created_by_user_id=user.id,
+    )
+    if result.get('ok'):
+        session['plat_notice'] = f'تم إصدار الفاتورة {result["invoice"].code}.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل إصدار الفاتورة.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/invoices/<int:invoice_id>/void', methods=['POST'])
+def platform_invoice_void(invoice_id):
+    from models import PlatformInvoice
+    from platform_admin import is_admin_host
+    from platform_billing import void_invoice
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    invoice = db.session.get(PlatformInvoice, invoice_id)
+    if not invoice:
+        abort(404)
+    result = void_invoice(invoice)
+    if result.get('ok'):
+        session['plat_notice'] = f'أُلغيت الفاتورة {invoice.code}.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['تعذّر إلغاء الفاتورة.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=invoice.organization_id))
+
+
+@app.route('/platform/invoices/sample')
+def platform_invoice_sample():
+    """نموذج فاتورة نسق كور للمعاينة والطباعة."""
+    from datetime import datetime as dt
+    from types import SimpleNamespace
+
+    from platform_admin import is_admin_host
+    from platform_billing import NASQ_CORE, VAT_PCT, period_end_from, split_vat_inclusive
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    now = dt.utcnow()
+    subtotal, tax, total = split_vat_inclusive(2399, VAT_PCT)
+    invoice = SimpleNamespace(
+        code='NSQ-INV-0000',
+        description='اشتراك LiftCore السنوي',
+        period_start=now,
+        period_end=period_end_from(now, 'yearly'),
+        subtotal=subtotal,
+        tax_pct=VAT_PCT,
+        tax_amount=tax,
+        total=total,
+        currency='SAR',
+        status='unpaid',
+        issue_date=now,
+        due_date=now,
+        notes='نموذج للمعاينة — ليست فاتورة صادرة.',
+    )
+    org = SimpleNamespace(
+        name='اسم شركة العميل',
+        slug='client-slug',
+        plan='liftcore',
+        billing_cycle='yearly',
+        admin_email='client@example.com',
+    )
+    return render_template(
+        'platform/invoice_print.html',
+        doc_title='فاتورة',
+        doc_title_en='INVOICE',
+        doc_code=invoice.code,
+        back_url=url_for('platform_billing'),
+        company=NASQ_CORE,
+        invoice=invoice,
+        org=org,
+        status_ar='نموذج',
+    )
+
+
+@app.route('/platform/invoices/<int:invoice_id>/print')
+def platform_invoice_print(invoice_id):
+    from models import Organization, PlatformInvoice
+    from platform_admin import is_admin_host
+    from platform_billing import INVOICE_STATUS_AR, NASQ_CORE
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    invoice = db.session.get(PlatformInvoice, invoice_id)
+    if not invoice:
+        abort(404)
+    org = db.session.get(Organization, invoice.organization_id)
+    if not org:
+        abort(404)
+    return render_template(
+        'platform/invoice_print.html',
+        doc_title='فاتورة',
+        doc_title_en='INVOICE',
+        doc_code=invoice.code,
+        back_url=url_for('platform_org_detail', org_id=org.id),
+        company=NASQ_CORE,
+        invoice=invoice,
+        org=org,
+        status_ar=INVOICE_STATUS_AR.get(invoice.status, invoice.status),
+    )
+
+
+@app.route('/platform/payments/<int:payment_id>/receipt')
+def platform_payment_receipt(payment_id):
+    from models import Organization, PlatformInvoice, PlatformPayment
+    from platform_admin import is_admin_host
+    from platform_billing import NASQ_CORE
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    payment = db.session.get(PlatformPayment, payment_id)
+    if not payment:
+        abort(404)
+    org = db.session.get(Organization, payment.organization_id)
+    if not org:
+        abort(404)
+    invoice = db.session.get(PlatformInvoice, payment.invoice_id) if payment.invoice_id else None
+    method_ar = {
+        'transfer': 'تحويل بنكي',
+        'cash': 'نقداً',
+        'card': 'بطاقة',
+        'complimentary': 'مجاني',
+        'other': 'أخرى',
+    }.get(payment.method or '', payment.method or '—')
+    return render_template(
+        'platform/receipt_print.html',
+        doc_title='سند قبض',
+        doc_title_en='RECEIPT VOUCHER',
+        doc_code=payment.receipt_code or f'P-{payment.id}',
+        back_url=url_for('platform_org_detail', org_id=org.id),
+        company=NASQ_CORE,
+        payment=payment,
+        invoice=invoice,
+        org=org,
+        method_ar=method_ar,
+    )
+
+
+@app.route('/platform/orgs/<int:org_id>/statement')
+def platform_org_statement(org_id):
+    from datetime import datetime as dt
+
+    from models import Organization
+    from platform_admin import is_admin_host
+    from platform_billing import NASQ_CORE, account_statement
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+    statement = account_statement(org)
+    return render_template(
+        'platform/statement_print.html',
+        doc_title='كشف حساب',
+        doc_title_en='ACCOUNT STATEMENT',
+        doc_code=org.slug,
+        back_url=url_for('platform_org_detail', org_id=org.id),
+        company=NASQ_CORE,
+        org=org,
+        statement=statement,
+        generated_at=dt.utcnow(),
+    )
+
+
+@app.route('/platform/expenses', methods=['POST'])
+def platform_expense_create():
+    from datetime import datetime as dt
+
+    from platform_admin import is_admin_host
+    from platform_billing import add_expense
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    spent_at = None
+    spent_raw = (request.form.get('spent_at') or '').strip()
+    if spent_raw:
+        try:
+            spent_at = dt.strptime(spent_raw[:10], '%Y-%m-%d')
+        except ValueError:
+            session['plat_notice'] = 'تاريخ المصروف غير صالح.'
+            session['plat_notice_type'] = 'warn'
+            return redirect(url_for('platform_billing'))
+    result = add_expense(
+        amount=request.form.get('amount'),
+        description=request.form.get('description') or '',
+        category=request.form.get('category') or 'other',
+        vendor=request.form.get('vendor') or '',
+        method=request.form.get('method') or 'transfer',
+        reference=request.form.get('reference') or '',
+        notes=request.form.get('notes') or '',
+        spent_at=spent_at,
+        created_by_user_id=user.id,
+    )
+    year = (request.form.get('year') or '').strip()
+    if result.get('ok'):
+        session['plat_notice'] = f'تم تسجيل المصروف {result["expense"].code}.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل حفظ المصروف.'])
+        session['plat_notice_type'] = 'warn'
+    if year:
+        return redirect(url_for('platform_billing', year=year))
+    return redirect(url_for('platform_billing'))
 
 
 @app.route('/platform/orgs/<int:org_id>/export')
@@ -5566,7 +5848,7 @@ def clients():
 
     from contract_codes import customer_matches_scope
 
-    from list_windows import PAGE_SIZE, list_meta_for, page_slice, request_page, request_text
+    from list_windows import list_meta_for, page_slice, request_page, request_per_page, request_text
     from sqlalchemy import or_
 
     client_scope = (request.args.get('scope') or '').strip().lower()
@@ -5576,6 +5858,7 @@ def clients():
     status_filter = (request.args.get('status') or '').strip()
     contract_filter = (request.args.get('contract') or '').strip()
     page = request_page(request.args)
+    per_page = request_per_page(request.args)
     query = tenant_query(Customer)
     if qtext:
         needle = f'%{qtext}%'
@@ -5599,17 +5882,17 @@ def clients():
         dicts = [client_to_js_dict(c, scope=client_scope or None) for c in loaded]
         if contract_filter:
             dicts = [row for row in dicts if (row.get('contract_status') or '') == contract_filter]
-        page_rows, total, page = page_slice(dicts, page, PAGE_SIZE)
+        page_rows, total, page = page_slice(dicts, page, per_page)
     else:
         # ترقيم على المعرفات أولاً حتى لا يقصّ حدّ الصفحة صفوف العملاء بسبب ربط المصاعد والعقود
         total = query.order_by(None).count()
-        pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE) if total else 1
+        pages = max(1, (total + per_page - 1) // per_page) if total else 1
         page = min(page, pages)
         id_rows = (
             query.with_entities(Customer.id)
             .order_by(Customer.id.desc())
-            .offset((page - 1) * PAGE_SIZE)
-            .limit(PAGE_SIZE)
+            .offset((page - 1) * per_page)
+            .limit(per_page)
             .all()
         )
         ids = [row[0] for row in id_rows]
@@ -5627,7 +5910,7 @@ def clients():
     customers = loaded if not (contract_filter or client_scope) else [
         c for c in loaded if c.id in {row['id'] for row in page_rows}
     ]
-    list_meta = list_meta_for(total, page, extra={
+    list_meta = list_meta_for(total, page, per_page=per_page, extra={
         'stats': {
             'total': tenant_query(Customer).count(),
             'active': tenant_query(Customer).filter(Customer.status == 'نشط').count(),
@@ -6601,12 +6884,13 @@ def _parse_int(value):
 def elevators():
     from sqlalchemy.orm import joinedload
 
-    from list_windows import PAGE_SIZE, list_meta_for, request_page, request_text
+    from list_windows import list_meta_for, request_page, request_per_page, request_text
     from sqlalchemy import func, or_
 
     qtext = request_text(request.args)
     status_filter = (request.args.get('status') or '').strip()
     page = request_page(request.args)
+    per_page = request_per_page(request.args)
     query = tenant_query(Elevator).options(joinedload(Elevator.customer))
     if qtext:
         needle = f'%{qtext}%'
@@ -6619,15 +6903,15 @@ def elevators():
         query = query.filter(Elevator.status == status_filter)
     elevs = query.order_by(Elevator.id.desc()).all()
     total = len(elevs)
-    pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE) if total else 1
+    pages = max(1, (total + per_page - 1) // per_page) if total else 1
     page = min(page, pages)
-    page_rows = elevs[(page - 1) * PAGE_SIZE:page * PAGE_SIZE]
+    page_rows = elevs[(page - 1) * per_page:page * per_page]
     customers = tenant_query(Customer).order_by(Customer.name).all()
     site_map = _elevator_site_coords_map(elevs)
     status_counts = dict(
         tenant_query(Elevator).with_entities(Elevator.status, func.count()).group_by(Elevator.status).all()
     )
-    list_meta = list_meta_for(total, page, extra={
+    list_meta = list_meta_for(total, page, per_page=per_page, extra={
         'status': status_filter,
         'stats': {
             'total': sum(status_counts.values()),
@@ -6963,6 +7247,81 @@ def contract_display_status(contract, today=None, *, renewed_ids=None):
     if raw == 'على وشك الانتهاء':
         return 'نشط'
     return 'نشط'
+
+
+CONTRACT_LIST_SORT_COLS = frozenset({
+    'code', 'customer', 'buildings', 'contract_type', 'start_date', 'end_date',
+    'days_left', 'elevators', 'remaining', 'total', 'due_date', 'contract_status', 'inv_status',
+})
+
+
+def _natural_code_key(code: str):
+    import re
+
+    parts = re.split(r'(\d+)', (code or '').strip())
+    key = []
+    for part in parts:
+        if not part:
+            continue
+        key.append(int(part) if part.isdigit() else part.casefold())
+    return tuple(key) if key else ('',)
+
+
+def sort_contracts_for_list(
+    rows,
+    col: str,
+    direction: str,
+    *,
+    renewed_ids=None,
+    elevator_by_id=None,
+    today=None,
+):
+    """ترتيب قائمة العقود كاملة قبل ترقيم الصفحات — يشمل الأرشيف."""
+    today = today or date.today()
+    col = col if col in CONTRACT_LIST_SORT_COLS else 'code'
+    reverse = (direction or 'asc').strip().lower() == 'desc'
+
+    def remaining_of(c):
+        total = float(c.total or 0)
+        paid = float(getattr(c, 'paid_amount', 0) or 0)
+        return max(total - paid, 0)
+
+    def days_left_of(c):
+        if not c.end_date:
+            return 10**9
+        return (c.end_date - today).days
+
+    def key_of(c):
+        if col == 'code':
+            return _natural_code_key(c.code or '')
+        if col == 'customer':
+            name = (c.customer.name if c.customer else '') or ''
+            return name.casefold()
+        if col == 'buildings':
+            return (_contract_building_names(c, elevator_by_id=elevator_by_id) or '').casefold()
+        if col == 'contract_type':
+            return (c.contract_type or '').casefold()
+        if col == 'start_date':
+            return c.start_date or date.min
+        if col == 'end_date':
+            return c.end_date or date.min
+        if col == 'days_left':
+            return days_left_of(c)
+        if col == 'elevators':
+            return len(c.elevators or [])
+        if col == 'remaining':
+            return remaining_of(c)
+        if col == 'total':
+            return float(c.total or 0)
+        if col == 'due_date':
+            return getattr(c, 'due_date', None) or date.min
+        if col == 'contract_status':
+            return contract_display_status(c, today=today, renewed_ids=renewed_ids)
+        if col == 'inv_status':
+            return (getattr(c, 'invoice_status', None) or '')
+        return _natural_code_key(c.code or '')
+
+    return sorted(rows, key=key_of, reverse=reverse)
 
 
 def _annotate_contract_renewals(contracts):
@@ -7858,19 +8217,16 @@ def contracts():
         .order_by(Contract.id.desc())
         .all()
     )
-    from list_windows import PAGE_SIZE, list_meta_for, page_slice, request_page, request_text
-
-    from contract_archive import display_is_archived, include_contract_in_list, request_wants_archive
+    from list_windows import list_meta_for, page_slice, request_hide_expired, request_page, request_per_page, request_sort, request_text
 
     contracts_list = contracts_for_scope(contracts_list, 'maintenance')
     renewed_ids = _annotate_contract_renewals(contracts_list)
     qtext = request_text(request.args).casefold()
     status_filter = (request.args.get('status') or '').strip()
-    show_archive = request_wants_archive(request.args)
+    hide_expired = request_hide_expired(request.args)
     due_only = request.args.get('due') == '1'
     visible = []
     map_points = []
-    archive_count = 0
     stats = {'total': 0, 'active': 0, 'expired': 0, 'expiring': 0, 'total_val': 0.0, 'unpaid': 0.0}
     for contract in contracts_list:
         display = contract_display_status(contract, renewed_ids=renewed_ids)
@@ -7884,15 +8240,15 @@ def contracts():
             stats['expired'] += 1
         elif display == 'على وشك الانتهاء':
             stats['expiring'] += 1
-        if display_is_archived(display):
-            archive_count += 1
         stats['total_val'] += float(contract.total or 0)
         stats['unpaid'] += remaining
         if qtext and qtext not in f'{contract.code or ""} {customer_name}'.casefold():
             continue
         if due_only and remaining <= 0.01:
             continue
-        if not include_contract_in_list(display, archive=show_archive, status_filter=status_filter):
+        if status_filter and display != status_filter:
+            continue
+        if hide_expired and not status_filter and display in ('منتهي', 'تم تجديده', 'ملغي'):
             continue
         map_points.append({
             'id': contract.id,
@@ -7910,22 +8266,36 @@ def contracts():
         visible.append(contract)
     stats['total_val'] = round(stats['total_val'], 2)
     stats['unpaid'] = round(stats['unpaid'], 2)
-    page = request_page(request.args)
-    page_rows, total, page = page_slice(visible, page, PAGE_SIZE)
     customers = tenant_query(Customer).order_by(Customer.name).all()
     all_elevators = tenant_query(Elevator).all()
     elevator_by_id = {e.id: e for e in all_elevators}
+    sort_col, sort_dir = request_sort(
+        request.args,
+        CONTRACT_LIST_SORT_COLS,
+        default_col='code',
+        default_dir='asc',
+    )
+    visible = sort_contracts_for_list(
+        visible,
+        sort_col,
+        sort_dir,
+        renewed_ids=renewed_ids,
+        elevator_by_id=elevator_by_id,
+    )
+    page = request_page(request.args)
+    per_page = request_per_page(request.args)
+    page_rows, total, page = page_slice(visible, page, per_page)
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
         for e in all_elevators
     }
-    list_meta = list_meta_for(total, page, extra={
+    list_meta = list_meta_for(total, page, per_page=per_page, extra={
         'stats': stats,
         'status': status_filter,
-        'archive': show_archive,
-        'renewed': show_archive,
-        'renewed_count': archive_count,
+        'hide_expired': hide_expired,
         'due': due_only,
+        'sort': sort_col,
+        'dir': sort_dir,
     })
     resp = make_response(render_template(
         'contracts.html',
@@ -9307,15 +9677,11 @@ def maintenance_visits():
     from visit_cleanup import find_duplicate_visit_ids_from
     from list_windows import maintenance_visit_query
 
-    from contract_archive import request_wants_archive
-
     month = (request.args.get('month') or '').strip()
-    archive = request_wants_archive(request.args)
     visit_query, plan_default = maintenance_visit_query(
-        month=None if archive else (month or None),
-        include_open=not archive,
-        all_months=archive or not month,
-        archive=archive,
+        month=month or None,
+        include_open=True,
+        all_months=not month,
     )
     visits = visit_query.all()
     from entity_links import natural_code_key
@@ -9375,7 +9741,6 @@ def maintenance_visits():
         plan_districts=list_districts(),
         duplicate_visit_ids=duplicate_visit_ids,
         pending_visit_customer_wa=session.pop('pending_visit_customer_wa', '') or '',
-        visit_archive=archive,
     )
 
 def build_elevator_profile(elevator_id):
@@ -11607,14 +11972,13 @@ def faults():
     from fault_report import FAULT_TYPE_OPTIONS
     from sqlalchemy import or_
     from sqlalchemy.orm import joinedload
-    from contract_archive import apply_fault_archive_filter, request_wants_archive
-    from list_windows import PAGE_SIZE, list_meta_for, request_page, request_text
+    from list_windows import list_meta_for, request_page, request_per_page, request_text
 
     scope = (request.args.get('scope') or 'all').strip()
     qtext = request_text(request.args)
     status_filter = (request.args.get('status') or '').strip()
-    archive = request_wants_archive(request.args)
     page = request_page(request.args)
+    per_page = request_per_page(request.args)
     query = (
         tenant_query(Fault)
         .options(
@@ -11624,7 +11988,6 @@ def faults():
         )
         .order_by(Fault.reported_at.desc())
     )
-    query = apply_fault_archive_filter(query, archive=archive)
     if scope == 'open':
         query = query.filter(Fault.status.in_(FAULT_OPEN))
     elif status_filter:
@@ -11638,15 +12001,14 @@ def faults():
             Fault.elevator.has(Elevator.customer.has(Customer.name.ilike(needle))),
         ))
     total = query.count()
-    pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE) if total else 1
+    pages = max(1, (total + per_page - 1) // per_page) if total else 1
     page = min(page, pages)
-    faults_list = query.offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).all()
+    faults_list = query.offset((page - 1) * per_page).limit(per_page).all()
     open_badge = tenant_query(Fault).filter(Fault.status == 'مفتوح').count()
-    list_meta = list_meta_for(total, page, extra={
+    list_meta = list_meta_for(total, page, per_page=per_page, extra={
         'scope': scope or 'all',
         'status': status_filter,
         'open_total': open_badge,
-        'archive': archive,
     })
     elevators = tenant_query(Elevator).options(joinedload(Elevator.customer)).all()
     customers = tenant_query(Customer).order_by(Customer.name).all()

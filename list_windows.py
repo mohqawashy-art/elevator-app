@@ -5,7 +5,8 @@ from calendar import monthrange
 from datetime import date
 from urllib.parse import urlencode
 
-PAGE_SIZE = 50
+PAGE_SIZE_OPTIONS = frozenset({10, 20, 50, 100})
+PAGE_SIZE = 10
 
 
 def request_page(args) -> int:
@@ -18,6 +19,36 @@ def request_page(args) -> int:
 
 def request_text(args, key: str = 'q') -> str:
     return (args.get(key) or '').strip()
+
+
+def request_per_page(args) -> int:
+    raw = args.get('per') or args.get('page_size') or args.get('size')
+    try:
+        n = int(raw) if raw not in (None, '') else PAGE_SIZE
+    except (TypeError, ValueError):
+        n = PAGE_SIZE
+    return n if n in PAGE_SIZE_OPTIONS else PAGE_SIZE
+
+
+def request_hide_expired(args) -> bool:
+    raw = (args.get('hide_expired') or '').strip().lower()
+    return raw in ('1', 'true', 'yes')
+
+
+def request_sort(
+    args,
+    allowed: set[str] | frozenset[str],
+    *,
+    default_col: str = 'code',
+    default_dir: str = 'asc',
+) -> tuple[str, str]:
+    col = (args.get('sort') or default_col).strip()
+    if col not in allowed:
+        col = default_col
+    direction = (args.get('dir') or default_dir).strip().lower()
+    if direction not in ('asc', 'desc'):
+        direction = default_dir
+    return col, direction
 
 
 def parse_month(value: str | None, today: date | None = None) -> tuple[int, int]:
@@ -73,13 +104,11 @@ def page_slice(rows: list, page: int, per_page: int = PAGE_SIZE):
     return rows[start:start + per_page], total, page
 
 
-def maintenance_visit_query(*, month: str | None, include_open: bool, all_months: bool = False, archive: bool | None = None):
+def maintenance_visit_query(*, month: str | None, include_open: bool, all_months: bool = False):
     """كل الزيارات افتراضياً. شهر محدد يضيّق القائمة، ومع include_open تبقى غير المكتملة ظاهرة."""
-    from flask import has_request_context, request
     from sqlalchemy import and_, or_
     from sqlalchemy.orm import joinedload
 
-    from contract_archive import apply_visit_archive_filter, request_wants_archive
     from models import Elevator, MaintenanceVisit
     from operations import VISIT_DONE, exclude_fault_visits
     from tenant_scope import tenant_query
@@ -95,9 +124,6 @@ def maintenance_visit_query(*, month: str | None, include_open: bool, all_months
             joinedload(MaintenanceVisit.linked_fault),
         )
     )
-    if archive is None and has_request_context():
-        archive = request_wants_archive(request.args)
-    query = apply_visit_archive_filter(query, archive=bool(archive))
     if all_months:
         return query, label
     in_month = and_(

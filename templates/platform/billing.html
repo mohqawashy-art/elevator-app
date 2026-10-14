@@ -1,19 +1,135 @@
 {% extends 'platform/base.html' %}
-{% block title %}الاشتراكات — LiftCore Platform{% endblock %}
+{% block title %}حسابات نسق كور — LiftCore Platform{% endblock %}
 {% block content %}
-<div class="h1">اشتراكات العملاء</div>
-<p class="sub">متابعة التجارب والمدفوعات يدوياً — بدون بوابة دفع بعد. الأسعار السنوية: basic {{ plan_prices_yearly.basic }} · plus {{ plan_prices_yearly.plus }} · pro {{ plan_prices_yearly.pro }} · enterprise {{ plan_prices_yearly.enterprise }} ر.س/سنة.</p>
+<div class="h1">حسابات مؤسسة نسق كور</div>
+<p class="sub">
+  إدارة اشتراكات مستأجري LiftCore: فواتير، سندات قبض، كشف حساب، وبيان إيرادات ومصاريف الشركة الأم.
+  جما مجاناً لعام واحد والديمو مجاناً — لا يدخلان الإيراد.
+</p>
+<p class="toolbar">
+  <a class="btn btn-secondary" href="/platform/invoices/sample" target="_blank" rel="noopener">نموذج فاتورة نسق كور</a>
+</p>
 
-<div class="stats">
-  <div class="stat"><div class="n">{{ stats.ok or 0 }}</div><div class="l">سارية</div></div>
+{% set books = books or {} %}
+<div class="stats stats-6">
+  <div class="stat"><div class="n">{{ '%.0f'|format(books.revenue or 0) }}</div><div class="l">إيرادات {{ books.year }} (ر.س)</div></div>
+  <div class="stat"><div class="n">{{ '%.0f'|format(books.expenses or 0) }}</div><div class="l">مصاريف {{ books.year }}</div></div>
+  <div class="stat"><div class="n">{{ '%.0f'|format(books.net or 0) }}</div><div class="l">صافي الفترة</div></div>
+  <div class="stat"><div class="n">{{ '%.0f'|format(books.unpaid or 0) }}</div><div class="l">فواتير غير محصّلة</div></div>
   <div class="stat"><div class="n">{{ stats.due or 0 }}</div><div class="l">مستحقة قريباً</div></div>
-  <div class="stat"><div class="n">{{ stats.overdue or 0 }}</div><div class="l">متأخرة</div></div>
-  <div class="stat"><div class="n">{{ stats.trial or 0 }}</div><div class="l">تجريبية</div></div>
   <div class="stat"><div class="n">{{ stats.complimentary or 0 }}</div><div class="l">مجانية / هدية</div></div>
 </div>
 
 <div class="card">
-  <div class="section">كل المؤسسات</div>
+  <div class="section">بيان الأرباح والخسائر — {{ company.legal_name if company else 'مؤسسة نسق كور للحلول المتكاملة' }} · {{ books.year }}</div>
+  <form class="toolbar" method="get" action="/platform/billing">
+    <div>
+      <label>السنة</label>
+      <input name="year" type="number" min="2024" max="2100" value="{{ books.year }}" style="width:120px">
+    </div>
+    <button class="btn btn-secondary" type="submit">عرض السنة</button>
+  </form>
+  <div class="grid">
+    <div class="kv"><div class="k">إيرادات الاشتراكات المحصّلة</div><div class="v">{{ '%.2f'|format(books.revenue or 0) }} ر.س</div></div>
+    <div class="kv"><div class="k">فواتير صادرة</div><div class="v">{{ '%.2f'|format(books.invoiced or 0) }} ر.س</div></div>
+    <div class="kv"><div class="k">المصاريف</div><div class="v">{{ '%.2f'|format(books.expenses or 0) }} ر.س</div></div>
+    <div class="kv"><div class="k">صافي (إيراد − مصروف)</div><div class="v"><strong>{{ '%.2f'|format(books.net or 0) }} ر.س</strong></div></div>
+  </div>
+  <p class="muted" style="margin-top:10px">جما والديمو والحسابات المجانية لا تُحتسب إيراداً حتى لو وُجدت دفعات قديمة — تُصفَّر تلقائياً.</p>
+</div>
+
+<div class="card">
+  <div class="section">إضافة مصروف</div>
+  <form method="post" action="/platform/expenses">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="year" value="{{ books.year }}">
+    <div class="grid">
+      <div>
+        <label>المبلغ (ر.س) *</label>
+        <input name="amount" type="number" step="0.01" min="0.01" required>
+      </div>
+      <div>
+        <label>التصنيف</label>
+        <select name="category">
+          {% for key, label in expense_categories or [] %}
+          <option value="{{ key }}">{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div>
+        <label>الجهة</label>
+        <input name="vendor" maxlength="200" placeholder="Hetzner، Cloudflare…">
+      </div>
+      <div>
+        <label>التاريخ</label>
+        <input name="spent_at" type="date">
+      </div>
+      <div class="full">
+        <label>الوصف *</label>
+        <input name="description" maxlength="400" required placeholder="استضافة السيرفر / إعلان / راتب">
+      </div>
+      <div>
+        <label>طريقة الدفع</label>
+        <select name="method">
+          <option value="transfer">تحويل</option>
+          <option value="card">بطاقة</option>
+          <option value="cash">نقداً</option>
+          <option value="other">أخرى</option>
+        </select>
+      </div>
+      <div>
+        <label>مرجع</label>
+        <input name="reference" maxlength="100">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">حفظ المصروف</button>
+    </div>
+  </form>
+
+  {% if books.expense_rows %}
+  <div class="section" style="margin-top:22px">مصاريف السنة</div>
+  <table class="table">
+    <thead><tr><th>الرقم</th><th>التاريخ</th><th>التصنيف</th><th>الوصف</th><th>المبلغ</th></tr></thead>
+    <tbody>
+      {% for e in books.expense_rows %}
+      <tr>
+        <td><code>{{ e.code }}</code></td>
+        <td class="muted">{{ e.spent_at.strftime('%Y-%m-%d') if e.spent_at else '—' }}</td>
+        <td>{{ e.category }}</td>
+        <td>{{ e.description }}{% if e.vendor %}<br><span class="muted">{{ e.vendor }}</span>{% endif %}</td>
+        <td>{{ '%.2f'|format(e.amount) }} ر.س</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="section">فواتير السنة</div>
+  {% if books.invoices %}
+  <table class="table">
+    <thead><tr><th>الرقم</th><th>المستأجر</th><th>المبلغ</th><th>الحالة</th><th></th></tr></thead>
+    <tbody>
+      {% for inv in books.invoices %}
+      <tr>
+        <td><code>{{ inv.code }}</code></td>
+        <td class="muted">#{{ inv.organization_id }}</td>
+        <td>{{ '%.2f'|format(inv.total) }} ر.س</td>
+        <td><span class="badge badge-{{ inv.status }}">{{ inv.status }}</span></td>
+        <td><a class="btn btn-secondary btn-sm" href="/platform/invoices/{{ inv.id }}/print" target="_blank" rel="noopener">طباعة</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">لا فواتير في هذه السنة. أصدر فاتورة من صفحة المؤسسة للعملاء المشتركين.</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <div class="section">مستأجرو البرنامج</div>
   <table class="table">
     <thead>
       <tr>
@@ -30,7 +146,10 @@
       {% for row in rows %}
       {% set o = row.org %}
       <tr>
-        <td><strong>{{ o.name }}</strong><br><code>{{ o.slug }}</code></td>
+        <td>
+          <strong>{{ o.name }}</strong><br><code>{{ o.slug }}</code>
+          {% if row.free %}<br><span class="badge badge-complimentary">مجاني — نسق كور</span>{% endif %}
+        </td>
         <td>{{ o.plan }} · {{ o.billing_cycle or 'monthly' }}</td>
         <td><span class="badge badge-{{ o.status }}">{{ o.status }}</span></td>
         <td><span class="badge badge-{{ row.billing_status }}">{{ row.billing_status }}</span></td>
@@ -39,7 +158,10 @@
           {% if row.period_end %}{{ row.period_end }}{% else %}—{% endif %}
           {% if row.days_left is not none %}<br>{% if row.days_left >= 0 %}متبقي {{ row.days_left }} يوم{% else %}متأخر {{ -row.days_left }} يوم{% endif %}{% endif %}
         </td>
-        <td><a class="btn btn-secondary btn-sm" href="/platform/orgs/{{ o.id }}">إدارة</a></td>
+        <td>
+          <a class="btn btn-secondary btn-sm" href="/platform/orgs/{{ o.id }}">إدارة</a>
+          <a class="btn btn-secondary btn-sm" href="/platform/orgs/{{ o.id }}/statement" target="_blank" rel="noopener">كشف حساب</a>
+        </td>
       </tr>
       {% else %}
       <tr><td colspan="7" class="muted">لا مؤسسات.</td></tr>

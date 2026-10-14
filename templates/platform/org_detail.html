@@ -30,7 +30,7 @@
     <div class="kv"><div class="k">نهاية التجربة</div><div class="v">{{ org.trial_ends_at or '—' }}</div></div>
     <div class="kv"><div class="k">نهاية فترة الاشتراك</div><div class="v">{{ org.current_period_end or '—' }}</div></div>
     <div class="kv"><div class="k">حالة الفوترة</div><div class="v"><span class="badge badge-{{ org.billing_status or 'ok' }}">{{ org.billing_status or 'ok' }}</span></div></div>
-    <div class="kv"><div class="k">مبلغ الفترة</div><div class="v">{{ '%.0f'|format(billing_amount) }} ر.س · {{ org.billing_cycle or 'monthly' }}</div></div>
+    <div class="kv"><div class="k">مبلغ الفترة</div><div class="v">{% if complimentary_locked %}0 ر.س — مجاني{% else %}{{ '%.0f'|format(billing_amount) }} ر.س · {{ org.billing_cycle or 'monthly' }}{% endif %}</div></div>
     <div class="kv"><div class="k">آخر دفعة</div><div class="v">{% if org.last_payment_at %}{{ org.last_payment_amount }} ر.س — {{ org.last_payment_at }}{% else %}—{% endif %}</div></div>
     <div class="kv"><div class="k">تاريخ الإيقاف</div><div class="v">{{ org.suspended_at or '—' }}</div></div>
     <div class="kv"><div class="k">ملاحظات</div><div class="v">{{ org.notes or '—' }}</div></div>
@@ -102,7 +102,61 @@
     </div>
   </form>
 
-  <div class="section" style="margin-top:22px">تسجيل دفعة / تجديد</div>
+  {% if complimentary_locked %}
+  <div class="owner-note" style="margin-top:18px">
+    هذا المستأجر مجاني لدى مؤسسة نسق كور
+    {% if org.slug == 'jama' %}لمدة عام{% else %}(حساب تجريبي){% endif %}
+    — مبلغ الاشتراك والإيرادات = صفر، ولا تُصدر له فاتورة تحصيل.
+    <br>
+    <a class="link" href="/platform/orgs/{{ org.id }}/statement" target="_blank" rel="noopener">كشف حساب</a>
+  </div>
+  {% else %}
+  <div class="section" style="margin-top:22px">إصدار فاتورة للمستأجر</div>
+  <form method="post" action="/platform/orgs/{{ org.id }}/invoice">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="grid">
+      <div>
+        <label>المبلغ (ر.س)</label>
+        <input name="amount" type="number" step="0.01" min="0" value="{{ '%.0f'|format(billing_amount) }}">
+      </div>
+      <div class="full">
+        <label>البيان</label>
+        <input name="description" maxlength="300" placeholder="اشتراك LiftCore السنوي">
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">إصدار فاتورة</button>
+      <a class="btn btn-secondary" href="/platform/orgs/{{ org.id }}/statement" target="_blank" rel="noopener">كشف حساب</a>
+    </div>
+  </form>
+  {% endif %}
+
+  {% if invoices %}
+  <div class="section" style="margin-top:22px">فواتير هذا المستأجر</div>
+  <table class="table">
+    <thead><tr><th>الرقم</th><th>المبلغ</th><th>الحالة</th><th></th></tr></thead>
+    <tbody>
+      {% for inv in invoices %}
+      <tr>
+        <td><code>{{ inv.code }}</code></td>
+        <td>{{ '%.2f'|format(inv.total) }} ر.س</td>
+        <td><span class="badge badge-{{ inv.status }}">{{ inv.status }}</span></td>
+        <td>
+          <a class="btn btn-secondary btn-sm" href="/platform/invoices/{{ inv.id }}/print" target="_blank" rel="noopener">طباعة</a>
+          {% if inv.status == 'unpaid' %}
+          <form method="post" action="/platform/invoices/{{ inv.id }}/void" style="display:inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-danger btn-sm" type="submit">إلغاء</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="section" style="margin-top:22px">تسجيل دفعة / سند قبض / تجديد</div>
   <form method="post" action="/platform/orgs/{{ org.id }}/payment">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="grid">
@@ -110,6 +164,17 @@
         <label>المبلغ (ر.س) *</label>
         <input name="amount" type="number" step="0.01" min="0" required value="{{ '%.0f'|format(billing_amount) }}">
       </div>
+      {% if unpaid_invoices %}
+      <div>
+        <label>ربط بفاتورة</label>
+        <select name="invoice_id">
+          <option value="">— تلقائي (أقدم غير مدفوعة) —</option>
+          {% for inv in unpaid_invoices %}
+          <option value="{{ inv.id }}">{{ inv.code }} · {{ '%.0f'|format(inv.total) }} ر.س</option>
+          {% endfor %}
+        </select>
+      </div>
+      {% endif %}
       <div>
         <label>عدد الأشهر</label>
         <input name="months" type="number" min="1" max="36" value="{% if org.billing_cycle == 'yearly' %}12{% else %}1{% endif %}">
@@ -149,18 +214,23 @@
   </form>
 
   {% if payments %}
-  <div class="section" style="margin-top:22px">سجل الدفعات</div>
+  <div class="section" style="margin-top:22px">سجل الدفعات / سندات القبض</div>
   <table class="table">
-    <thead><tr><th>#</th><th>المبلغ</th><th>الطريقة</th><th>الفترة</th><th>مرجع</th><th>التاريخ</th></tr></thead>
+    <thead><tr><th>السند</th><th>المبلغ</th><th>الطريقة</th><th>الفترة</th><th>مرجع</th><th>التاريخ</th><th></th></tr></thead>
     <tbody>
       {% for p in payments %}
       <tr>
-        <td>{{ p.id }}</td>
+        <td>{% if p.receipt_code %}<code>{{ p.receipt_code }}</code>{% else %}#{{ p.id }}{% endif %}</td>
         <td>{{ p.amount }} {{ p.currency or 'SAR' }}</td>
         <td>{{ p.method }}</td>
         <td class="muted">{{ p.period_start }} → {{ p.period_end }}</td>
         <td>{{ p.reference or '—' }}</td>
         <td class="muted">{{ p.paid_at }}</td>
+        <td>
+          {% if p.receipt_code %}
+          <a class="btn btn-secondary btn-sm" href="/platform/payments/{{ p.id }}/receipt" target="_blank" rel="noopener">سند قبض</a>
+          {% endif %}
+        </td>
       </tr>
       {% endfor %}
     </tbody>

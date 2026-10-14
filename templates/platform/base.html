@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 {% include 'partials/marketing_boot.html' %}
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="color-scheme" content="dark">
+<meta name="color-scheme" content="light">
 <title>{% block title %}LiftCore Platform{% endblock %}</title>
 <link rel="icon" href="{{ url_for('static', filename='images/liftcore.ico') }}?v=2" type="image/x-icon">
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=Tajawal:wght@500;700&display=swap" rel="stylesheet">
@@ -153,6 +153,9 @@ h1,h2,h3,h4{color:var(--text)}
 .badge-due{background:#fef3c7;color:#92400e}
 .badge-overdue{background:#fee2e2;color:#991b1b}
 .badge-complimentary{background:#dbeafe;color:#1e3a8a}
+.badge-unpaid{background:#fef3c7;color:#92400e}
+.badge-paid{background:#dcfce7;color:#166534}
+.badge-void{background:#e2e8f0;color:#334155}
 .btn{
   border:none;border-radius:10px;padding:10px 16px;font-family:inherit;font-size:13px;font-weight:600;
   cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;transition:.2s ease;
@@ -169,10 +172,15 @@ h1,h2,h3,h4{color:var(--text)}
 label{display:block;font-size:11px;color:var(--muted);margin-bottom:6px;font-weight:600}
 input,select,textarea{
   width:100%;padding:11px 12px;background:#fff;border:1px solid rgba(15,23,42,.12);
-  border-radius:10px;color:var(--text);font-family:inherit;font-size:13px;color-scheme:dark;
+  border-radius:10px;color:var(--text);font-family:inherit;font-size:13px;color-scheme:light;
 }
 input::placeholder,textarea::placeholder{color:#6b7a90}
-select option{background:#111925;color:var(--text)}
+select option,select optgroup{
+  background:#fff;color:#1a2433;
+}
+select option:checked,select option:hover{
+  background:#dbeafe;color:#1a2433;
+}
 input:focus,select:focus,textarea:focus{
   outline:none;border-color:rgba(201,161,74,.5);
   box-shadow:0 0 0 3px rgba(201,161,74,.12);
@@ -227,7 +235,7 @@ code{
     <a href="/platform/ops" class="{% if nav == 'ops' %}on{% endif %}">حالة التشغيل</a>
     <a href="/platform/leads" class="{% if nav == 'leads' %}on{% endif %}">طلبات المبيعات</a>
     <a href="/platform/orgs" class="{% if nav == 'orgs' %}on{% endif %}">المؤسسات</a>
-    <a href="/platform/billing" class="{% if nav == 'billing' %}on{% endif %}">الاشتراكات</a>
+    <a href="/platform/billing" class="{% if nav == 'billing' %}on{% endif %}">حسابات نسق كور</a>
     <a href="/platform/invites" class="{% if nav == 'invites' %}on{% endif %}">الدعوات</a>
     <a href="/operator/onboarding" class="{% if nav == 'create_invite' %}on{% endif %}">إنشاء دعوة</a>
   </nav>
@@ -238,7 +246,7 @@ code{
 <main class="wrap">
   {% if notice %}<div class="flash flash-{{ notice_type or 'info' }}">{{ notice }}</div>{% endif %}
   {% block content %}{% endblock %}
-  <div class="foot">LIFTCORE · PLATFORM CONSOLE · 2026</div>
+  <div class="foot">مؤسسة نسق كور للحلول المتكاملة · LiftCore Platform · 2026</div>
 </main>
 {% block scripts %}{% endblock %}
 </body>

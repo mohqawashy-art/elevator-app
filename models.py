@@ -51,11 +51,12 @@ class Organization(db.Model):
 
 
 class PlatformPayment(db.Model):
-    """سجل دفعات اشتراك العملاء لـ LiftCore (يدوي من لوحة المنصة)."""
+    """سجل دفعات اشتراك العملاء لـ LiftCore — سند قبض لنسق كور."""
     __tablename__ = 'platform_payments'
 
     id = db.Column(db.Integer, primary_key=True)
     organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False, index=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('platform_invoices.id'), index=True)
     amount = db.Column(db.Float, nullable=False)
     currency = db.Column(db.String(10), default='SAR')
     method = db.Column(db.String(40), default='transfer')  # transfer | cash | card | complimentary | other
@@ -64,12 +65,71 @@ class PlatformPayment(db.Model):
     period_start = db.Column(db.DateTime)
     period_end = db.Column(db.DateTime)
     plan = db.Column(db.String(30))
+    receipt_code = db.Column(db.String(30), unique=True, index=True)
+    receipt_issued_at = db.Column(db.DateTime)
     recorded_by_user_id = db.Column(db.Integer)
     paid_at = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    invoice = db.relationship(
+        'PlatformInvoice',
+        foreign_keys=[invoice_id],
+        backref=db.backref('receipts', lazy=True),
+    )
+
     def __repr__(self):
         return f'<PlatformPayment org={self.organization_id} {self.amount}>'
+
+
+class PlatformInvoice(db.Model):
+    """فاتورة اشتراك صادرة من مؤسسة نسق كور لعميل LiftCore."""
+    __tablename__ = 'platform_invoices'
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(30), unique=True, nullable=False, index=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organizations.id'), nullable=False, index=True)
+    description = db.Column(db.String(300))
+    period_start = db.Column(db.DateTime)
+    period_end = db.Column(db.DateTime)
+    subtotal = db.Column(db.Float, nullable=False, default=0)
+    tax_pct = db.Column(db.Float, default=15)
+    tax_amount = db.Column(db.Float, default=0)
+    total = db.Column(db.Float, nullable=False, default=0)
+    currency = db.Column(db.String(10), default='SAR')
+    status = db.Column(db.String(20), default='unpaid', index=True)  # unpaid | paid | void
+    issue_date = db.Column(db.DateTime, default=datetime.utcnow)
+    due_date = db.Column(db.DateTime)
+    paid_at = db.Column(db.DateTime)
+    notes = db.Column(db.Text)
+    created_by_user_id = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    organization = db.relationship('Organization', backref=db.backref('platform_invoices', lazy=True))
+
+    def __repr__(self):
+        return f'<PlatformInvoice {self.code} {self.status}>'
+
+
+class PlatformExpense(db.Model):
+    """مصروف تشغيلي لمؤسسة نسق كور (استضافة، إعلانات، رواتب…)."""
+    __tablename__ = 'platform_expenses'
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(30), unique=True, nullable=False, index=True)
+    spent_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    category = db.Column(db.String(40), default='other')
+    vendor = db.Column(db.String(200))
+    description = db.Column(db.String(400), nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(10), default='SAR')
+    method = db.Column(db.String(40), default='transfer')
+    reference = db.Column(db.String(100))
+    notes = db.Column(db.Text)
+    created_by_user_id = db.Column(db.Integer)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f'<PlatformExpense {self.code} {self.amount}>'
 
 
 class PlatformCatalog(db.Model):

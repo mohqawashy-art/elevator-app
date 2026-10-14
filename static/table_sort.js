@@ -84,7 +84,7 @@
         state.col = col;
         state.dir = defaultDirForCol(col, options);
       }
-      if (options.onChange) options.onChange();
+      if (options.onChange) options.onChange({ col: state.col, dir: state.dir });
     }
 
     function apply(list) {
@@ -155,6 +155,9 @@
         if (inst) inst.updateIndicators();
       },
       bindHeaders: function () { ensure(); },
+      getState: function () {
+        return ensure().getState();
+      },
     };
   }
 

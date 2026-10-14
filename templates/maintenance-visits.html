@@ -337,7 +337,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       {% endif %}
       {% endwith %}
       <div class="page-header">
-        <div class="page-title">{% if visit_archive %}أرشيف زيارات العقود القديمة{% else %}زيارات الصيانة{% endif %} <span id="work-month-label" style="color:var(--accent);font-size:13px"></span> <span id="visits-count" data-i18n-skip></span></div>
+        <div class="page-title">زيارات الصيانة <span id="work-month-label" style="color:var(--accent);font-size:13px"></span> <span id="visits-count" data-i18n-skip></span></div>
         <div class="page-actions">
           {% with report_url=url_for('report_maintenance'), report_label='تقرير الصيانة' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
           <button class="btn btn-secondary btn-sm" type="button" onclick="exportExcel()">
@@ -373,11 +373,6 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <button type="button" class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(1)" title="الشهر التالي">›</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="goWorkMonthToday(); loadVisitWindow(document.getElementById('work-month').value)">هذا الشهر</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="showAllVisits()">كل الزيارات</button>
-          {% if visit_archive %}
-          <a class="btn btn-secondary btn-sm active" href="/maintenance-visits" style="text-decoration:none">العقود الحالية</a>
-          {% else %}
-          <a class="btn btn-secondary btn-sm" href="/maintenance-visits?archive=1" style="text-decoration:none" title="زيارات العقود المنتهية — تبقى على السيرفر">أرشيف العقود القديمة</a>
-          {% endif %}
         </div>
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>

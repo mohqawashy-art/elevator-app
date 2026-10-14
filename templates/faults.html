@@ -367,15 +367,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <option value="no">ضمن العقد</option>
         </select>
         <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-fault-filters" onclick="clearAllFaultFilters()" style="display:none">مسح الفلاتر</button>
-        {% if list_meta and list_meta.archive %}
-        <a class="btn btn-secondary btn-sm active" href="/faults" style="text-decoration:none">العقود الحالية</a>
-        {% else %}
-        <a class="btn btn-secondary btn-sm" href="/faults?archive=1" style="text-decoration:none" title="أعطال العقود المنتهية — تبقى على السيرفر">أرشيف العقود القديمة</a>
-        {% endif %}
       </div>
-      {% if list_meta and list_meta.archive %}
-      <p class="hint">أرشيف أعطال العقود المنتهية. البيانات محفوظة ويمكن استدعاؤها من هنا.</p>
-      {% elif list_meta and list_meta.scope == 'open' %}
+      {% if list_meta and list_meta.scope == 'open' %}
       <p class="hint">الأعطال المفتوحة. <a href="?">كل الأعطال</a></p>
       {% endif %}
       {% include 'partials/list_pager.html' %}
@@ -1075,7 +1068,7 @@ function renderTable(data) {
   }
   var masterTotal = (window.LIST_META && LIST_META.server) ? LIST_META.total : FAULTS.length;
   var serverPage = window.LIST_META && LIST_META.server;
-  var pg = (tablePager && !serverPage) ? tablePager.apply(data, masterTotal) : { rows: data };
+  var pg = tablePager ? tablePager.apply(data, masterTotal) : { rows: data };
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
   const D = window.lcDisp || (s => s);
@@ -1083,11 +1076,11 @@ function renderTable(data) {
   var shownTotal = serverPage ? LIST_META.total : data.length;
   if (LC) {
     LC.setCountEl('faults-count', LC.fmtFaultsCount(shownTotal));
-    if (!tablePager || serverPage) LC.setCountEl('table-info', LC.fmtShowing(data.length, masterTotal));
+    if (!tablePager) LC.setCountEl('table-info', LC.fmtShowing(data.length, masterTotal));
   } else {
     document.getElementById('faults-count').innerHTML = '<span class="lc-num">' + shownTotal + '</span> عطل';
     const info = document.getElementById('table-info');
-    if (info && (!tablePager || serverPage)) info.innerHTML = 'عرض <span class="lc-num">' + data.length + '</span> من <span class="lc-num">' + masterTotal + '</span>';
+    if (info && !tablePager) info.innerHTML = 'عرض <span class="lc-num">' + data.length + '</span> من <span class="lc-num">' + masterTotal + '</span>';
   }
   tbody.innerHTML = pg.rows.map(f=>`
     <tr data-fault-id="${f.id}">

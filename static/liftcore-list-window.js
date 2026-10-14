@@ -10,9 +10,7 @@
       else url.searchParams.set(key, value);
     });
     if (!Object.prototype.hasOwnProperty.call(updates || {}, 'page')) url.searchParams.set('page', '1');
-    var next = url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '');
-    var current = global.location.pathname + global.location.search;
-    if (next !== current) global.location.href = next;
+    global.location.href = url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '');
   }
 
   function serverList() {
