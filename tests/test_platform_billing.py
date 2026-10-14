@@ -232,3 +232,5 @@ def test_billing_page_shows_nasq_core_books():
     assert 'نسق كور' in body
     assert 'بيان الأرباح' in body
     assert 'Bill Co' in body
+    assert 'color-scheme:light' in body
+    assert 'background:#111925' not in body
