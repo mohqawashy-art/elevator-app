@@ -367,15 +367,8 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <option value="no">ضمن العقد</option>
         </select>
         <button type="button" class="btn btn-secondary btn-sm" id="btn-clear-fault-filters" onclick="clearAllFaultFilters()" style="display:none">مسح الفلاتر</button>
-        {% if list_meta and list_meta.archive %}
-        <a class="btn btn-secondary btn-sm active" href="/faults" style="text-decoration:none">العقود الحالية</a>
-        {% else %}
-        <a class="btn btn-secondary btn-sm" href="/faults?archive=1" style="text-decoration:none" title="أعطال العقود المنتهية — تبقى على السيرفر">أرشيف العقود القديمة</a>
-        {% endif %}
       </div>
-      {% if list_meta and list_meta.archive %}
-      <p class="hint">أرشيف أعطال العقود المنتهية. البيانات محفوظة ويمكن استدعاؤها من هنا.</p>
-      {% elif list_meta and list_meta.scope == 'open' %}
+      {% if list_meta and list_meta.scope == 'open' %}
       <p class="hint">الأعطال المفتوحة. <a href="?">كل الأعطال</a></p>
       {% endif %}
       {% include 'partials/list_pager.html' %}

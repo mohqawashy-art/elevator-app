@@ -1,4 +1,4 @@
-"""أرشيف العقود المنتهية: البيانات تبقى وتُستدعى بالفلتر فقط."""
+"""العقود المنتهية والزيارات والأعطال القديمة تظهر في القوائم الافتراضية."""
 from datetime import date, datetime, timedelta
 
 from models import Contract, ContractElevator, Customer, Elevator, Fault, MaintenanceVisit, db
@@ -98,52 +98,40 @@ def _seed_old_and_new(client):
         db.session.commit()
 
 
-def test_expired_contract_hidden_until_old_filter(client):
+def test_expired_and_active_contracts_visible_by_default(client):
     _seed_old_and_new(client)
     page = client.get('/contracts?z=5')
     html = page.get_data(as_text=True)
     assert 'CN-ARCH-NEW' in html
-    assert 'CN-ARCH-OLD' not in html
+    assert 'CN-ARCH-OLD' in html
+    assert 'أرشيف العقود القديمة' not in html
 
     expired = client.get('/contracts?z=5&status=منتهي')
     expired_html = expired.get_data(as_text=True)
     assert 'CN-ARCH-OLD' in expired_html
     assert 'CN-ARCH-NEW' not in expired_html
 
-    archive = client.get('/contracts?z=5&archive=1')
-    archive_html = archive.get_data(as_text=True)
-    assert 'CN-ARCH-OLD' in archive_html
-    assert 'CN-ARCH-NEW' not in archive_html
 
-
-def test_old_contract_visits_stay_on_server_behind_archive_filter(client):
+def test_all_visits_visible_by_default(client):
     _seed_old_and_new(client)
     page = client.get('/maintenance-visits')
     html = page.get_data(as_text=True)
     assert 'VI-ARCH-NEW' in html
     assert 'VI-ARCH-LIVE' in html
-    assert 'VI-ARCH-OLD' not in html
-
-    archive = client.get('/maintenance-visits?archive=1')
-    archive_html = archive.get_data(as_text=True)
-    assert 'VI-ARCH-OLD' in archive_html
-    assert 'VI-ARCH-LIVE' in archive_html
-    assert 'VI-ARCH-NEW' not in archive_html
+    assert 'VI-ARCH-OLD' in html
+    assert 'أرشيف العقود القديمة' not in html
 
 
-def test_old_contract_faults_archived_open_ones_stay_visible(client):
+def test_all_faults_visible_by_default(client):
     _seed_old_and_new(client)
     page = client.get('/faults')
     html = page.get_data(as_text=True)
     assert 'FA-ARCH-OPEN' in html
-    assert 'FA-ARCH-OLD' not in html
-
-    archive = client.get('/faults?archive=1')
-    archive_html = archive.get_data(as_text=True)
-    assert 'FA-ARCH-OLD' in archive_html
+    assert 'FA-ARCH-OLD' in html
+    assert 'أرشيف العقود القديمة' not in html
 
 
-def test_archive_contracts_sort_by_end_date(client):
+def test_contracts_sort_by_end_date(client):
     from app import sort_contracts_for_list
 
     _seed_old_and_new(client)
@@ -163,11 +151,11 @@ def test_archive_contracts_sort_by_end_date(client):
         db.session.add(older)
         db.session.commit()
 
-    asc = client.get('/contracts?z=5&archive=1&sort=end_date&dir=asc')
+    asc = client.get('/contracts?z=5&sort=end_date&dir=asc')
     asc_html = asc.get_data(as_text=True)
     assert asc_html.find('CN-ARCH-OLDER') < asc_html.find('CN-ARCH-OLD"')
 
-    desc = client.get('/contracts?z=5&archive=1&sort=end_date&dir=desc')
+    desc = client.get('/contracts?z=5&sort=end_date&dir=desc')
     desc_html = desc.get_data(as_text=True)
     assert desc_html.find('CN-ARCH-OLD"') < desc_html.find('CN-ARCH-OLDER')
 

@@ -189,7 +189,6 @@ def _sync_contracts():
     h = _helpers()
     from flask import request
 
-    from contract_archive import include_contract_in_list, request_wants_archive
     from contract_codes import contracts_for_scope
     from list_windows import PAGE_SIZE, page_slice, request_page, request_text
     from tenant_scope import tenant_query
@@ -201,7 +200,6 @@ def _sync_contracts():
     renewed_ids = h._annotate_contract_renewals(contracts)
     qtext = request_text(request.args).casefold()
     status_filter = (request.args.get('status') or '').strip()
-    show_archive = request_wants_archive(request.args)
     due_only = request.args.get('due') == '1'
     customers = tenant_query(Customer).order_by(Customer.name).all()
     all_elevators = tenant_query(Elevator).all()
@@ -219,7 +217,7 @@ def _sync_contracts():
         remaining = max(float(c.total or 0) - float(getattr(c, 'paid_amount', 0) or 0), 0)
         if due_only and remaining <= 0.01:
             continue
-        if not include_contract_in_list(display, archive=show_archive, status_filter=status_filter):
+        if status_filter and display != status_filter:
             continue
         visible.append(c)
     page_rows, _total, _page = page_slice(visible, request_page(request.args), PAGE_SIZE)
@@ -406,7 +404,6 @@ def _sync_faults():
     h = _helpers()
     from flask import request
 
-    from contract_archive import apply_fault_archive_filter, request_wants_archive
     from operations import FAULT_OPEN
     from tenant_scope import tenant_query
 
@@ -418,7 +415,6 @@ def _sync_faults():
     status_filter = (request.args.get('status') or '').strip()
     page = request_page(request.args)
     query = tenant_query(Fault).order_by(Fault.reported_at.desc())
-    query = apply_fault_archive_filter(query, archive=request_wants_archive(request.args))
     if scope == 'open':
         query = query.filter(Fault.status.in_(FAULT_OPEN))
     elif status_filter:
