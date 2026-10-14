@@ -337,7 +337,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       {% endif %}
       {% endwith %}
       <div class="page-header">
-        <div class="page-title">زيارات الصيانة <span id="work-month-label" style="color:var(--accent);font-size:13px"></span> <span id="visits-count" data-i18n-skip></span></div>
+        <div class="page-title">{% if visit_archive %}أرشيف زيارات العقود القديمة{% else %}زيارات الصيانة{% endif %} <span id="work-month-label" style="color:var(--accent);font-size:13px"></span> <span id="visits-count" data-i18n-skip></span></div>
         <div class="page-actions">
           {% with report_url=url_for('report_maintenance'), report_label='تقرير الصيانة' %}{% include 'partials/entity_report_btn.html' %}{% endwith %}
           <button class="btn btn-secondary btn-sm" type="button" onclick="exportExcel()">
@@ -372,6 +372,12 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
           <input type="month" class="date-input" id="work-month" value="{{ plan_default_month }}" onchange="loadVisitWindow(this.value)">
           <button type="button" class="btn btn-secondary btn-sm" onclick="shiftWorkMonth(1)" title="الشهر التالي">›</button>
           <button type="button" class="btn btn-secondary btn-sm" onclick="goWorkMonthToday(); loadVisitWindow(document.getElementById('work-month').value)">هذا الشهر</button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="showAllVisits()">كل الزيارات</button>
+          {% if visit_archive %}
+          <a class="btn btn-secondary btn-sm active" href="/maintenance-visits" style="text-decoration:none">العقود الحالية</a>
+          {% else %}
+          <a class="btn btn-secondary btn-sm" href="/maintenance-visits?archive=1" style="text-decoration:none" title="زيارات العقود المنتهية — تبقى على السيرفر">أرشيف العقود القديمة</a>
+          {% endif %}
         </div>
         <div class="search-wrap">
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14" y2="14"/></svg>
@@ -937,17 +943,30 @@ function matchVisitFilter(v, key) {
   }
 }
 
+function selectedVisitDay() {
+  const fd = document.getElementById('f-date-from')?.value || '';
+  const td = document.getElementById('f-date-to')?.value || '';
+  return (fd && td && fd === td) ? fd : '';
+}
+
 function updateVisitFilterHint() {
   const hint = document.getElementById('stat-filter-hint');
   const label = document.getElementById('stat-filter-label');
   if (!hint || !label) return;
-  if (!activeVisitFilter) {
-    hint.classList.remove('visible');
-    label.textContent = '';
+  if (activeVisitFilter) {
+    label.textContent = 'عرض: ' + (VISIT_FILTER_LABELS[activeVisitFilter] || activeVisitFilter);
+    hint.classList.add('visible');
     return;
   }
-  label.textContent = 'عرض: ' + (VISIT_FILTER_LABELS[activeVisitFilter] || activeVisitFilter);
-  hint.classList.add('visible');
+  const day = selectedVisitDay();
+  if (day) {
+    var pretty = (window.LiftCoreFormat && LiftCoreFormat.date) ? LiftCoreFormat.date(day) : day;
+    label.textContent = 'زيارات يوم ' + pretty;
+    hint.classList.add('visible');
+    return;
+  }
+  hint.classList.remove('visible');
+  label.textContent = '';
 }
 
 function setActiveVisitFilterUi(key) {
@@ -980,6 +999,15 @@ function filterByVisitFilter(key) {
 function clearVisitFilter() {
   activeVisitFilter = null;
   document.querySelectorAll('[data-visit-filter]').forEach(el => el.classList.remove('active'));
+  const ym = document.getElementById('work-month')?.value;
+  if (ym) {
+    filterTableByWorkMonth();
+    return;
+  }
+  ['f-date-from', 'f-date-to'].forEach(function (id) {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
   updateVisitFilterHint();
   filterTable();
 }
@@ -1046,35 +1074,32 @@ function visitIsLive(v) {
 }
 
 function loadVisitWindow(ym) {
-  if (!ym) { filterTableByWorkMonth(); return; }
-  fetch('/api/maintenance/visits?month=' + encodeURIComponent(ym) + '&live=1', { credentials: 'same-origin' })
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-      if (data && Array.isArray(data.visits)) VISITS.splice(0, VISITS.length, ...data.visits);
-      filterTableByWorkMonth();
-    })
-    .catch(function () { filterTableByWorkMonth(); });
+  if (!ym) { showAllVisits(); return; }
+  filterTableByWorkMonth();
 }
 
 function filterTable() {
   if (activeVisitFilter) {
     activeVisitFilter = null;
     document.querySelectorAll('[data-visit-filter]').forEach(el => el.classList.remove('active'));
-    updateVisitFilterHint();
   }
   const s  = (document.getElementById('search-input')?.value||'');
   const fd = document.getElementById('f-date-from')?.value||'';
   const td = document.getElementById('f-date-to')?.value||'';
-  filtered = VISITS.filter(v=>
-    LcSearch.match(s, [v.code, v.customer, v.customer_name_en, v.contract_code, v.district, v.elevator, v.technician, v.visit_type, v.works_done, v.notes, v.building]) &&
+  const sameDay = !!(fd && td && fd === td);
+  filtered = VISITS.filter(v=>{
+    const day = String(v.visit_date || '').slice(0, 10);
+    const keepLiveOutsideRange = !sameDay && visitIsLive(v);
+    return LcSearch.match(s, [v.code, v.customer, v.customer_name_en, v.contract_code, v.district, v.elevator, v.technician, v.visit_type, v.works_done, v.notes, v.building]) &&
     lcAllows('f-client', v.customer) &&
     lcAllows('f-tech', v.technician) &&
     lcAllows('f-type', v.visit_type) &&
     lcAllows('f-status', v.status, { aliases: { 'جاري التنفيذ': ['جارية', 'مُرسلة للفني', 'عند العميل', 'أنهى العمل عند العميل'] } }) &&
-    (visitIsLive(v) || !fd || v.visit_date >= fd) &&
-    (visitIsLive(v) || !td || v.visit_date <= td)
-  );
+    (!fd || day >= fd || keepLiveOutsideRange) &&
+    (!td || day <= td || keepLiveOutsideRange);
+  });
   if (tablePager) tablePager.resetPage();
+  updateVisitFilterHint();
   renderTable(filtered);
 }
 
@@ -3002,9 +3027,9 @@ document.getElementById('cal-grid')?.addEventListener('click', function (e) {
   if (ft) ft.value = d;
   activeVisitFilter = null;
   document.querySelectorAll('[data-visit-filter]').forEach(el => el.classList.remove('active'));
-  updateVisitFilterHint();
   switchTab('table');
   filterTable();
+  document.getElementById('tab-table')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 });
 (function () {
   var pendingVisitWa = {{ (pending_visit_customer_wa or '')|tojson }};

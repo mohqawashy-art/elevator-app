@@ -189,6 +189,7 @@ def _sync_contracts():
     h = _helpers()
     from flask import request
 
+    from contract_archive import include_contract_in_list, request_wants_archive
     from contract_codes import contracts_for_scope
     from list_windows import PAGE_SIZE, page_slice, request_page, request_text
     from tenant_scope import tenant_query
@@ -200,7 +201,7 @@ def _sync_contracts():
     renewed_ids = h._annotate_contract_renewals(contracts)
     qtext = request_text(request.args).casefold()
     status_filter = (request.args.get('status') or '').strip()
-    show_renewed = request.args.get('renewed') == '1'
+    show_archive = request_wants_archive(request.args)
     due_only = request.args.get('due') == '1'
     customers = tenant_query(Customer).order_by(Customer.name).all()
     all_elevators = tenant_query(Elevator).all()
@@ -211,16 +212,14 @@ def _sync_contracts():
     }
     visible = []
     for c in contracts:
-        if c.id in renewed_ids and not show_renewed:
-            continue
         display = h.contract_display_status(c, renewed_ids=renewed_ids)
         customer_name = (c.customer.name if c.customer else '') or ''
         if qtext and qtext not in f'{c.code or ""} {customer_name}'.casefold():
             continue
-        if status_filter and display != status_filter:
-            continue
         remaining = max(float(c.total or 0) - float(getattr(c, 'paid_amount', 0) or 0), 0)
         if due_only and remaining <= 0.01:
+            continue
+        if not include_contract_in_list(display, archive=show_archive, status_filter=status_filter):
             continue
         visible.append(c)
     page_rows, _total, _page = page_slice(visible, request_page(request.args), PAGE_SIZE)
@@ -377,14 +376,13 @@ def _sync_technicians():
 
 def _sync_maintenance_visits():
     h = _helpers()
-    from flask import request
-
     from list_windows import maintenance_visit_query
     from tenant_scope import tenant_query
 
     query, _label = maintenance_visit_query(
-        month=request.args.get('month'),
+        month=None,
         include_open=True,
+        all_months=True,
     )
     visits = query.all()
     elevators = tenant_query(Elevator).all()
@@ -408,18 +406,20 @@ def _sync_faults():
     h = _helpers()
     from flask import request
 
+    from contract_archive import apply_fault_archive_filter, request_wants_archive
     from operations import FAULT_OPEN
     from tenant_scope import tenant_query
 
     from list_windows import PAGE_SIZE, request_page, request_text
     from sqlalchemy import or_
 
-    scope = (request.args.get('scope') or '').strip()
+    scope = (request.args.get('scope') or 'all').strip()
     qtext = request_text(request.args)
     status_filter = (request.args.get('status') or '').strip()
     page = request_page(request.args)
     query = tenant_query(Fault).order_by(Fault.reported_at.desc())
-    if scope != 'all':
+    query = apply_fault_archive_filter(query, archive=request_wants_archive(request.args))
+    if scope == 'open':
         query = query.filter(Fault.status.in_(FAULT_OPEN))
     elif status_filter:
         query = query.filter(Fault.status == status_filter)

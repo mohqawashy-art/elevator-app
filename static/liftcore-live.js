@@ -209,7 +209,7 @@
     if (monthEl && monthEl.value) syncUrl += '&month=' + encodeURIComponent(monthEl.value);
     try {
       var params = new URLSearchParams(global.location.search);
-      ['scope', 'q', 'status', 'page', 'contract', 'renewed', 'due'].forEach(function (key) {
+      ['scope', 'q', 'status', 'page', 'contract', 'renewed', 'due', 'archive'].forEach(function (key) {
         var value = params.get(key);
         if (value) syncUrl += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(value);
       });
