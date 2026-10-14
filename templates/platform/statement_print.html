@@ -6,7 +6,7 @@
   <div><div class="k">الباقة</div><div class="v">{{ org.plan }} · {{ org.billing_cycle or 'yearly' }}</div></div>
   <div><div class="k">الرصيد (عليه)</div><div class="v"><strong>{{ '%.2f'|format(statement.balance) }} ر.س</strong></div></div>
 </div>
-<table>
+<table class="lines">
   <thead>
     <tr>
       <th>التاريخ</th>

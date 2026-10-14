@@ -1,27 +1,59 @@
 {% extends 'platform/print_doc.html' %}
+{% block facts %}
+<table class="facts">
+  <tr><th>رقم الفاتورة</th><td class="ltr">{{ invoice.code }}</td></tr>
+  <tr><th>تاريخ الإصدار</th><td>{{ invoice.issue_date.strftime('%Y-%m-%d') if invoice.issue_date else '—' }}</td></tr>
+  <tr><th>تاريخ الاستحقاق</th><td>{{ invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else '—' }}</td></tr>
+  <tr><th>الحالة</th><td>{{ status_ar }}</td></tr>
+</table>
+{% endblock %}
 {% block body %}
 <div class="meta">
-  <div><div class="k">العميل (المستأجر)</div><div class="v">{{ org.name }} · <code>{{ org.slug }}</code></div></div>
-  <div><div class="k">تاريخ الإصدار</div><div class="v">{{ invoice.issue_date.strftime('%Y-%m-%d') if invoice.issue_date else '—' }}</div></div>
-  <div><div class="k">الباقة</div><div class="v">{{ org.plan }} · {{ org.billing_cycle or 'yearly' }}</div></div>
-  <div><div class="k">تاريخ الاستحقاق</div><div class="v">{{ invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else '—' }}</div></div>
-  <div><div class="k">فترة الاشتراك</div><div class="v">{{ invoice.period_start.strftime('%Y-%m-%d') if invoice.period_start else '—' }} → {{ invoice.period_end.strftime('%Y-%m-%d') if invoice.period_end else '—' }}</div></div>
-  <div><div class="k">الحالة</div><div class="v">{{ status_ar }}</div></div>
+  <div class="box">
+    <h3>المورد</h3>
+    <div class="name">{{ company.legal_name }}</div>
+    <div class="v">NASAQ CORE — INTEGRATED SOLUTIONS</div>
+    <div class="v">س.ت {{ company.cr_number }}</div>
+    <div class="v">{{ company.address }}</div>
+    <div class="v ltr" style="direction:ltr">{{ company.email }}</div>
+  </div>
+  <div class="box">
+    <h3>العميل (المستأجر)</h3>
+    <div class="name">{{ org.name }}</div>
+    <div class="v">معرف الحساب: <span class="ltr" style="direction:ltr">{{ org.slug }}</span></div>
+    <div class="v">الباقة: {{ org.plan }} · {{ org.billing_cycle or 'yearly' }}</div>
+    {% if org.admin_email %}<div class="v ltr" style="direction:ltr">{{ org.admin_email }}</div>{% endif %}
+  </div>
 </div>
-<table>
-  <thead><tr><th>البيان</th><th>المبلغ شامل الضريبة</th></tr></thead>
+
+<table class="lines">
+  <thead>
+    <tr>
+      <th>#</th>
+      <th>البيان</th>
+      <th>الفترة</th>
+      <th>المبلغ شامل الضريبة</th>
+    </tr>
+  </thead>
   <tbody>
     <tr>
+      <td>1</td>
       <td>{{ invoice.description }}</td>
+      <td>{{ invoice.period_start.strftime('%Y-%m-%d') if invoice.period_start else '—' }}
+        → {{ invoice.period_end.strftime('%Y-%m-%d') if invoice.period_end else '—' }}</td>
       <td>{{ '%.2f'|format(invoice.total) }} {{ invoice.currency or 'SAR' }}</td>
     </tr>
   </tbody>
 </table>
 <table class="totals">
-  <tr><td>قبل الضريبة</td><td>{{ '%.2f'|format(invoice.subtotal) }} ر.س</td></tr>
+  <tr><td>المجموع قبل الضريبة</td><td>{{ '%.2f'|format(invoice.subtotal) }} ر.س</td></tr>
   <tr><td>ضريبة القيمة المضافة ({{ '%.0f'|format(invoice.tax_pct or 15) }}٪)</td><td>{{ '%.2f'|format(invoice.tax_amount) }} ر.س</td></tr>
-  <tr class="sum"><td>الإجمالي</td><td>{{ '%.2f'|format(invoice.total) }} ر.س</td></tr>
+  <tr class="sum"><td>الإجمالي المستحق</td><td>{{ '%.2f'|format(invoice.total) }} ر.س</td></tr>
 </table>
 {% if invoice.notes %}<p class="note">{{ invoice.notes }}</p>{% endif %}
-<p class="note">السعر المعروض شامل ضريبة القيمة المضافة. هذه فاتورة اشتراك برنامج LiftCore صادرة من {{ company.legal_name }}.</p>
+<p class="note">السعر المعروض شامل ضريبة القيمة المضافة. فاتورة اشتراك منتج LiftCore صادرة إلكترونياً من {{ company.legal_name }}.</p>
+<div class="sign">
+  <div class="slot">ختم / توقيع المورد</div>
+  <div class="slot">استلام العميل</div>
+</div>
 {% endblock %}

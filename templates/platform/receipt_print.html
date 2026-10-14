@@ -10,7 +10,7 @@
   {% endif %}
   <div><div class="k">فترة الاشتراك</div><div class="v">{{ payment.period_start.strftime('%Y-%m-%d') if payment.period_start else '—' }} → {{ payment.period_end.strftime('%Y-%m-%d') if payment.period_end else '—' }}</div></div>
 </div>
-<table>
+<table class="lines">
   <thead><tr><th>البيان</th><th>المبلغ</th></tr></thead>
   <tbody>
     <tr>

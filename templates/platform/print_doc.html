@@ -5,34 +5,51 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{{ doc_title }} — {{ company.legal_name }}</title>
 <style>
+:root{
+  --navy:#1a2748;--blue:#1a6dff;--line:#d5dee8;--muted:#6b7c93;--text:#1a2748;--bg:#eef2f7;
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'Segoe UI',Tahoma,Arial,'Traditional Arabic',sans-serif;background:#eef2f7;color:#1a3a5c;font-size:13px}
+body{font-family:'Segoe UI',Tahoma,Arial,'Traditional Arabic',sans-serif;background:var(--bg);color:var(--text);font-size:13px}
 .toolbar{position:fixed;top:0;left:0;right:0;background:#1a2332;color:#fff;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;z-index:9}
 .toolbar a,.toolbar button{border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;text-decoration:none;font-family:inherit}
 .toolbar .print{background:#c9a14a;color:#111}
 .toolbar .back{background:#334155;color:#fff}
-.doc{width:210mm;max-width:210mm;min-height:277mm;margin:56px auto 24px;background:#fff;padding:22px 24px;box-shadow:0 8px 32px rgba(26,58,92,.12)}
-.head{display:flex;justify-content:space-between;gap:16px;border-bottom:3px solid #1a3a5c;padding-bottom:14px;margin-bottom:16px}
-.brand strong{display:block;font-size:18px}
-.brand span{display:block;color:#6b7c93;font-size:12px;margin-top:4px}
-.doc-type{text-align:left;direction:ltr}
-.doc-type .t{font-size:22px;font-weight:800;color:#1a3a5c}
-.doc-type .c{font-size:13px;margin-top:6px;letter-spacing:.04em}
-.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin-bottom:18px}
-.meta .k{font-size:11px;color:#6b7c93;font-weight:700}
+.doc{width:210mm;max-width:210mm;min-height:277mm;margin:56px auto 24px;background:#fff;padding:18px 22px 22px;box-shadow:0 8px 32px rgba(26,58,92,.12);display:flex;flex-direction:column}
+.head{display:grid;grid-template-columns:1.25fr .85fr;gap:12px;border-bottom:3px solid var(--navy);padding-bottom:14px;margin-bottom:16px}
+.logo{height:72px;width:auto;max-width:320px;object-fit:contain;display:block}
+.seller{margin-top:8px;display:grid;gap:3px;font-size:12px;line-height:1.55}
+.seller .row{display:flex;gap:8px}
+.seller .k{color:var(--muted);min-width:92px;font-weight:700}
+.seller .v{color:var(--text)}
+.seller .ltr{direction:ltr;unicode-bidi:embed;text-align:left}
+.doc-type{text-align:left}
+.doc-type .t{font-size:26px;font-weight:800;color:var(--navy);letter-spacing:.04em}
+.doc-type .en{font-size:12px;color:var(--blue);font-weight:700;margin-top:2px;letter-spacing:.12em}
+.doc-type .c{font-size:14px;margin-top:10px;font-weight:700;direction:ltr}
+.doc-type .facts{width:100%;border-collapse:collapse;margin-top:10px;font-size:12px}
+.doc-type .facts th,.doc-type .facts td{border:1px solid var(--line);padding:6px 8px}
+.doc-type .facts th{background:#f4f7fb;text-align:right;font-weight:700;color:var(--muted);width:42%}
+.meta{display:grid;grid-template-columns:1fr 1fr;gap:10px 24px;margin-bottom:16px}
+.box{border:1px solid var(--line);border-radius:8px;padding:10px 12px;background:#fafcfe}
+.box h3{font-size:11px;color:var(--muted);margin-bottom:6px;letter-spacing:.06em}
+.box .name{font-size:15px;font-weight:800}
+.meta .k{font-size:11px;color:var(--muted);font-weight:700}
 .meta .v{font-size:13px;margin-top:2px}
-table{width:100%;border-collapse:collapse;margin:8px 0 16px}
-th,td{border:1px solid #d5dee8;padding:8px 10px;text-align:right}
-th{background:#f4f7fb;font-size:11px}
-.totals{width:280px;margin-right:auto}
-.totals td{border:none;padding:5px 0}
-.totals .sum{font-weight:800;border-top:2px solid #1a3a5c;padding-top:8px}
-.note{font-size:12px;color:#6b7c93;line-height:1.7;margin-top:18px}
-.foot{margin-top:28px;padding-top:12px;border-top:1px solid #d5dee8;font-size:11px;color:#6b7c93;text-align:center}
+table.lines{width:100%;border-collapse:collapse;margin:8px 0 16px}
+table.lines th,table.lines td{border:1px solid var(--line);padding:8px 10px;text-align:right}
+table.lines th{background:#1a2748;color:#fff;font-size:11px}
+table.lines tbody tr:nth-child(even){background:#f7f9fc}
+.totals{width:300px;margin-right:auto;border-collapse:collapse}
+.totals td{border:none;padding:6px 0;font-size:13px}
+.totals .sum{font-weight:800;font-size:15px;border-top:2px solid var(--navy);padding-top:10px;color:var(--navy)}
+.note{font-size:12px;color:var(--muted);line-height:1.7;margin-top:16px}
+.sign{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:28px}
+.sign .slot{border-top:1px solid var(--line);padding-top:8px;font-size:12px;color:var(--muted);text-align:center}
+.foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--line);font-size:11px;color:var(--muted);text-align:center;line-height:1.7}
 @media print{
   .toolbar{display:none!important}
   body{background:#fff}
-  .doc{margin:0;box-shadow:none;width:100%;max-width:none}
+  .doc{margin:0;box-shadow:none;width:100%;max-width:none;min-height:277mm}
   @page{size:A4;margin:10mm}
 }
 </style>
@@ -47,17 +64,26 @@ th{background:#f4f7fb;font-size:11px}
 </div>
 <article class="doc">
   <header class="head">
-    <div class="brand">
-      <strong>{{ company.legal_name }}</strong>
-      <span>{{ company.brand }} · {{ company.city }} · {{ company.phone }} · {{ company.email }}</span>
+    <div>
+      <img class="logo" src="{{ url_for('static', filename=company.logo) }}" alt="{{ company.legal_name }}">
+      <div class="seller">
+        <div class="row"><span class="k">السجل التجاري</span><span class="v ltr">{{ company.cr_number }}</span></div>
+        <div class="row"><span class="k">العنوان</span><span class="v">{{ company.address }}</span></div>
+        <div class="row"><span class="k">البريد</span><span class="v ltr">{{ company.email }}</span></div>
+        {% if company.phone %}<div class="row"><span class="k">الجوال</span><span class="v ltr">{{ company.phone }}</span></div>{% endif %}
+      </div>
     </div>
     <div class="doc-type">
       <div class="t">{{ doc_title }}</div>
+      <div class="en">{{ doc_title_en or 'TAX INVOICE' }}</div>
       <div class="c">{{ doc_code }}</div>
+      {% block facts %}{% endblock %}
     </div>
   </header>
   {% block body %}{% endblock %}
-  <div class="foot">{{ company.legal_name }} · منتج LiftCore · {{ company.country }}</div>
+  <div class="foot">
+    {{ company.legal_name }} · س.ت {{ company.cr_number }} · {{ company.address }} · {{ company.email }}
+  </div>
 </article>
 </body>
 </html>

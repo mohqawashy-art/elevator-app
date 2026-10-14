@@ -4669,6 +4669,57 @@ def platform_invoice_void(invoice_id):
     return redirect(url_for('platform_org_detail', org_id=invoice.organization_id))
 
 
+@app.route('/platform/invoices/sample')
+def platform_invoice_sample():
+    """نموذج فاتورة نسق كور للمعاينة والطباعة."""
+    from datetime import datetime as dt
+    from types import SimpleNamespace
+
+    from platform_admin import is_admin_host
+    from platform_billing import NASQ_CORE, VAT_PCT, period_end_from, split_vat_inclusive
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    now = dt.utcnow()
+    subtotal, tax, total = split_vat_inclusive(2399, VAT_PCT)
+    invoice = SimpleNamespace(
+        code='NSQ-INV-0000',
+        description='اشتراك LiftCore السنوي',
+        period_start=now,
+        period_end=period_end_from(now, 'yearly'),
+        subtotal=subtotal,
+        tax_pct=VAT_PCT,
+        tax_amount=tax,
+        total=total,
+        currency='SAR',
+        status='unpaid',
+        issue_date=now,
+        due_date=now,
+        notes='نموذج للمعاينة — ليست فاتورة صادرة.',
+    )
+    org = SimpleNamespace(
+        name='اسم شركة العميل',
+        slug='client-slug',
+        plan='liftcore',
+        billing_cycle='yearly',
+        admin_email='client@example.com',
+    )
+    return render_template(
+        'platform/invoice_print.html',
+        doc_title='فاتورة ضريبية',
+        doc_title_en='TAX INVOICE',
+        doc_code=invoice.code,
+        back_url=url_for('platform_billing'),
+        company=NASQ_CORE,
+        invoice=invoice,
+        org=org,
+        status_ar='نموذج',
+    )
+
+
 @app.route('/platform/invoices/<int:invoice_id>/print')
 def platform_invoice_print(invoice_id):
     from models import Organization, PlatformInvoice
@@ -4688,7 +4739,8 @@ def platform_invoice_print(invoice_id):
         abort(404)
     return render_template(
         'platform/invoice_print.html',
-        doc_title='فاتورة اشتراك',
+        doc_title='فاتورة ضريبية',
+        doc_title_en='TAX INVOICE',
         doc_code=invoice.code,
         back_url=url_for('platform_org_detail', org_id=org.id),
         company=NASQ_CORE,
@@ -4726,6 +4778,7 @@ def platform_payment_receipt(payment_id):
     return render_template(
         'platform/receipt_print.html',
         doc_title='سند قبض',
+        doc_title_en='RECEIPT VOUCHER',
         doc_code=payment.receipt_code or f'P-{payment.id}',
         back_url=url_for('platform_org_detail', org_id=org.id),
         company=NASQ_CORE,
@@ -4756,6 +4809,7 @@ def platform_org_statement(org_id):
     return render_template(
         'platform/statement_print.html',
         doc_title='كشف حساب',
+        doc_title_en='ACCOUNT STATEMENT',
         doc_code=org.slug,
         back_url=url_for('platform_org_detail', org_id=org.id),
         company=NASQ_CORE,

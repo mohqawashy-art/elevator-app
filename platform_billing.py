@@ -24,12 +24,18 @@ DEMO_FREE_NOTE = 'حساب تجريبي مجاني — مؤسسة نسق كور 
 
 NASQ_CORE = {
     'legal_name': 'مؤسسة نسق كور للحلول المتكاملة',
-    'brand': 'LiftCore',
+    'brand': 'Nasaq Core',
+    'product': 'LiftCore',
     'city': 'مكة المكرمة',
+    'district': 'حي العوالي',
+    'street': 'طريق الطائف',
+    'address': 'مكة المكرمة، حي العوالي، طريق الطائف',
     'country': 'المملكة العربية السعودية',
     'phone': '0566299626',
-    'email': 'sales@liftcoreapp.com',
+    'email': 'info@liftcoreapp.com',
+    'cr_number': '4031239017',
     'currency': 'ر.س',
+    'logo': 'images/nasaq-core-logo.png',
 }
 
 EXPENSE_CATEGORIES = (

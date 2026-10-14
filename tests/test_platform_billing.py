@@ -206,6 +206,20 @@ def test_invoice_receipt_statement_and_pnl():
         assert books['net'] == 1999
 
 
+def test_invoice_print_has_nasaq_letterhead():
+    client = _client()
+    _login(client)
+    r = client.get('/platform/invoices/sample', base_url=ADMIN_URL)
+    assert r.status_code == 200
+    body = r.get_data(as_text=True)
+    assert 'nasaq-core-logo.png' in body
+    assert '4031239017' in body
+    assert 'حي العوالي' in body
+    assert 'طريق الطائف' in body
+    assert 'info@liftcoreapp.com' in body
+    assert 'مؤسسة نسق كور' in body
+
+
 def test_billing_page_shows_nasq_core_books():
     client = _client()
     _login(client)
