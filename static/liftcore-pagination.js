@@ -197,7 +197,8 @@
       writeStoredSize(sizeKey, pageSize);
       page = 1;
       writeStored(storeKey, page);
-      if (onPageChange) onPageChange(page);
+      if (options.onPageSizeChange) options.onPageSizeChange(pageSize);
+      else if (onPageChange) onPageChange(page);
     }
 
     function totalPages() {
@@ -445,6 +446,32 @@
     PAGE_SIZE_OPTIONS: PAGE_SIZE_OPTIONS,
     /** تهيئة متأخرة — تضمن عمل الترقيم حتى مع تأخر تحميل السكربت */
     bind: function (options) {
+      options = options || {};
+      function serverMeta() {
+        return (global.LIST_META && global.LIST_META.server) ? global.LIST_META : null;
+      }
+      var meta0 = serverMeta();
+      if (meta0) {
+        options = Object.assign({}, options);
+        options.pageSize = normalizePageSize(meta0.per_page, options.pageSize || DEFAULT_SIZE);
+        options.persist = false;
+      }
+      var userOnPageChange = options.onPageChange;
+      options.onPageChange = function (page) {
+        if (serverMeta() && global.lcListGo) {
+          global.lcListGo({ page: String(page) });
+          return;
+        }
+        if (userOnPageChange) userOnPageChange(page);
+      };
+      var userOnPageSize = options.onPageSizeChange;
+      options.onPageSizeChange = function (size) {
+        if (serverMeta() && global.lcListGo) {
+          global.lcListGo({ per: String(size), page: '1' });
+          return;
+        }
+        if (userOnPageSize) userOnPageSize(size);
+      };
       var inst = null;
       function getInst() {
         if (!inst) inst = create(options);
@@ -482,11 +509,31 @@
         },
         apply: function (data, masterTotal) {
           var i = getInst();
-          var len = Array.isArray(data) ? data.length : 0;
+          var list = Array.isArray(data) ? data : [];
+          var len = list.length;
+          var meta = serverMeta();
+          if (meta && i) {
+            var per = normalizePageSize(meta.per_page, i.getPageSize());
+            var total = Number(meta.total) || 0;
+            var cur = Number(meta.page) || 1;
+            var pages = Number(meta.pages) || 1;
+            i.setPage(cur);
+            var pg = {
+              rows: list,
+              start: total ? ((cur - 1) * per + 1) : 0,
+              end: total ? Math.min(cur * per, total) : 0,
+              filteredTotal: total,
+              masterTotal: masterTotal != null ? masterTotal : total,
+              page: cur,
+              pages: pages,
+            };
+            i.render(pg);
+            return pg;
+          }
           var master = masterTotal != null ? masterTotal : len;
           if (!i) {
             return {
-              rows: data || [],
+              rows: list,
               start: len ? 1 : 0,
               end: len,
               filteredTotal: len,
@@ -495,9 +542,9 @@
               pages: 1,
             };
           }
-          var pg = i.paginate(data, master);
-          i.render(pg);
-          return pg;
+          var local = i.paginate(data, master);
+          i.render(local);
+          return local;
         },
       };
     },

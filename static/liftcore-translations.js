@@ -80,6 +80,8 @@ window.__LC_TRANSLATIONS = {
   'اليوم': 'Today',
   'هذا الأسبوع': 'This Week',
   'هذا الشهر': 'This Month',
+  'إخفاء العقود المنتهية': 'Hide expired contracts',
+  'إظهار العقود المنتهية': 'Show expired contracts',
   'كل الزيارات': 'All visits',
   'زيارات يوم': 'Visits on',
   'كل الأعطال': 'All faults',

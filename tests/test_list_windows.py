@@ -1,8 +1,19 @@
 """نوافذ القوائم: قراءة على دفعات دون حذف أو تعديل الصفوف القديمة."""
 from datetime import date
 
+from list_windows import request_per_page
 from models import Customer, Elevator, Fault, Invoice, MaintenanceVisit, db
 from tests.conftest import ensure_test_organization, login_as
+
+
+def test_request_per_page_allows_10_20_50_100():
+    assert request_per_page({}) == 10
+    assert request_per_page({'per': '10'}) == 10
+    assert request_per_page({'per': '20'}) == 20
+    assert request_per_page({'per': '50'}) == 50
+    assert request_per_page({'per': '100'}) == 100
+    assert request_per_page({'per': '7'}) == 10
+    assert request_per_page({'per': 'all'}) == 10
 
 
 def _oid():

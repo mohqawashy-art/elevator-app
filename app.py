@@ -5848,7 +5848,7 @@ def clients():
 
     from contract_codes import customer_matches_scope
 
-    from list_windows import PAGE_SIZE, list_meta_for, page_slice, request_page, request_text
+    from list_windows import list_meta_for, page_slice, request_page, request_per_page, request_text
     from sqlalchemy import or_
 
     client_scope = (request.args.get('scope') or '').strip().lower()
@@ -5858,6 +5858,7 @@ def clients():
     status_filter = (request.args.get('status') or '').strip()
     contract_filter = (request.args.get('contract') or '').strip()
     page = request_page(request.args)
+    per_page = request_per_page(request.args)
     query = tenant_query(Customer)
     if qtext:
         needle = f'%{qtext}%'
@@ -5881,17 +5882,17 @@ def clients():
         dicts = [client_to_js_dict(c, scope=client_scope or None) for c in loaded]
         if contract_filter:
             dicts = [row for row in dicts if (row.get('contract_status') or '') == contract_filter]
-        page_rows, total, page = page_slice(dicts, page, PAGE_SIZE)
+        page_rows, total, page = page_slice(dicts, page, per_page)
     else:
         # ترقيم على المعرفات أولاً حتى لا يقصّ حدّ الصفحة صفوف العملاء بسبب ربط المصاعد والعقود
         total = query.order_by(None).count()
-        pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE) if total else 1
+        pages = max(1, (total + per_page - 1) // per_page) if total else 1
         page = min(page, pages)
         id_rows = (
             query.with_entities(Customer.id)
             .order_by(Customer.id.desc())
-            .offset((page - 1) * PAGE_SIZE)
-            .limit(PAGE_SIZE)
+            .offset((page - 1) * per_page)
+            .limit(per_page)
             .all()
         )
         ids = [row[0] for row in id_rows]
@@ -5909,7 +5910,7 @@ def clients():
     customers = loaded if not (contract_filter or client_scope) else [
         c for c in loaded if c.id in {row['id'] for row in page_rows}
     ]
-    list_meta = list_meta_for(total, page, extra={
+    list_meta = list_meta_for(total, page, per_page=per_page, extra={
         'stats': {
             'total': tenant_query(Customer).count(),
             'active': tenant_query(Customer).filter(Customer.status == 'نشط').count(),
@@ -6883,12 +6884,13 @@ def _parse_int(value):
 def elevators():
     from sqlalchemy.orm import joinedload
 
-    from list_windows import PAGE_SIZE, list_meta_for, request_page, request_text
+    from list_windows import list_meta_for, request_page, request_per_page, request_text
     from sqlalchemy import func, or_
 
     qtext = request_text(request.args)
     status_filter = (request.args.get('status') or '').strip()
     page = request_page(request.args)
+    per_page = request_per_page(request.args)
     query = tenant_query(Elevator).options(joinedload(Elevator.customer))
     if qtext:
         needle = f'%{qtext}%'
@@ -6901,15 +6903,15 @@ def elevators():
         query = query.filter(Elevator.status == status_filter)
     elevs = query.order_by(Elevator.id.desc()).all()
     total = len(elevs)
-    pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE) if total else 1
+    pages = max(1, (total + per_page - 1) // per_page) if total else 1
     page = min(page, pages)
-    page_rows = elevs[(page - 1) * PAGE_SIZE:page * PAGE_SIZE]
+    page_rows = elevs[(page - 1) * per_page:page * per_page]
     customers = tenant_query(Customer).order_by(Customer.name).all()
     site_map = _elevator_site_coords_map(elevs)
     status_counts = dict(
         tenant_query(Elevator).with_entities(Elevator.status, func.count()).group_by(Elevator.status).all()
     )
-    list_meta = list_meta_for(total, page, extra={
+    list_meta = list_meta_for(total, page, per_page=per_page, extra={
         'status': status_filter,
         'stats': {
             'total': sum(status_counts.values()),
@@ -8215,12 +8217,13 @@ def contracts():
         .order_by(Contract.id.desc())
         .all()
     )
-    from list_windows import PAGE_SIZE, list_meta_for, page_slice, request_page, request_sort, request_text
+    from list_windows import list_meta_for, page_slice, request_hide_expired, request_page, request_per_page, request_sort, request_text
 
     contracts_list = contracts_for_scope(contracts_list, 'maintenance')
     renewed_ids = _annotate_contract_renewals(contracts_list)
     qtext = request_text(request.args).casefold()
     status_filter = (request.args.get('status') or '').strip()
+    hide_expired = request_hide_expired(request.args)
     due_only = request.args.get('due') == '1'
     visible = []
     map_points = []
@@ -8244,6 +8247,8 @@ def contracts():
         if due_only and remaining <= 0.01:
             continue
         if status_filter and display != status_filter:
+            continue
+        if hide_expired and not status_filter and display == 'منتهي':
             continue
         map_points.append({
             'id': contract.id,
@@ -8278,14 +8283,16 @@ def contracts():
         elevator_by_id=elevator_by_id,
     )
     page = request_page(request.args)
-    page_rows, total, page = page_slice(visible, page, PAGE_SIZE)
+    per_page = request_per_page(request.args)
+    page_rows, total, page = page_slice(visible, page, per_page)
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
         for e in all_elevators
     }
-    list_meta = list_meta_for(total, page, extra={
+    list_meta = list_meta_for(total, page, per_page=per_page, extra={
         'stats': stats,
         'status': status_filter,
+        'hide_expired': hide_expired,
         'due': due_only,
         'sort': sort_col,
         'dir': sort_dir,
@@ -9673,7 +9680,7 @@ def maintenance_visits():
     month = (request.args.get('month') or '').strip()
     visit_query, plan_default = maintenance_visit_query(
         month=month or None,
-        include_open=not month,
+        include_open=True,
         all_months=not month,
     )
     visits = visit_query.all()
@@ -11965,12 +11972,13 @@ def faults():
     from fault_report import FAULT_TYPE_OPTIONS
     from sqlalchemy import or_
     from sqlalchemy.orm import joinedload
-    from list_windows import PAGE_SIZE, list_meta_for, request_page, request_text
+    from list_windows import list_meta_for, request_page, request_per_page, request_text
 
     scope = (request.args.get('scope') or 'all').strip()
     qtext = request_text(request.args)
     status_filter = (request.args.get('status') or '').strip()
     page = request_page(request.args)
+    per_page = request_per_page(request.args)
     query = (
         tenant_query(Fault)
         .options(
@@ -11993,11 +12001,11 @@ def faults():
             Fault.elevator.has(Elevator.customer.has(Customer.name.ilike(needle))),
         ))
     total = query.count()
-    pages = max(1, (total + PAGE_SIZE - 1) // PAGE_SIZE) if total else 1
+    pages = max(1, (total + per_page - 1) // per_page) if total else 1
     page = min(page, pages)
-    faults_list = query.offset((page - 1) * PAGE_SIZE).limit(PAGE_SIZE).all()
+    faults_list = query.offset((page - 1) * per_page).limit(per_page).all()
     open_badge = tenant_query(Fault).filter(Fault.status == 'مفتوح').count()
-    list_meta = list_meta_for(total, page, extra={
+    list_meta = list_meta_for(total, page, per_page=per_page, extra={
         'scope': scope or 'all',
         'status': status_filter,
         'open_total': open_badge,

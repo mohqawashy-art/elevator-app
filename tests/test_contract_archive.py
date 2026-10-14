@@ -110,6 +110,20 @@ def test_expired_and_active_contracts_visible_by_default(client):
     expired_html = expired.get_data(as_text=True)
     assert 'CN-ARCH-OLD' in expired_html
     assert 'CN-ARCH-NEW' not in expired_html
+    assert 'إخفاء العقود المنتهية' in html
+
+
+def test_hide_expired_contracts_button(client):
+    _seed_old_and_new(client)
+    hidden = client.get('/contracts?z=5&hide_expired=1')
+    hidden_html = hidden.get_data(as_text=True)
+    assert 'CN-ARCH-NEW' in hidden_html
+    assert 'CN-ARCH-OLD' not in hidden_html
+    assert 'إظهار العقود المنتهية' in hidden_html
+
+    still = client.get('/contracts?z=5&hide_expired=1&status=منتهي')
+    still_html = still.get_data(as_text=True)
+    assert 'CN-ARCH-OLD' in still_html
 
 
 def test_all_visits_visible_by_default(client):
@@ -168,3 +182,13 @@ def test_contracts_sort_by_end_date(client):
         assert [c.code for c in ordered] == ['CN-1', 'CN-2']
         ordered = sort_contracts_for_list(rows, 'end_date', 'desc')
         assert [c.code for c in ordered] == ['CN-2', 'CN-1']
+
+
+def test_contracts_page_size_in_list_meta(client):
+    _seed_old_and_new(client)
+    page = client.get('/contracts?z=5&per=20')
+    html = page.get_data(as_text=True)
+    assert '"per_page": 20' in html or '"per_page":20' in html
+    default = client.get('/contracts?z=5')
+    default_html = default.get_data(as_text=True)
+    assert '"per_page": 10' in default_html or '"per_page":10' in default_html

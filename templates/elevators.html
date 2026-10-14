@@ -1203,14 +1203,14 @@ function renderTable(data) {
   }
   var masterTotal = (window.LIST_META && LIST_META.server) ? LIST_META.total : ELEVATORS.length;
   var serverPage = window.LIST_META && LIST_META.server;
-  var pg = (tablePager && !serverPage) ? tablePager.apply(data, masterTotal) : { rows: data };
+  var pg = tablePager ? tablePager.apply(data, masterTotal) : { rows: data };
   var tbody = document.getElementById('table-body');
   if (!tbody) return;
   var shownTotal = serverPage ? LIST_META.total : data.length;
   document.getElementById('elev-count').textContent = window.LiftCoreDisplay
     ? LiftCoreDisplay.fmtElevatorsCount(shownTotal)
     : (shownTotal + ' مصعد');
-  if (!tablePager || serverPage) {
+  if (!tablePager) {
     document.getElementById('table-info').textContent = window.LiftCoreDisplay
       ? LiftCoreDisplay.fmtShowing(data.length, masterTotal)
       : ('عرض ' + data.length + ' من ' + masterTotal);

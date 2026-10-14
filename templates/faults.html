@@ -1068,7 +1068,7 @@ function renderTable(data) {
   }
   var masterTotal = (window.LIST_META && LIST_META.server) ? LIST_META.total : FAULTS.length;
   var serverPage = window.LIST_META && LIST_META.server;
-  var pg = (tablePager && !serverPage) ? tablePager.apply(data, masterTotal) : { rows: data };
+  var pg = tablePager ? tablePager.apply(data, masterTotal) : { rows: data };
   const tbody = document.getElementById('table-body');
   if(!tbody) return;
   const D = window.lcDisp || (s => s);
@@ -1076,11 +1076,11 @@ function renderTable(data) {
   var shownTotal = serverPage ? LIST_META.total : data.length;
   if (LC) {
     LC.setCountEl('faults-count', LC.fmtFaultsCount(shownTotal));
-    if (!tablePager || serverPage) LC.setCountEl('table-info', LC.fmtShowing(data.length, masterTotal));
+    if (!tablePager) LC.setCountEl('table-info', LC.fmtShowing(data.length, masterTotal));
   } else {
     document.getElementById('faults-count').innerHTML = '<span class="lc-num">' + shownTotal + '</span> عطل';
     const info = document.getElementById('table-info');
-    if (info && (!tablePager || serverPage)) info.innerHTML = 'عرض <span class="lc-num">' + data.length + '</span> من <span class="lc-num">' + masterTotal + '</span>';
+    if (info && !tablePager) info.innerHTML = 'عرض <span class="lc-num">' + data.length + '</span> من <span class="lc-num">' + masterTotal + '</span>';
   }
   tbody.innerHTML = pg.rows.map(f=>`
     <tr data-fault-id="${f.id}">

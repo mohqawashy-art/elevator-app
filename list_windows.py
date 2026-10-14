@@ -5,7 +5,8 @@ from calendar import monthrange
 from datetime import date
 from urllib.parse import urlencode
 
-PAGE_SIZE = 50
+PAGE_SIZE_OPTIONS = frozenset({10, 20, 50, 100})
+PAGE_SIZE = 10
 
 
 def request_page(args) -> int:
@@ -18,6 +19,20 @@ def request_page(args) -> int:
 
 def request_text(args, key: str = 'q') -> str:
     return (args.get(key) or '').strip()
+
+
+def request_per_page(args) -> int:
+    raw = args.get('per') or args.get('page_size') or args.get('size')
+    try:
+        n = int(raw) if raw not in (None, '') else PAGE_SIZE
+    except (TypeError, ValueError):
+        n = PAGE_SIZE
+    return n if n in PAGE_SIZE_OPTIONS else PAGE_SIZE
+
+
+def request_hide_expired(args) -> bool:
+    raw = (args.get('hide_expired') or '').strip().lower()
+    return raw in ('1', 'true', 'yes')
 
 
 def request_sort(
