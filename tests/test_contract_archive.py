@@ -114,6 +114,10 @@ def test_expired_contract_hidden_until_old_filter(client):
     archive_html = archive.get_data(as_text=True)
     assert 'CN-ARCH-OLD' in archive_html
     assert 'CN-ARCH-NEW' not in archive_html
+    assert 'إخفاء العقود المنتهية' in archive_html
+    assert 'إظهار العقود المنتهية' in html
+    btn = html.split('id="btn-show-renewed"', 1)[1][:220]
+    assert 'display:none' not in btn
 
 
 def test_old_contract_visits_stay_on_server_behind_archive_filter(client):

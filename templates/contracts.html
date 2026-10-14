@@ -417,7 +417,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
         <option>غير مدفوع</option>
         <option>متأخر</option>
       </select>
-      <button type="button" class="btn btn-secondary btn-sm" id="btn-show-renewed" onclick="toggleShowRenewedContracts()" style="display:none" title="استدعاء العقود المنتهية والمجددة من الأرشيف — بدون حذف">أرشيف العقود القديمة</button>
+      <button type="button" class="btn btn-secondary btn-sm" id="btn-show-renewed" onclick="toggleShowRenewedContracts()" {% if not list_meta or not list_meta.renewed_count %}style="display:none"{% endif %} title="استدعاء العقود المنتهية والمجددة من الأرشيف — بدون حذف">{% if list_meta and (list_meta.archive or list_meta.renewed) %}العقود الحالية{% else %}أرشيف العقود القديمة{% endif %}{% if list_meta and list_meta.renewed_count %} ({{ list_meta.renewed_count }}){% endif %}</button>
     </div>
     {% include 'partials/list_pager.html' %}
 
@@ -1236,21 +1236,32 @@ function updateRenewedToggleButton() {
   var btn = document.getElementById('btn-show-renewed');
   if (!btn) return;
   var n = renewedContractsCount();
-  if (!n) {
+  var on = !!(window.LIST_META && (LIST_META.archive || LIST_META.renewed)) || SHOW_RENEWED_CONTRACTS;
+  if (!n && !on) {
     btn.style.display = 'none';
     return;
   }
   btn.style.display = '';
-  btn.classList.toggle('active', SHOW_RENEWED_CONTRACTS);
-  btn.textContent = SHOW_RENEWED_CONTRACTS
-    ? ('العقود الحالية (' + n + ' في الأرشيف)')
-    : ('أرشيف العقود القديمة (' + n + ')');
+  btn.classList.toggle('active', on);
+  btn.textContent = on
+    ? (n ? ('إخفاء العقود المنتهية (' + n + ')') : 'إخفاء العقود المنتهية')
+    : (n ? ('إظهار العقود المنتهية (' + n + ')') : 'إظهار العقود المنتهية');
 }
 
 function toggleShowRenewedContracts() {
-  if (window.LIST_META && LIST_META.server && window.lcListGo) {
-    var on = !!(LIST_META.archive || LIST_META.renewed);
-    lcListGo({ archive: on ? '' : '1', renewed: '', status: '', page: '1' });
+  if (window.LIST_META && LIST_META.server) {
+    var url = new URL(window.location.href);
+    var on = url.searchParams.get('archive') === '1' || url.searchParams.get('renewed') === '1';
+    if (on) {
+      url.searchParams.delete('archive');
+      url.searchParams.delete('renewed');
+    } else {
+      url.searchParams.set('archive', '1');
+      url.searchParams.delete('renewed');
+    }
+    url.searchParams.delete('status');
+    url.searchParams.set('page', '1');
+    window.location.href = url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '');
     return;
   }
   SHOW_RENEWED_CONTRACTS = !SHOW_RENEWED_CONTRACTS;

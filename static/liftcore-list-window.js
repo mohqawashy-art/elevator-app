@@ -11,7 +11,8 @@
     });
     if (!Object.prototype.hasOwnProperty.call(updates || {}, 'page')) url.searchParams.set('page', '1');
     var next = url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '');
-    if (next !== global.location.pathname + global.location.search) global.location.href = next;
+    var current = global.location.pathname + global.location.search;
+    if (next !== current) global.location.href = next;
   }
 
   function serverList() {
