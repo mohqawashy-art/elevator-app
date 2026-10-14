@@ -1,0 +1,27 @@
+{% extends 'platform/print_doc.html' %}
+{% block body %}
+<div class="meta">
+  <div><div class="k">العميل (المستأجر)</div><div class="v">{{ org.name }} · <code>{{ org.slug }}</code></div></div>
+  <div><div class="k">تاريخ الإصدار</div><div class="v">{{ invoice.issue_date.strftime('%Y-%m-%d') if invoice.issue_date else '—' }}</div></div>
+  <div><div class="k">الباقة</div><div class="v">{{ org.plan }} · {{ org.billing_cycle or 'yearly' }}</div></div>
+  <div><div class="k">تاريخ الاستحقاق</div><div class="v">{{ invoice.due_date.strftime('%Y-%m-%d') if invoice.due_date else '—' }}</div></div>
+  <div><div class="k">فترة الاشتراك</div><div class="v">{{ invoice.period_start.strftime('%Y-%m-%d') if invoice.period_start else '—' }} → {{ invoice.period_end.strftime('%Y-%m-%d') if invoice.period_end else '—' }}</div></div>
+  <div><div class="k">الحالة</div><div class="v">{{ status_ar }}</div></div>
+</div>
+<table>
+  <thead><tr><th>البيان</th><th>المبلغ شامل الضريبة</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>{{ invoice.description }}</td>
+      <td>{{ '%.2f'|format(invoice.total) }} {{ invoice.currency or 'SAR' }}</td>
+    </tr>
+  </tbody>
+</table>
+<table class="totals">
+  <tr><td>قبل الضريبة</td><td>{{ '%.2f'|format(invoice.subtotal) }} ر.س</td></tr>
+  <tr><td>ضريبة القيمة المضافة ({{ '%.0f'|format(invoice.tax_pct or 15) }}٪)</td><td>{{ '%.2f'|format(invoice.tax_amount) }} ر.س</td></tr>
+  <tr class="sum"><td>الإجمالي</td><td>{{ '%.2f'|format(invoice.total) }} ر.س</td></tr>
+</table>
+{% if invoice.notes %}<p class="note">{{ invoice.notes }}</p>{% endif %}
+<p class="note">السعر المعروض شامل ضريبة القيمة المضافة. هذه فاتورة اشتراك برنامج LiftCore صادرة من {{ company.legal_name }}.</p>
+{% endblock %}

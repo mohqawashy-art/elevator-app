@@ -1985,6 +1985,13 @@ def _startup_schema_and_data_sync():
         db.session.rollback()
         app.logger.warning('Permissions schema ensure skip: %s', exc)
     try:
+        from platform_billing import apply_all_free_tenant_policies, ensure_platform_books_schema
+        ensure_platform_books_schema()
+        apply_all_free_tenant_policies(commit=True)
+    except Exception as extra:
+        db.session.rollback()
+        app.logger.warning('Nasq Core books schema ensure skip: %s', extra)
+    try:
         from technician_assignments import backfill_technician_assignments
         backfill_technician_assignments()
     except Exception as exc:
@@ -4138,6 +4145,9 @@ def platform_org_detail(org_id):
         admin=detail['admin'],
         invites=detail['invites'],
         payments=detail.get('payments') or [],
+        invoices=detail.get('invoices') or [],
+        unpaid_invoices=detail.get('unpaid_invoices') or [],
+        complimentary_locked=detail.get('complimentary_locked') or False,
         billing_amount=detail.get('billing_amount') or 0,
         login_url=detail['login_url'],
         plans=detail['plans'],
@@ -4272,7 +4282,11 @@ def platform_billing():
     user = _require_platform_console_user()
     if not user:
         return redirect(url_for('login'))
-    overview = billing_overview(300)
+    try:
+        year = int(request.args.get('year') or 0) or None
+    except (TypeError, ValueError):
+        year = None
+    overview = billing_overview(300, year=year)
     return render_template(
         'platform/billing.html',
         nav='billing',
@@ -4280,6 +4294,9 @@ def platform_billing():
         stats=overview['stats'],
         plan_prices=overview['plan_prices'],
         plan_prices_yearly=overview['plan_prices_yearly'],
+        books=overview.get('books') or {},
+        company=overview.get('company') or {},
+        expense_categories=overview.get('expense_categories') or [],
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
     )
@@ -4550,6 +4567,13 @@ def platform_org_payment(org_id):
         months = int(request.form.get('months') or 1)
     except (TypeError, ValueError):
         months = 1
+    invoice_id = None
+    invoice_raw = (request.form.get('invoice_id') or '').strip()
+    if invoice_raw:
+        try:
+            invoice_id = int(invoice_raw)
+        except (TypeError, ValueError):
+            invoice_id = None
     result = record_payment(
         org,
         amount=request.form.get('amount'),
@@ -4558,6 +4582,7 @@ def platform_org_payment(org_id):
         note=request.form.get('note') or '',
         months=months,
         recorded_by_user_id=user.id,
+        invoice_id=invoice_id,
     )
     if result.get('ok'):
         session['plat_notice'] = 'تم تسجيل الدفعة وتجديد فترة الاشتراك.'
@@ -4579,6 +4604,209 @@ def platform_org_payment(org_id):
         session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل تسجيل الدفعة.'])
         session['plat_notice_type'] = 'warn'
     return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/orgs/<int:org_id>/invoice', methods=['POST'])
+def platform_org_invoice(org_id):
+    from models import Organization
+    from platform_admin import is_admin_host
+    from platform_billing import issue_invoice
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+    amount_raw = (request.form.get('amount') or '').strip()
+    amount = None
+    if amount_raw:
+        try:
+            amount = float(amount_raw)
+        except ValueError:
+            session['plat_notice'] = 'مبلغ الفاتورة غير صالح.'
+            session['plat_notice_type'] = 'warn'
+            return redirect(url_for('platform_org_detail', org_id=org_id))
+    result = issue_invoice(
+        org,
+        amount=amount,
+        description=request.form.get('description') or '',
+        notes=request.form.get('notes') or '',
+        created_by_user_id=user.id,
+    )
+    if result.get('ok'):
+        session['plat_notice'] = f'تم إصدار الفاتورة {result["invoice"].code}.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل إصدار الفاتورة.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=org_id))
+
+
+@app.route('/platform/invoices/<int:invoice_id>/void', methods=['POST'])
+def platform_invoice_void(invoice_id):
+    from models import PlatformInvoice
+    from platform_admin import is_admin_host
+    from platform_billing import void_invoice
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    invoice = db.session.get(PlatformInvoice, invoice_id)
+    if not invoice:
+        abort(404)
+    result = void_invoice(invoice)
+    if result.get('ok'):
+        session['plat_notice'] = f'أُلغيت الفاتورة {invoice.code}.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['تعذّر إلغاء الفاتورة.'])
+        session['plat_notice_type'] = 'warn'
+    return redirect(url_for('platform_org_detail', org_id=invoice.organization_id))
+
+
+@app.route('/platform/invoices/<int:invoice_id>/print')
+def platform_invoice_print(invoice_id):
+    from models import Organization, PlatformInvoice
+    from platform_admin import is_admin_host
+    from platform_billing import INVOICE_STATUS_AR, NASQ_CORE
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    invoice = db.session.get(PlatformInvoice, invoice_id)
+    if not invoice:
+        abort(404)
+    org = db.session.get(Organization, invoice.organization_id)
+    if not org:
+        abort(404)
+    return render_template(
+        'platform/invoice_print.html',
+        doc_title='فاتورة اشتراك',
+        doc_code=invoice.code,
+        back_url=url_for('platform_org_detail', org_id=org.id),
+        company=NASQ_CORE,
+        invoice=invoice,
+        org=org,
+        status_ar=INVOICE_STATUS_AR.get(invoice.status, invoice.status),
+    )
+
+
+@app.route('/platform/payments/<int:payment_id>/receipt')
+def platform_payment_receipt(payment_id):
+    from models import Organization, PlatformInvoice, PlatformPayment
+    from platform_admin import is_admin_host
+    from platform_billing import NASQ_CORE
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    payment = db.session.get(PlatformPayment, payment_id)
+    if not payment:
+        abort(404)
+    org = db.session.get(Organization, payment.organization_id)
+    if not org:
+        abort(404)
+    invoice = db.session.get(PlatformInvoice, payment.invoice_id) if payment.invoice_id else None
+    method_ar = {
+        'transfer': 'تحويل بنكي',
+        'cash': 'نقداً',
+        'card': 'بطاقة',
+        'complimentary': 'مجاني',
+        'other': 'أخرى',
+    }.get(payment.method or '', payment.method or '—')
+    return render_template(
+        'platform/receipt_print.html',
+        doc_title='سند قبض',
+        doc_code=payment.receipt_code or f'P-{payment.id}',
+        back_url=url_for('platform_org_detail', org_id=org.id),
+        company=NASQ_CORE,
+        payment=payment,
+        invoice=invoice,
+        org=org,
+        method_ar=method_ar,
+    )
+
+
+@app.route('/platform/orgs/<int:org_id>/statement')
+def platform_org_statement(org_id):
+    from datetime import datetime as dt
+
+    from models import Organization
+    from platform_admin import is_admin_host
+    from platform_billing import NASQ_CORE, account_statement
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    org = db.session.get(Organization, org_id)
+    if not org:
+        abort(404)
+    statement = account_statement(org)
+    return render_template(
+        'platform/statement_print.html',
+        doc_title='كشف حساب',
+        doc_code=org.slug,
+        back_url=url_for('platform_org_detail', org_id=org.id),
+        company=NASQ_CORE,
+        org=org,
+        statement=statement,
+        generated_at=dt.utcnow(),
+    )
+
+
+@app.route('/platform/expenses', methods=['POST'])
+def platform_expense_create():
+    from datetime import datetime as dt
+
+    from platform_admin import is_admin_host
+    from platform_billing import add_expense
+
+    if not is_admin_host():
+        abort(404)
+    user = _require_platform_console_user()
+    if not user:
+        abort(404)
+    spent_at = None
+    spent_raw = (request.form.get('spent_at') or '').strip()
+    if spent_raw:
+        try:
+            spent_at = dt.strptime(spent_raw[:10], '%Y-%m-%d')
+        except ValueError:
+            session['plat_notice'] = 'تاريخ المصروف غير صالح.'
+            session['plat_notice_type'] = 'warn'
+            return redirect(url_for('platform_billing'))
+    result = add_expense(
+        amount=request.form.get('amount'),
+        description=request.form.get('description') or '',
+        category=request.form.get('category') or 'other',
+        vendor=request.form.get('vendor') or '',
+        method=request.form.get('method') or 'transfer',
+        reference=request.form.get('reference') or '',
+        notes=request.form.get('notes') or '',
+        spent_at=spent_at,
+        created_by_user_id=user.id,
+    )
+    year = (request.form.get('year') or '').strip()
+    if result.get('ok'):
+        session['plat_notice'] = f'تم تسجيل المصروف {result["expense"].code}.'
+        session['plat_notice_type'] = 'ok'
+    else:
+        session['plat_notice'] = ' — '.join(result.get('errors') or ['فشل حفظ المصروف.'])
+        session['plat_notice_type'] = 'warn'
+    if year:
+        return redirect(url_for('platform_billing', year=year))
+    return redirect(url_for('platform_billing'))
 
 
 @app.route('/platform/orgs/<int:org_id>/export')

@@ -1,0 +1,41 @@
+{% extends 'platform/print_doc.html' %}
+{% block body %}
+<div class="meta">
+  <div><div class="k">كشف حساب مستأجر</div><div class="v">{{ org.name }} · <code>{{ org.slug }}</code></div></div>
+  <div><div class="k">تاريخ الكشف</div><div class="v">{{ generated_at.strftime('%Y-%m-%d %H:%M') }}</div></div>
+  <div><div class="k">الباقة</div><div class="v">{{ org.plan }} · {{ org.billing_cycle or 'yearly' }}</div></div>
+  <div><div class="k">الرصيد (عليه)</div><div class="v"><strong>{{ '%.2f'|format(statement.balance) }} ر.س</strong></div></div>
+</div>
+<table>
+  <thead>
+    <tr>
+      <th>التاريخ</th>
+      <th>المستند</th>
+      <th>البيان</th>
+      <th>مدين</th>
+      <th>دائن</th>
+      <th>الرصيد</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for line in statement.lines %}
+    <tr>
+      <td>{{ line.at.strftime('%Y-%m-%d') if line.at else '—' }}</td>
+      <td>{{ line.code }}</td>
+      <td>{{ line.label }}</td>
+      <td>{% if line.debit %}{{ '%.2f'|format(line.debit) }}{% else %}—{% endif %}</td>
+      <td>{% if line.credit %}{{ '%.2f'|format(line.credit) }}{% else %}—{% endif %}</td>
+      <td>{{ '%.2f'|format(line.balance) }}</td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6">لا حركات على هذا الحساب.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+<table class="totals">
+  <tr><td>مجموع الفواتير</td><td>{{ '%.2f'|format(statement.debit) }} ر.س</td></tr>
+  <tr><td>مجموع المقبوضات</td><td>{{ '%.2f'|format(statement.credit) }} ر.س</td></tr>
+  <tr class="sum"><td>الرصيد المستحق</td><td>{{ '%.2f'|format(statement.balance) }} ر.س</td></tr>
+</table>
+<p class="note">كشف حساب اشتراك LiftCore لدى {{ company.legal_name }}. الحسابات المجانية (جما خلال عام الإعفاء، والديمو) تظهر بلا إيراد.</p>
+{% endblock %}

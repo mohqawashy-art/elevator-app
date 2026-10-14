@@ -399,11 +399,22 @@ def get_org_detail(org_id: int) -> dict | None:
         .limit(30)
         .all()
     )
-    from platform_billing import effective_amount, refresh_billing_status
+    from platform_billing import (
+        apply_free_tenant_policy,
+        effective_amount,
+        is_policy_free_org,
+        list_invoices,
+        refresh_billing_status,
+    )
     from entitlements import addon_catalog_for_ui, feature_catalog_for_ui, list_org_addons, resolve_entitlements
     from plan_catalog import plan_definition
 
+    policy_changed = apply_free_tenant_policy(org)
     refresh_billing_status(org)
+    if policy_changed:
+        db.session.commit()
+    invoices = list_invoices(org.id, 40)
+    unpaid_invoices = [i for i in invoices if i.status == 'unpaid']
     entitlements = resolve_entitlements(org=org)
     plan_options = []
     for key in PLANS:
@@ -419,6 +430,9 @@ def get_org_detail(org_id: int) -> dict | None:
         'admin': admin,
         'invites': invites,
         'payments': payments,
+        'invoices': invoices,
+        'unpaid_invoices': unpaid_invoices,
+        'complimentary_locked': is_policy_free_org(org),
         'billing_amount': effective_amount(org),
         'login_url': tenant_login_url(org.slug),
         'plans': PLANS,
