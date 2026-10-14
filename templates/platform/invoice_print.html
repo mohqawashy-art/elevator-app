@@ -32,7 +32,7 @@
       <th>#</th>
       <th>البيان</th>
       <th>الفترة</th>
-      <th>المبلغ شامل الضريبة</th>
+      <th>المبلغ</th>
     </tr>
   </thead>
   <tbody>
@@ -46,12 +46,10 @@
   </tbody>
 </table>
 <table class="totals">
-  <tr><td>المجموع قبل الضريبة</td><td>{{ '%.2f'|format(invoice.subtotal) }} ر.س</td></tr>
-  <tr><td>ضريبة القيمة المضافة ({{ '%.0f'|format(invoice.tax_pct or 15) }}٪)</td><td>{{ '%.2f'|format(invoice.tax_amount) }} ر.س</td></tr>
-  <tr class="sum"><td>الإجمالي المستحق</td><td>{{ '%.2f'|format(invoice.total) }} ر.س</td></tr>
+  <tr class="sum"><td>الإجمالي</td><td>{{ '%.2f'|format(invoice.total) }} ر.س</td></tr>
 </table>
 {% if invoice.notes %}<p class="note">{{ invoice.notes }}</p>{% endif %}
-<p class="note">السعر المعروض شامل ضريبة القيمة المضافة. فاتورة اشتراك منتج LiftCore صادرة إلكترونياً من {{ company.legal_name }}.</p>
+<p class="note">فاتورة اشتراك منتج LiftCore صادرة من {{ company.legal_name }}.</p>
 <div class="sign">
   <div class="slot">ختم / توقيع المورد</div>
   <div class="slot">استلام العميل</div>

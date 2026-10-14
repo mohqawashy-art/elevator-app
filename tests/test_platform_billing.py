@@ -218,6 +218,9 @@ def test_invoice_print_has_nasaq_letterhead():
     assert 'طريق الطائف' in body
     assert 'info@liftcoreapp.com' in body
     assert 'مؤسسة نسق كور' in body
+    assert '<div class="t">فاتورة</div>' in body
+    assert 'TAX INVOICE' not in body
+    assert 'ضريبة القيمة المضافة' not in body
 
 
 def test_billing_page_shows_nasq_core_books():

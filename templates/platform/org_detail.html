@@ -116,7 +116,7 @@
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="grid">
       <div>
-        <label>المبلغ شامل الضريبة (ر.س)</label>
+        <label>المبلغ (ر.س)</label>
         <input name="amount" type="number" step="0.01" min="0" value="{{ '%.0f'|format(billing_amount) }}">
       </div>
       <div class="full">

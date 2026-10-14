@@ -4709,8 +4709,8 @@ def platform_invoice_sample():
     )
     return render_template(
         'platform/invoice_print.html',
-        doc_title='فاتورة ضريبية',
-        doc_title_en='TAX INVOICE',
+        doc_title='فاتورة',
+        doc_title_en='INVOICE',
         doc_code=invoice.code,
         back_url=url_for('platform_billing'),
         company=NASQ_CORE,
@@ -4739,8 +4739,8 @@ def platform_invoice_print(invoice_id):
         abort(404)
     return render_template(
         'platform/invoice_print.html',
-        doc_title='فاتورة ضريبية',
-        doc_title_en='TAX INVOICE',
+        doc_title='فاتورة',
+        doc_title_en='INVOICE',
         doc_code=invoice.code,
         back_url=url_for('platform_org_detail', org_id=org.id),
         company=NASQ_CORE,
