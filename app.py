@@ -7247,6 +7247,81 @@ def contract_display_status(contract, today=None, *, renewed_ids=None):
     return 'نشط'
 
 
+CONTRACT_LIST_SORT_COLS = frozenset({
+    'code', 'customer', 'buildings', 'contract_type', 'start_date', 'end_date',
+    'days_left', 'elevators', 'remaining', 'total', 'due_date', 'contract_status', 'inv_status',
+})
+
+
+def _natural_code_key(code: str):
+    import re
+
+    parts = re.split(r'(\d+)', (code or '').strip())
+    key = []
+    for part in parts:
+        if not part:
+            continue
+        key.append(int(part) if part.isdigit() else part.casefold())
+    return tuple(key) if key else ('',)
+
+
+def sort_contracts_for_list(
+    rows,
+    col: str,
+    direction: str,
+    *,
+    renewed_ids=None,
+    elevator_by_id=None,
+    today=None,
+):
+    """ترتيب قائمة العقود كاملة قبل ترقيم الصفحات — يشمل الأرشيف."""
+    today = today or date.today()
+    col = col if col in CONTRACT_LIST_SORT_COLS else 'code'
+    reverse = (direction or 'asc').strip().lower() == 'desc'
+
+    def remaining_of(c):
+        total = float(c.total or 0)
+        paid = float(getattr(c, 'paid_amount', 0) or 0)
+        return max(total - paid, 0)
+
+    def days_left_of(c):
+        if not c.end_date:
+            return 10**9
+        return (c.end_date - today).days
+
+    def key_of(c):
+        if col == 'code':
+            return _natural_code_key(c.code or '')
+        if col == 'customer':
+            name = (c.customer.name if c.customer else '') or ''
+            return name.casefold()
+        if col == 'buildings':
+            return (_contract_building_names(c, elevator_by_id=elevator_by_id) or '').casefold()
+        if col == 'contract_type':
+            return (c.contract_type or '').casefold()
+        if col == 'start_date':
+            return c.start_date or date.min
+        if col == 'end_date':
+            return c.end_date or date.min
+        if col == 'days_left':
+            return days_left_of(c)
+        if col == 'elevators':
+            return len(c.elevators or [])
+        if col == 'remaining':
+            return remaining_of(c)
+        if col == 'total':
+            return float(c.total or 0)
+        if col == 'due_date':
+            return getattr(c, 'due_date', None) or date.min
+        if col == 'contract_status':
+            return contract_display_status(c, today=today, renewed_ids=renewed_ids)
+        if col == 'inv_status':
+            return (getattr(c, 'invoice_status', None) or '')
+        return _natural_code_key(c.code or '')
+
+    return sorted(rows, key=key_of, reverse=reverse)
+
+
 def _annotate_contract_renewals(contracts):
     """يضع _is_renewed ويعيد مجموعة المعرّفات المجدَّدة."""
     from contract_codes import build_superseded_contract_ids
@@ -8140,7 +8215,7 @@ def contracts():
         .order_by(Contract.id.desc())
         .all()
     )
-    from list_windows import PAGE_SIZE, list_meta_for, page_slice, request_page, request_text
+    from list_windows import PAGE_SIZE, list_meta_for, page_slice, request_page, request_sort, request_text
 
     from contract_archive import display_is_archived, include_contract_in_list, request_wants_archive
 
@@ -8192,11 +8267,24 @@ def contracts():
         visible.append(contract)
     stats['total_val'] = round(stats['total_val'], 2)
     stats['unpaid'] = round(stats['unpaid'], 2)
-    page = request_page(request.args)
-    page_rows, total, page = page_slice(visible, page, PAGE_SIZE)
     customers = tenant_query(Customer).order_by(Customer.name).all()
     all_elevators = tenant_query(Elevator).all()
     elevator_by_id = {e.id: e for e in all_elevators}
+    sort_col, sort_dir = request_sort(
+        request.args,
+        CONTRACT_LIST_SORT_COLS,
+        default_col='code',
+        default_dir='asc',
+    )
+    visible = sort_contracts_for_list(
+        visible,
+        sort_col,
+        sort_dir,
+        renewed_ids=renewed_ids,
+        elevator_by_id=elevator_by_id,
+    )
+    page = request_page(request.args)
+    page_rows, total, page = page_slice(visible, page, PAGE_SIZE)
     elev_lookup = {
         e.id: {'code': e.code, 'building': e.building_name or '', 'customer_id': e.customer_id}
         for e in all_elevators
@@ -8208,6 +8296,8 @@ def contracts():
         'renewed': show_archive,
         'renewed_count': archive_count,
         'due': due_only,
+        'sort': sort_col,
+        'dir': sort_dir,
     })
     resp = make_response(render_template(
         'contracts.html',

@@ -1454,8 +1454,8 @@ let currentViewId = null;
 let contractSaving = false;
 var filtered = contractsVisiblePool();
 var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
-  defaultCol: 'code',
-  defaultDir: 'asc',
+  defaultCol: (window.LIST_META && LIST_META.sort) || 'code',
+  defaultDir: (window.LIST_META && LIST_META.dir) || 'asc',
   dateCols: ['start_date', 'end_date', 'due_date'],
   numberCols: ['elevators', 'remaining', 'total', 'days_left'],
   getters: {
@@ -1470,7 +1470,14 @@ var tableSort = window.LiftCoreTableSort ? LiftCoreTableSort.lazy({
       return d === null ? 999999 : d;
     },
   },
-  onChange: function () { renderTable(filtered); },
+  onChange: function (st) {
+    if (window.LIST_META && LIST_META.server && window.lcListGo) {
+      st = st || (tableSort && tableSort.getState && tableSort.getState()) || {};
+      lcListGo({ sort: st.col || 'code', dir: st.dir || 'asc', page: '1' });
+      return;
+    }
+    renderTable(filtered);
+  },
 }) : null;
 
 var tablePager = window.LiftCorePagination ? LiftCorePagination.bind({

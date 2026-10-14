@@ -141,3 +141,42 @@ def test_old_contract_faults_archived_open_ones_stay_visible(client):
     archive = client.get('/faults?archive=1')
     archive_html = archive.get_data(as_text=True)
     assert 'FA-ARCH-OLD' in archive_html
+
+
+def test_archive_contracts_sort_by_end_date(client):
+    from app import sort_contracts_for_list
+
+    _seed_old_and_new(client)
+    today = date.today()
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        cust = Customer.query.filter_by(code='C-ARCH').first()
+        older = Contract(
+            organization_id=oid,
+            code='CN-ARCH-OLDER',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            start_date=today - timedelta(days=1200),
+            end_date=today - timedelta(days=400),
+            status='منتهي',
+        )
+        db.session.add(older)
+        db.session.commit()
+
+    asc = client.get('/contracts?z=5&archive=1&sort=end_date&dir=asc')
+    asc_html = asc.get_data(as_text=True)
+    assert asc_html.find('CN-ARCH-OLDER') < asc_html.find('CN-ARCH-OLD"')
+
+    desc = client.get('/contracts?z=5&archive=1&sort=end_date&dir=desc')
+    desc_html = desc.get_data(as_text=True)
+    assert desc_html.find('CN-ARCH-OLD"') < desc_html.find('CN-ARCH-OLDER')
+
+    with client.application.app_context():
+        rows = [
+            Contract(code='CN-2', end_date=today - timedelta(days=10)),
+            Contract(code='CN-1', end_date=today - timedelta(days=80)),
+        ]
+        ordered = sort_contracts_for_list(rows, 'end_date', 'asc')
+        assert [c.code for c in ordered] == ['CN-1', 'CN-2']
+        ordered = sort_contracts_for_list(rows, 'end_date', 'desc')
+        assert [c.code for c in ordered] == ['CN-2', 'CN-1']

@@ -20,6 +20,22 @@ def request_text(args, key: str = 'q') -> str:
     return (args.get(key) or '').strip()
 
 
+def request_sort(
+    args,
+    allowed: set[str] | frozenset[str],
+    *,
+    default_col: str = 'code',
+    default_dir: str = 'asc',
+) -> tuple[str, str]:
+    col = (args.get('sort') or default_col).strip()
+    if col not in allowed:
+        col = default_col
+    direction = (args.get('dir') or default_dir).strip().lower()
+    if direction not in ('asc', 'desc'):
+        direction = default_dir
+    return col, direction
+
+
 def parse_month(value: str | None, today: date | None = None) -> tuple[int, int]:
     today = today or date.today()
     raw = (value or '').strip()
