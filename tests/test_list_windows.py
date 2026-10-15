@@ -1,7 +1,7 @@
 """نوافذ القوائم: قراءة على دفعات دون حذف أو تعديل الصفوف القديمة."""
 from datetime import date
 
-from list_windows import request_per_page
+from list_windows import request_export_all, request_per_page
 from models import Customer, Elevator, Fault, Invoice, MaintenanceVisit, db
 from tests.conftest import ensure_test_organization, login_as
 
@@ -14,6 +14,9 @@ def test_request_per_page_allows_10_20_50_100():
     assert request_per_page({'per': '100'}) == 100
     assert request_per_page({'per': '7'}) == 10
     assert request_per_page({'per': 'all'}) == 10
+    assert request_export_all({}) is False
+    assert request_export_all({'export': '1'}) is True
+    assert request_export_all({'export': 'all'}) is True
 
 
 def _oid():
@@ -166,6 +169,32 @@ def test_clients_search_returns_the_match_only(client):
     assert 'C-ALPHA' in html
     assert 'C-BETA' not in html
     assert '"server": true' in html or '"server":true' in html
+
+
+def test_live_sync_export_returns_all_clients_not_just_the_page(client):
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = _oid()
+        for n in range(12):
+            db.session.add(Customer(
+                organization_id=oid,
+                code=f'C-EX{n:02d}',
+                name=f'عميل تصدير {n:02d}',
+                phone=f'05530000{n:02d}',
+                status='نشط',
+            ))
+        db.session.commit()
+
+    page = client.get('/api/live/sync?page=clients')
+    export = client.get('/api/live/sync?page=clients&export=1')
+    assert page.status_code == 200
+    assert export.status_code == 200
+    page_codes = {row['code'] for row in page.get_json()['data']['CUSTOMERS']}
+    export_codes = {row['code'] for row in export.get_json()['data']['CUSTOMERS']}
+    seeded = {f'C-EX{n:02d}' for n in range(12)}
+    assert len(page.get_json()['data']['CUSTOMERS']) <= 10
+    assert not seeded <= page_codes
+    assert seeded <= export_codes
 
 
 def test_clients_page_includes_customers_with_many_elevators(client):

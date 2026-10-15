@@ -30,6 +30,28 @@ def request_per_page(args) -> int:
     return n if n in PAGE_SIZE_OPTIONS else PAGE_SIZE
 
 
+def request_export_all(args) -> bool:
+    raw = (args.get('export') or '').strip().lower()
+    return raw in ('1', 'true', 'yes', 'all')
+
+
+def window_rows(rows: list, args) -> list:
+    """ترقيم الصفحة للعرض، وكل الصفوف المطابقة عند التصدير."""
+    if request_export_all(args):
+        return list(rows)
+    sliced, _total, _page = page_slice(rows, request_page(args), request_per_page(args))
+    return sliced
+
+
+def apply_query_window(query, args):
+    """نفس التقسيم على استعلام SQL، ويتجاوز الحد عند التصدير."""
+    if request_export_all(args):
+        return query
+    page = request_page(args)
+    per_page = request_per_page(args)
+    return query.offset((page - 1) * per_page).limit(per_page)
+
+
 HIDE_EXPIRED_COOKIE = 'lc_hide_expired'
 
 

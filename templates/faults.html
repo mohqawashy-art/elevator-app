@@ -1480,7 +1480,7 @@ function confirmDelete() {
 }
 
 function exportExcel() {
-  LiftCoreCsv.exportRecords(filtered, {
+  LiftCoreCsv.exportFromLive('faults', 'FAULTS', {
     filename: LiftCoreCsv.datedName('faults'),
     labels: LiftCoreCsv.LABELS.fault,
     skip: LiftCoreCsv.SKIP_COMMON,
@@ -1490,7 +1490,7 @@ function exportExcel() {
         return v ? 'قابل للفوترة' : 'ضمن العقد';
       }
     }
-  });
+  }, filtered);
 }
 
 function openModal(id) {

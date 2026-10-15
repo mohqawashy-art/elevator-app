@@ -2797,7 +2797,7 @@ function loadClientElevators(selectedIds, opts) {
 }
 
 function exportExcel() {
-  LiftCoreCsv.exportRecords(filtered, {
+  LiftCoreCsv.exportFromLive('contracts', 'CONTRACTS', {
     filename: LiftCoreCsv.datedName('contracts'),
     labels: LiftCoreCsv.LABELS.contract,
     skip: LiftCoreCsv.SKIP_COMMON,
@@ -2821,7 +2821,7 @@ function exportExcel() {
         }
       }
     ]
-  });
+  }, filtered);
 }
 
 // ===== استيراد العقود =====

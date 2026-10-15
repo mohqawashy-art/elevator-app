@@ -104,6 +104,48 @@
     download(opts.filename || datedName('export'), matrix);
   }
 
+  function liveExportUrl(pageKey) {
+    var params = new URLSearchParams();
+    params.set('page', pageKey);
+    params.set('export', '1');
+    try {
+      var loc = new URLSearchParams(global.location.search);
+      ['scope', 'q', 'status', 'contract', 'due', 'hide_expired', 'sort', 'dir', 'month'].forEach(function (key) {
+        var value = loc.get(key);
+        if (value) params.set(key, value);
+      });
+    } catch (e) { /* ignore */ }
+    return '/api/live/sync?' + params.toString();
+  }
+
+  /**
+   * تصدير كل الصفوف المطابقة للفلاتر الحالية، وليس صفحة العرض فقط.
+   */
+  function exportFromLive(pageKey, dataKey, opts, fallbackRows) {
+    opts = opts || {};
+    var btn = null;
+    try {
+      btn = global.document.querySelector('[onclick="exportExcel()"], [onclick="exportCSV()"]');
+      if (btn) btn.disabled = true;
+    } catch (e) { /* ignore */ }
+    global.fetch(liveExportUrl(pageKey), { credentials: 'same-origin' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('export_http');
+        return r.json();
+      })
+      .then(function (payload) {
+        var rows = payload && payload.data && payload.data[dataKey];
+        if (!Array.isArray(rows)) rows = fallbackRows || [];
+        exportRecords(rows, opts);
+      })
+      .catch(function () {
+        exportRecords(fallbackRows || [], opts);
+      })
+      .finally(function () {
+        if (btn) btn.disabled = false;
+      });
+  }
+
   var SKIP_COMMON = {
     id: 1,
     customer_id: 1,
@@ -245,6 +287,7 @@
     download: download,
     datedName: datedName,
     exportRecords: exportRecords,
+    exportFromLive: exportFromLive,
     SKIP_COMMON: SKIP_COMMON,
     LABELS: LABELS
   };
