@@ -2434,7 +2434,10 @@ def _visit_tracking_action(v: MaintenanceVisit, meta: dict) -> tuple[str, str, i
     end = meta.get('end_time') or ''
     disp = _fmt_time_hm(v.dispatched_at)
     if st == 'مكتملة':
-        return 'مكتملة', 'done', 10
+        txt = 'مكتملة'
+        if end:
+            txt += f' ({end})'
+        return txt, 'done', 10
     if st == VISIT_FINISHED_AT_CLIENT:
         txt = 'أنهى العمل عند العميل'
         if end:
@@ -2541,6 +2544,8 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
         cust = elev.customer if elev else None
         site = _field_site_payload(elev, contract=getattr(v, 'contract', None), visit_date=v.visit_date, base_url=base_url)
         meta = _tracking_meta_times(v.checklist_json, parse_report_json)
+        if not meta.get('end_time'):
+            meta['end_time'] = _fmt_time_hm(v.completed_at)
         action, tone, prio = _visit_tracking_action(v, meta)
         tech_label = visit_technicians_label(v)
         tech_id = v.technician_id or 0
@@ -2552,6 +2557,7 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
             'code': v.code,
             'customer': cust.name if cust else '—',
             'customer_code': cust.code if cust else '',
+            'elevator': elev.code if elev else '',
             'building': site['building'],
             'district': site['district'],
             'address': site['address'],
@@ -2615,6 +2621,8 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
         fault_contract = active_contract_for_elevator(elev.id, ref_date) if elev else None
         site = _field_site_payload(elev, contract=fault_contract, visit_date=ref_date, base_url=base_url)
         meta = _tracking_meta_times(f.report_json, parse_fault_report_json)
+        if not meta.get('end_time'):
+            meta['end_time'] = _fmt_time_hm(f.resolved_at)
         action, tone, prio = _fault_tracking_action(f, meta)
         tech = f.technician
         tech_label = tech.name if tech else '—'
@@ -2626,6 +2634,7 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
             'code': f.code,
             'customer': cust.name if cust else '—',
             'customer_code': cust.code if cust else '',
+            'elevator': elev.code if elev else '',
             'building': site['building'],
             'district': site['district'],
             'address': site['address'],
@@ -2665,8 +2674,10 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
             'phone': bucket['phone'],
             'task_count': len(tasks),
             'current_customer': current['customer'] if current else '',
+            'current_elevator': current.get('elevator') if current else '',
             'current_building': current['building'] if current else '',
             'current_address': current['address'] if current else '',
+            'current_end_time': current.get('end_time') if current else '',
             'current_action': current['action_label'] if current else 'لا مهام نشطة اليوم',
             'current_tone': current['action_tone'] if current else 'planned',
             'current_code': current['code'] if current else '',
@@ -2688,7 +2699,10 @@ def office_field_today_tracking(*, on_date: date | None = None, base_url: str = 
         map_points.append({
             'lat': row['lat'],
             'lng': row['lng'],
-            'label': f"{row['code']} — {row['customer']}",
+            'label': ' — '.join(
+                p for p in (row['code'], row['customer'], row.get('elevator'))
+                if p
+            ),
             'address': site_line,
             'customer': row['customer'],
             'status': row['action_label'],

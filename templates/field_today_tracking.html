@@ -154,11 +154,11 @@ tbody td{padding:10px 12px;color:var(--text2);vertical-align:middle}
               <tr>
                 <th>الكود</th>
                 <th>النوع</th>
-                <th>العميل</th>
+                <th>العميل / المصعد</th>
                 <th>الموقع</th>
                 <th>الفني</th>
                 <th>الإجراء / الحالة</th>
-                <th>وقت</th>
+                <th>الوقت</th>
                 <th></th>
               </tr>
             </thead>
@@ -197,6 +197,20 @@ function trackingSiteLine(row) {
   return [row.building, row.district].filter(function (p) { return p && p !== '—'; }).join(' — ');
 }
 
+function trackingCustomerLine(row) {
+  if (!row) return '';
+  return [row.customer, row.elevator].filter(function (p) { return p && p !== '—'; }).join(' · ');
+}
+
+function trackingTimeCell(row) {
+  if (!row) return '—';
+  var lines = [];
+  if (row.arrival_time) lines.push('وصول ' + row.arrival_time);
+  if (row.end_time) lines.push('انتهاء ' + row.end_time);
+  if (!lines.length && row.dispatched_at) lines.push(String(row.dispatched_at).slice(11, 16));
+  return lines.length ? lines.join('<br>') : '—';
+}
+
 function renderTechList(techs) {
   var el = document.getElementById('tech-list');
   if (!techs || !techs.length) {
@@ -205,14 +219,16 @@ function renderTechList(techs) {
   }
   el.innerHTML = techs.map(function (t) {
     var locParts = [t.current_customer];
+    if (t.current_elevator) locParts.push(t.current_elevator);
     var site = t.current_address || t.current_building;
     if (site) locParts.push(site);
-    var loc = locParts.filter(Boolean).join(' — ');
+    var loc = locParts.filter(Boolean).join(' · ');
     var wa = t.phone ? ('https://wa.me/' + String(t.phone).replace(/\D/g, '')) : '';
     return '<div class="tech-card">' +
       '<div class="tech-name">' + esc(t.name) + ' <span style="color:var(--text3);font-weight:400">(' + t.task_count + ')</span></div>' +
       '<div class="tech-now"><span class="' + toneClass(t.current_tone) + '">' + esc(t.current_action) + '</span></div>' +
       (loc ? '<div class="tech-meta">' + esc(loc) + (t.current_code ? ' · ' + esc(t.current_code) : '') + '</div>' : '') +
+      (t.current_end_time ? '<div class="tech-meta">انتهاء ' + esc(t.current_end_time) + '</div>' : '') +
       (wa ? '<div style="margin-top:6px"><a class="td-link" href="' + wa + '" target="_blank" rel="noopener">واتساب</a></div>' : '') +
       '</div>';
   }).join('');
@@ -225,16 +241,15 @@ function renderItems(items) {
     return;
   }
   body.innerHTML = items.map(function (row) {
-    var time = row.arrival_time || (row.dispatched_at ? row.dispatched_at.slice(11, 16) : '');
     var loc = trackingSiteLine(row);
     return '<tr>' +
       '<td class="td-code">' + esc(row.code) + '</td>' +
       '<td>' + esc(row.kind_label) + '</td>' +
-      '<td class="td-name">' + esc(row.customer) + '</td>' +
+      '<td class="td-name">' + esc(trackingCustomerLine(row) || '—') + '</td>' +
       '<td>' + esc(loc || '—') + '</td>' +
       '<td>' + esc(row.technician || '—') + '</td>' +
       '<td><span class="' + toneClass(row.action_tone) + '">' + esc(row.action_label) + '</span></td>' +
-      '<td style="font-family:var(--font-en)">' + esc(time || '—') + '</td>' +
+      '<td style="font-family:var(--font-en);line-height:1.45">' + trackingTimeCell(row) + '</td>' +
       '<td><a class="td-link" href="' + esc(row.office_url) + '">المكتب</a>' +
       (row.maps_url ? ' · <a class="td-link" href="' + esc(row.maps_url) + '" target="_blank" rel="noopener">خريطة</a>' : '') +
       '</td></tr>';
