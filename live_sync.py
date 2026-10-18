@@ -125,14 +125,12 @@ def _sync_clients():
     from flask import request
     from sqlalchemy import or_
 
-    from list_windows import request_page, request_per_page, request_text
+    from list_windows import request_text, window_rows
     from tenant_scope import tenant_query
 
     qtext = request_text(request.args)
     status_filter = (request.args.get('status') or '').strip()
     contract_filter = (request.args.get('contract') or '').strip()
-    page = request_page(request.args)
-    per_page = request_per_page(request.args)
     query = tenant_query(Customer)
     if qtext:
         needle = f'%{qtext}%'
@@ -182,8 +180,7 @@ def _sync_clients():
         })
         if contract_filter and (rows[-1].get('contract_status') or '') != contract_filter:
             rows.pop()
-    start = (page - 1) * per_page
-    return {'CUSTOMERS': rows[start:start + per_page]}
+    return {'CUSTOMERS': window_rows(rows, request.args)}
 
 
 def _sync_contracts():
@@ -191,7 +188,7 @@ def _sync_contracts():
     from flask import request
 
     from contract_codes import contracts_for_scope
-    from list_windows import page_slice, request_hide_expired, request_page, request_per_page, request_text
+    from list_windows import request_hide_expired, request_text, window_rows
     from tenant_scope import tenant_query
 
     contracts = contracts_for_scope(
@@ -201,7 +198,7 @@ def _sync_contracts():
     renewed_ids = h._annotate_contract_renewals(contracts)
     qtext = request_text(request.args).casefold()
     status_filter = (request.args.get('status') or '').strip()
-    hide_expired = request_hide_expired(request.args)
+    hide_expired = request_hide_expired(request.args, request.cookies)
     due_only = request.args.get('due') == '1'
     customers = tenant_query(Customer).order_by(Customer.name).all()
     all_elevators = tenant_query(Elevator).all()
@@ -221,13 +218,12 @@ def _sync_contracts():
             continue
         if status_filter and display != status_filter:
             continue
-        if hide_expired and not status_filter and display == 'منتهي':
+        if hide_expired and not status_filter and display in ('منتهي', 'تم تجديده', 'ملغي'):
             continue
         visible.append(c)
-    page_rows, _total, _page = page_slice(visible, request_page(request.args), request_per_page(request.args))
     rows = [
         h.contract_to_js_dict(c, renewed_ids=renewed_ids, elevator_by_id=elevator_by_id)
-        for c in page_rows
+        for c in window_rows(visible, request.args)
     ]
     cust_rows = [{
         'id': c.id,
@@ -251,13 +247,11 @@ def _sync_elevators():
     from flask import request
     from sqlalchemy import or_
 
-    from list_windows import request_page, request_per_page, request_text
+    from list_windows import apply_query_window, request_text
     from tenant_scope import tenant_query
 
     qtext = request_text(request.args)
     status_filter = (request.args.get('status') or '').strip()
-    page = request_page(request.args)
-    per_page = request_per_page(request.args)
     query = tenant_query(Elevator)
     if qtext:
         needle = f'%{qtext}%'
@@ -268,12 +262,7 @@ def _sync_elevators():
         ))
     if status_filter:
         query = query.filter(Elevator.status == status_filter)
-    elevs = (
-        query.order_by(Elevator.id.desc())
-        .offset((page - 1) * per_page)
-        .limit(per_page)
-        .all()
-    )
+    elevs = apply_query_window(query.order_by(Elevator.id.desc()), request.args).all()
     customers = tenant_query(Customer).order_by(Customer.name).all()
     rows = []
     for e in elevs:
@@ -412,14 +401,12 @@ def _sync_faults():
     from operations import FAULT_OPEN
     from tenant_scope import tenant_query
 
-    from list_windows import request_page, request_per_page, request_text
+    from list_windows import apply_query_window, request_text
     from sqlalchemy import or_
 
     scope = (request.args.get('scope') or 'all').strip()
     qtext = request_text(request.args)
     status_filter = (request.args.get('status') or '').strip()
-    page = request_page(request.args)
-    per_page = request_per_page(request.args)
     query = tenant_query(Fault).order_by(Fault.reported_at.desc())
     if scope == 'open':
         query = query.filter(Fault.status.in_(FAULT_OPEN))
@@ -433,7 +420,7 @@ def _sync_faults():
             Fault.fault_type.ilike(needle),
             Fault.elevator.has(Elevator.customer.has(Customer.name.ilike(needle))),
         ))
-    faults = query.offset((page - 1) * per_page).limit(per_page).all()
+    faults = apply_query_window(query, request.args).all()
     elevators = tenant_query(Elevator).all()
     customers = tenant_query(Customer).order_by(Customer.name).all()
     inventory_items = InventoryItem.query.order_by(InventoryItem.name).all()

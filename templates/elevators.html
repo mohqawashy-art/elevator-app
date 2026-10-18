@@ -1843,7 +1843,7 @@ async function confirmElevImport() {
 }
 
 function exportExcel() {
-  LiftCoreCsv.exportRecords(filtered, {
+  LiftCoreCsv.exportFromLive('elevators', 'ELEVATORS', {
     filename: LiftCoreCsv.datedName('elevators'),
     labels: LiftCoreCsv.LABELS.elevator,
     skip: LiftCoreCsv.SKIP_COMMON,
@@ -1853,7 +1853,7 @@ function exportExcel() {
     extraColumns: [
       { label: 'ملخص التحكم', value: function (e) { return typeof formatControlSummary === 'function' ? formatControlSummary(e) : ''; } }
     ]
-  });
+  }, filtered);
 }
 
 // ===== خريطة المصاعد =====

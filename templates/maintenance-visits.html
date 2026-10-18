@@ -2985,11 +2985,11 @@ function printVisit() {
 }
 
 function exportExcel() {
-  LiftCoreCsv.exportRecords(filtered, {
+  LiftCoreCsv.exportFromLive('maintenance-visits', 'VISITS', {
     filename: LiftCoreCsv.datedName('visits'),
     labels: LiftCoreCsv.LABELS.visit,
     skip: LiftCoreCsv.SKIP_COMMON
-  });
+  }, filtered);
 }
 
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }

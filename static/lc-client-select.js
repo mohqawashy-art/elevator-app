@@ -257,17 +257,26 @@
     input.addEventListener('focus', function () {
       if (input.disabled) return;
       renderList(state);
+      /* تحديد النص مرة واحدة عند فتح اختيار قائم. إعادة التركيز أثناء الكتابة
+         كانت تحدد الحرف الأول فيُستبدل بالحرف التالي. */
+      if (state._skipSelect) return;
+      var selected = state.hiddenEl && state.hiddenEl.value;
+      if (!selected) return;
+      var chosen = state.customers.find(function (x) { return String(x.id) === String(selected); });
+      if (!chosen || norm(input.value) !== norm(labelFor(chosen))) return;
       try { input.select(); } catch (e) { /* ignore */ }
     });
     list.addEventListener('mouseenter', function () { state.hover = true; });
     list.addEventListener('mouseleave', function () { state.hover = false; });
     input.addEventListener('blur', function () {
       setTimeout(function () {
+        if (document.activeElement !== input) state._skipSelect = false;
         if (!state.hover && document.activeElement !== input) closeList(state);
       }, 120);
     });
     input.addEventListener('input', function () {
       if (input.disabled) return;
+      state._skipSelect = true;
       hidden.value = '';
       syncClearBtn(state);
       renderList(state);

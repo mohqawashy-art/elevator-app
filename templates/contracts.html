@@ -1179,30 +1179,31 @@ function formatContractOutstandingCell(c) {
 }
 
 function hideExpiredContractsOn() {
+  try {
+    if (new URLSearchParams(window.location.search).get('hide_expired') === '1') return true;
+  } catch (e) { /* ignore */ }
   return !!(window.LIST_META && LIST_META.hide_expired);
 }
 
+function isHiddenExpiredContract(c) {
+  var display = getContractDisplayStatus(c);
+  return display === 'منتهي' || display === 'تم تجديده' || display === 'ملغي';
+}
+
 function toggleHideExpiredContracts() {
-  var on = hideExpiredContractsOn();
-  if (window.LIST_META && LIST_META.server && window.lcListGo) {
-    lcListGo({ hide_expired: on ? '' : '1', page: '1' });
-    return;
-  }
-  if (window.LIST_META) LIST_META.hide_expired = !on;
-  var btn = document.getElementById('btn-hide-expired');
-  if (btn) {
-    btn.classList.toggle('active', !on);
-    btn.textContent = !on ? 'إظهار العقود المنتهية' : 'إخفاء العقود المنتهية';
-  }
-  filtered = contractsVisiblePool();
-  if (tablePager) tablePager.resetPage();
-  filterTable();
+  var url = new URL(window.location.href);
+  if (hideExpiredContractsOn()) url.searchParams.set('hide_expired', '0');
+  else url.searchParams.set('hide_expired', '1');
+  url.searchParams.set('page', '1');
+  window.location.href = url.pathname + (url.searchParams.toString() ? '?' + url.searchParams.toString() : '');
 }
 
 function contractsVisiblePool() {
   var statusFilter = (document.getElementById('f-status') && document.getElementById('f-status').value) || '';
-  if (!hideExpiredContractsOn() || statusFilter === 'منتهي') return CONTRACTS.slice();
-  return CONTRACTS.filter(function (c) { return getContractDisplayStatus(c) !== 'منتهي'; });
+  if (!hideExpiredContractsOn() || statusFilter === 'منتهي' || statusFilter === 'تم تجديده' || statusFilter === 'ملغي') {
+    return CONTRACTS.slice();
+  }
+  return CONTRACTS.filter(function (c) { return !isHiddenExpiredContract(c); });
 }
 
 function contractsMapPool() {
@@ -2796,7 +2797,7 @@ function loadClientElevators(selectedIds, opts) {
 }
 
 function exportExcel() {
-  LiftCoreCsv.exportRecords(filtered, {
+  LiftCoreCsv.exportFromLive('contracts', 'CONTRACTS', {
     filename: LiftCoreCsv.datedName('contracts'),
     labels: LiftCoreCsv.LABELS.contract,
     skip: LiftCoreCsv.SKIP_COMMON,
@@ -2820,7 +2821,7 @@ function exportExcel() {
         }
       }
     ]
-  });
+  }, filtered);
 }
 
 // ===== استيراد العقود =====

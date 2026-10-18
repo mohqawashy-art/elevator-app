@@ -147,8 +147,55 @@ def test_office_field_today_tracking_lists_visits_and_faults(client):
     codes = [i.get('code') for i in data.get('items', [])]
     assert 'VI-TRK1' in codes
     assert 'FA-TRK1' in codes
-    assert any(t.get('name') == 'فني متابعة' for t in data.get('technicians', []))
+    visit_row = next(i for i in data.get('items', []) if i.get('code') == 'VI-TRK1')
+    assert visit_row.get('elevator') == 'E-TRK'
+    tech = next(t for t in data.get('technicians', []) if t.get('name') == 'فني متابعة')
+    assert tech.get('current_elevator') == 'E-TRK'
     assert '/report?back=/field-today-tracking' in (data.get('items') or [{}])[0].get('office_url', '')
+
+
+def test_field_today_tracking_shows_elevator_and_report_end_time(client):
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid,
+            code='T-END',
+            name='فني انتهاء',
+            phone='0509998877',
+            team='صيانة',
+            status='متاح',
+        )
+        db.session.add(tech)
+        db.session.flush()
+        cust = Customer(organization_id=oid, code='C-END', name='عميل انتهاء', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='EL-0157', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        db.session.add(MaintenanceVisit(
+            organization_id=oid,
+            code='VI-END1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            visit_date=date.today(),
+            status='مكتملة',
+            completed_at=datetime.utcnow(),
+            checklist_json='{"meta":{"arrival_time":"09:10","end_time":"14:35"}}',
+        ))
+        db.session.commit()
+
+    api = client.get('/api/field-today-tracking')
+    assert api.status_code == 200
+    data = api.get_json() or {}
+    row = next(i for i in data.get('items', []) if i.get('code') == 'VI-END1')
+    assert row.get('elevator') == 'EL-0157'
+    assert row.get('end_time') == '14:35'
+    assert '14:35' in (row.get('action_label') or '')
+    tech = next(t for t in data.get('technicians', []) if t.get('name') == 'فني انتهاء')
+    assert tech.get('current_elevator') == 'EL-0157'
+    assert tech.get('current_end_time') == '14:35'
 
 
 def test_field_today_tracking_uses_contract_address(client):

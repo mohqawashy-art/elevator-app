@@ -1978,11 +1978,11 @@ async function confirmImport(){
 
 // ===== تصدير =====
 function exportExcel(){
-  LiftCoreCsv.exportRecords(filtered, {
+  LiftCoreCsv.exportFromLive('clients', 'CUSTOMERS', {
     filename: LiftCoreCsv.datedName('clients'),
     labels: LiftCoreCsv.LABELS.client,
     skip: LiftCoreCsv.SKIP_COMMON
-  });
+  }, filtered);
 }
 
 // ===== مشترك =====
