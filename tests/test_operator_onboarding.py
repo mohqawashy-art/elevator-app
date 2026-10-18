@@ -217,6 +217,37 @@ def test_invite_email_reports_missing_api_key(ob_client, monkeypatch):
     assert result['reason'] == 'mail_not_configured'
 
 
+def test_cancel_invite_from_admin_list(ob_client):
+    with app.app_context():
+        inv = create_invite(
+            plan='liftcore',
+            contact_email='cancel@test.com',
+            contact_name='إلغاء',
+        )['invite']
+        invite_id = inv.id
+    _login_ops(ob_client)
+    page = ob_client.get('/platform/invites', base_url=ADMIN_URL)
+    assert page.status_code == 200
+    assert 'إلغاء الدعوة' in page.get_data(as_text=True)
+
+    r = ob_client.post(
+        f'/operator/onboarding/{invite_id}/cancel',
+        data={'next': '/platform/invites'},
+        base_url=ADMIN_URL,
+        follow_redirects=False,
+    )
+    assert r.status_code in (302, 303)
+    assert r.headers.get('Location', '').endswith('/platform/invites')
+    with app.app_context():
+        saved = db.session.get(OnboardingInvite, invite_id)
+        assert saved.status == 'cancelled'
+
+    again = ob_client.get('/platform/invites', base_url=ADMIN_URL)
+    body = again.get_data(as_text=True)
+    assert 'تم إلغاء الدعوة' in body
+    assert f'/operator/onboarding/{invite_id}/cancel' not in body
+
+
 def test_operator_detail_page(ob_client):
     with app.app_context():
         inv = create_invite(

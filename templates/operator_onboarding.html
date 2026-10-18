@@ -113,6 +113,11 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-secondary btn-sm">إعادة إرسال الرابط</button>
           </form>
+          <form method="post" action="{{ url_for('operator_onboarding_cancel', invite_id=inv.id) }}" style="display:inline-block;margin-top:6px" onsubmit="return confirm('إلغاء هذه الدعوة؟ لن يستطيع العميل استخدام الرابط بعدها.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="btn btn-danger btn-sm">إلغاء الدعوة</button>
+          </form>
           {% endif %}
           {% if inv.status == 'activated' %}
           <form method="post" action="{{ url_for('operator_onboarding_resend_credentials', invite_id=inv.id) }}" style="margin-top:6px" onsubmit="return confirm('توليد كلمة مرور جديدة وإرسالها للعميل؟')">

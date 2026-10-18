@@ -3734,12 +3734,30 @@ def operator_onboarding_cancel(invite_id):
     if not user:
         abort(404)
     inv = db.session.get(OnboardingInvite, invite_id)
-    if inv and inv.status in ('pending', 'submitted'):
+    if not inv:
+        abort(404)
+    if inv.status in ('pending', 'submitted'):
         inv.status = 'cancelled'
         db.session.commit()
-        session['op_notice'] = 'تم إلغاء الدعوة.'
-        session['op_notice_type'] = 'info'
-    return redirect(url_for('operator_onboarding'))
+        msg, ntype = 'تم إلغاء الدعوة.', 'info'
+    else:
+        msg, ntype = 'لا يمكن إلغاء هذه الدعوة.', 'warn'
+
+    next_url = (request.form.get('next') or '').strip()
+    if (
+        not next_url.startswith('/')
+        or next_url.startswith('//')
+        or '\\' in next_url
+        or any(ch in next_url for ch in '\r\n\t')
+    ):
+        next_url = url_for('platform_invites')
+    if next_url.startswith('/operator/'):
+        session['op_notice'] = msg
+        session['op_notice_type'] = ntype
+    else:
+        session['plat_notice'] = msg
+        session['plat_notice_type'] = ntype
+    return redirect(next_url)
 
 
 # =============================================

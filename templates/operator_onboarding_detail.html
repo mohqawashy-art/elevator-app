@@ -66,6 +66,11 @@
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button type="submit" class="btn btn-secondary">إعادة إرسال رابط الفورم</button>
     </form>
+    <form method="post" action="{{ url_for('operator_onboarding_cancel', invite_id=inv.id) }}" onsubmit="return confirm('إلغاء هذه الدعوة؟ لن يستطيع العميل استخدام الرابط بعدها.')">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <button type="submit" class="btn btn-danger">إلغاء الدعوة</button>
+    </form>
   </div>
 </div>
 {% endif %}

@@ -24,7 +24,16 @@
           {% if inv.submitted_at %}تعبئة: {{ inv.submitted_at }}<br>{% endif %}
           {% if inv.activated_at %}تفعيل: {{ inv.activated_at }}{% endif %}
         </td>
-        <td><a class="btn btn-secondary btn-sm" href="/operator/onboarding/{{ inv.id }}">تفاصيل</a></td>
+        <td style="white-space:nowrap">
+          <a class="btn btn-secondary btn-sm" href="/operator/onboarding/{{ inv.id }}">تفاصيل</a>
+          {% if inv.status in ('pending', 'submitted') %}
+          <form method="post" action="{{ url_for('operator_onboarding_cancel', invite_id=inv.id) }}" style="display:inline" onsubmit="return confirm('إلغاء هذه الدعوة؟ لن يستطيع العميل استخدام الرابط بعدها.')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="btn btn-danger btn-sm">إلغاء الدعوة</button>
+          </form>
+          {% endif %}
+        </td>
       </tr>
       {% else %}
       <tr><td colspan="7" class="muted">لا دعوات.</td></tr>
