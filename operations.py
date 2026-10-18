@@ -3534,6 +3534,83 @@ def visit_report_customer_whatsapp(visit_id: int, base_url: str = '') -> dict:
     }
 
 
+def build_fault_report_customer_message(
+    fault: Fault,
+    *,
+    report_url: str,
+    company_name: str = '',
+) -> str:
+    elev = fault.elevator
+    cust = elev.customer if elev else None
+    cust_name = (fault.reporter_name or (cust.name if cust else '') or 'عميلنا الكريم').strip()
+    company = (company_name or '').strip() or 'LiftCore'
+    elev_code = elev.code if elev else '—'
+    building = ((elev.building_name if elev else '') or '').strip()
+    tech_name = fault.technician.name if fault.technician else 'فريق الصيانة'
+    reported = fault.reported_at.strftime('%Y-%m-%d') if fault.reported_at else '—'
+    lines = [
+        f'مرحباً {cust_name}',
+        'تقرير إصلاح العطل جاهز.',
+        f'رقم البلاغ: {fault.code}',
+        f'المصعد: {elev_code}',
+    ]
+    if building:
+        lines.append(f'المبنى: {building}')
+    lines.extend([
+        f'تاريخ البلاغ: {reported}',
+        f'الفني: {tech_name}',
+    ])
+    pdf = (report_url or '').strip()
+    if pdf:
+        lines.append(f'تقرير الإصلاح (PDF): {pdf}')
+    else:
+        lines.append('تقرير الإصلاح (PDF) جاهز لدى المكتب — يُرفق مع الرسالة عند الإرسال.')
+    lines.extend([
+        'نأمل أن يكون كل شيء على ما يرام.',
+        f'شكراً لثقتكم — {company}',
+    ])
+    return '\n'.join(lines)
+
+
+def fault_report_customer_whatsapp(fault_id: int, base_url: str = '') -> dict:
+    """تجهيز رسالة واتساب للعميل مع رابط تقرير العطل للطباعة/PDF."""
+    from fault_report import parse_fault_report_json, report_has_content
+    from fault_report_share import fault_report_share_url
+    from whatsapp_support import customer_phone_for_fault
+
+    f = tenant_get_or_404(Fault, fault_id)
+    phone = customer_phone_for_fault(f)
+    if not phone:
+        return {'ok': False, 'error': 'لا يوجد جوال واتساب مسجّل للعميل', 'url': ''}
+
+    saved = parse_fault_report_json(f.report_json)
+    if not report_has_content(saved):
+        return {'ok': False, 'error': 'التقرير فارغ — عبّئ تقرير العطل أولاً', 'url': ''}
+
+    from models import Settings
+
+    s = tenant_query(Settings).first()
+    company = (s.company_name if s and s.company_name else 'LiftCore')
+    oid = int(f.organization_id or 0)
+    if oid <= 0:
+        return {'ok': False, 'error': 'المؤسسة غير معروفة للعطل', 'url': ''}
+    report_url = fault_report_share_url(fault_id, oid, base_url)
+    msg = build_fault_report_customer_message(f, report_url=report_url, company_name=company)
+    url = whatsapp_url(phone, msg)
+    if not url:
+        return {'ok': False, 'error': 'رقم الجوال غير صالح لواتساب', 'url': ''}
+
+    cust = f.elevator.customer if f.elevator else None
+    return {
+        'ok': True,
+        'url': url,
+        'report_url': report_url,
+        'report_print_path': f'/faults/{fault_id}/report?print=1',
+        'customer_name': (cust.name if cust else ''),
+        'fault_code': f.code or '',
+    }
+
+
 def _document_sign_config() -> dict:
     from models import Settings
 

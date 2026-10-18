@@ -383,6 +383,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
                 <th class="th-sort" data-sort-col="reported_at">تاريخ البلاغ <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="customer">العميل <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="elevator">المصعد <span class="sort-ind"></span></th>
+                <th class="th-sort" data-sort-col="building">المبنى <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="fault_type">نوع العطل <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="priority">الأولوية <span class="sort-ind"></span></th>
                 <th class="th-sort" data-sort-col="technician">الفنيون <span class="sort-ind"></span></th>
@@ -1088,6 +1089,7 @@ function renderTable(data) {
       <td class="lc-date" style="direction:ltr;font-family:var(--font-en)">${f.reported_at || '—'}</td>
       <td class="td-name">${D(LC ? LC.name(f.customer, f.customer_name_en) : f.customer)}</td>
       <td class="td-code">${f.elevator}</td>
+      <td style="font-size:12px;color:var(--text2)">${D(f.building || '—')}</td>
       <td>${D(f.fault_type)}</td>
       <td><span class="badge ${PRIORITY_BADGE[f.priority]||'badge-active'}">${D(f.priority)}</span></td>
       <td>${D(f.technician)}</td>
@@ -1122,7 +1124,7 @@ function filterTable() {
   const s  = (document.getElementById('search-input')?.value||'');
   const searchFn = (window.LcSearch && LcSearch.safeMatch) ? LcSearch.safeMatch : (window.LcSearch && LcSearch.match);
   filtered = FAULTS.filter(f=>
-    (!searchFn || searchFn(s, [f.code, f.customer, f.customer_name_en, f.elevator, f.fault_type, f.client_report, f.description, f.technician, f.notes])) &&
+    (!searchFn || searchFn(s, [f.code, f.customer, f.customer_name_en, f.elevator, f.building, f.fault_type, f.client_report, f.description, f.technician, f.notes])) &&
     lcAllows('f-client', f.customer) &&
     lcAllows('f-priority', null, function(pr) { return faultMatchesPriority(f, pr); }) &&
     lcAllows('f-status', f.status) &&
@@ -1353,6 +1355,7 @@ function viewFault(id) {
       <div class="view-item"><div class="view-label">الكود</div><div class="view-val" style="font-family:var(--font-en)">${f.code}</div></div>
       <div class="view-item"><div class="view-label">العميل</div><div class="view-val">${f.customer}</div></div>
       <div class="view-item"><div class="view-label">المصعد</div><div class="view-val" style="font-family:var(--font-en)">${f.elevator}</div></div>
+      <div class="view-item"><div class="view-label">المبنى</div><div class="view-val">${f.building || '—'}</div></div>
       <div class="view-item"><div class="view-label">الفنيون</div><div class="view-val">${f.technician}</div></div>
       <div class="view-item"><div class="view-label">نوع العطل</div><div class="view-val">${f.fault_type}</div></div>
       <div class="view-item"><div class="view-label">الأولوية</div><div class="view-val"><span class="badge ${PRIORITY_BADGE[f.priority]||'badge-active'}">${f.priority}</span></div></div>

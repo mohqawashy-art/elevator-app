@@ -98,6 +98,11 @@ body.fr-report {
   color: #fff;
 }
 
+.fr-report .save-btn--wa {
+  background: #25D366;
+  color: #fff;
+}
+
 .fr-report .progress-pill {
   font-size: 11px;
   background: rgba(255, 255, 255, 0.18);

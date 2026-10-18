@@ -6292,6 +6292,7 @@ def _faults_js_list(faults):
             'code': f.code,
             'elevator_id': f.elevator_id,
             'elevator': elev.code if elev else '',
+            'building': _elevator_building_display(elev) if elev else '',
             'customer': cust.name if cust else '',
             'customer_name_en': (cust.name_en or '') if cust else '',
             'customer_id': cust.id if cust else None,
@@ -11083,6 +11084,16 @@ def public_document_file(token):
     return resp
 
 
+@app.route('/api/faults/<int:fault_id>/customer-report-send', methods=['POST'])
+def api_fault_report_customer_send(fault_id):
+    from operations import fault_report_customer_whatsapp
+
+    result = fault_report_customer_whatsapp(fault_id, request.url_root)
+    if not result.get('ok'):
+        return jsonify(result), 400
+    return jsonify(result)
+
+
 @app.route('/api/maintenance-visits/<int:visit_id>/customer-report-send', methods=['POST'])
 def api_visit_report_customer_send(visit_id):
     from operations import visit_report_customer_whatsapp
@@ -11445,6 +11456,7 @@ def office_fault_report(fault_id):
         fault_id, editable=not read_only, base_url=request.url_root
     )
     payload['back_url'] = _office_report_back_url(url_for('faults'))
+    payload['show_customer_send'] = True
     if not read_only and payload.get('tech_id'):
         payload['field_edit_url'] = url_for(
             'field_fault_report', fault_id=fault_id, tech_id=payload['tech_id']
