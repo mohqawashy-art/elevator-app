@@ -72,9 +72,9 @@ def parse_fault_report_json(raw: str | None) -> dict:
     if not isinstance(data, dict):
         return base
     meta = data.get('meta') if isinstance(data.get('meta'), dict) else {}
-    for key in base['meta']:
-        if key in meta:
-            base['meta'][key] = meta[key]
+    for key, val in meta.items():
+        if val is not None:
+            base['meta'][key] = val
     if isinstance(data.get('parts'), list):
         base['parts'] = data['parts']
     sig = data.get('signatures') if isinstance(data.get('signatures'), dict) else {}
@@ -106,6 +106,34 @@ def merge_fault_report(saved: dict | None, fault) -> dict:
         elif fault.status == 'انتظار قطع':
             meta['visit_outcome'] = meta.get('visit_outcome') or 'needs_parts'
     return merged
+
+
+def apply_report_context(
+    data: dict,
+    *,
+    elevator_brand: str = '',
+    elevator_model: str = '',
+    elevator_type: str = '',
+    contract_active: bool | None = None,
+    visit_date: str = '',
+) -> dict:
+    """يملأ الحقول الفارغة من سجل المصعد/العقد حتى لا يُفتح التقرير أبيض."""
+    meta = data.setdefault('meta', {})
+    saved_brand = (meta.get('elevator_brand') or '').strip()
+    brand = (elevator_brand or '').strip()
+    etype = (elevator_type or '').strip()
+    if brand and (not saved_brand or (etype and saved_brand == etype and saved_brand != brand)):
+        meta['elevator_brand'] = brand
+    if not (meta.get('elevator_model') or '').strip() and (elevator_model or '').strip():
+        meta['elevator_model'] = (elevator_model or '').strip()
+    current_ct = (meta.get('contract_type') or '').strip()
+    if contract_active is True and current_ct in ('', 'عقد صيانة نشط'):
+        meta['contract_type'] = 'عقد صيانة نشط'
+    elif contract_active is False and current_ct in ('', 'عقد صيانة نشط'):
+        meta['contract_type'] = 'بدون عقد'
+    if not (meta.get('visit_date') or '').strip() and (visit_date or '').strip():
+        meta['visit_date'] = visit_date.strip()[:10]
+    return data
 
 
 def report_has_content(data: dict) -> bool:
@@ -147,10 +175,8 @@ def apply_report_to_fault(fault, data: dict, *, mark_resolved: bool = False) -> 
     fault.client_report = meta.get('client_description') or fault.client_report
     diagnosis = (meta.get('diagnosis') or '').strip()
     action = (meta.get('action_taken') or '').strip()
-    prevention = (meta.get('prevention') or '').strip()
-    final_notes = (meta.get('final_notes') or '').strip()
-    notes_parts = [p for p in [diagnosis, prevention, final_notes] if p]
-    fault.tech_notes = '\n\n'.join(notes_parts) if notes_parts else fault.tech_notes
+    if diagnosis:
+        fault.tech_notes = diagnosis
     fault.resolution = action or fault.resolution
 
     outcome = meta.get('visit_outcome') or ''

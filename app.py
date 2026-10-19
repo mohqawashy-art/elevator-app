@@ -10969,9 +10969,20 @@ def public_fault_report(token):
     if not tenant_query(Fault).filter_by(id=fault_id).first():
         abort(404)
     payload = fault_report_payload(fault_id, editable=False, base_url=request.url_root)
+    from visit_report_media import rewrite_report_photos_for_public
+
+    report_data = rewrite_report_photos_for_public(
+        payload.get('report_data') or {},
+        fault_id,
+        token,
+        kind='faults',
+    )
+    payload['report_data'] = report_data
+    payload['report_data_json'] = json.dumps(report_data, ensure_ascii=False)
     payload['back_url'] = None
     payload['field_edit_url'] = None
     payload['public_view'] = True
+    payload['inventory_items'] = []
     payload['inventory_items_json'] = '[]'
     if isinstance(payload.get('technician'), dict):
         payload['technician']['national_id'] = ''
@@ -11482,6 +11493,66 @@ def office_fault_report(fault_id):
     else:
         payload['field_edit_url'] = None
     return render_template('fault-report.html', **payload)
+
+
+@app.route('/api/faults/<int:fault_id>/report-photo', methods=['POST'])
+def api_upload_fault_report_photo(fault_id):
+    """رفع صورة تقرير العطل — تُخزَّن كملف ويُرجَع رابطها."""
+    from technician_assignments import technician_assigned_to_fault
+    from visit_report_media import persist_data_url_photo, save_visit_report_photo_bytes
+
+    f = tenant_query(Fault).filter_by(id=fault_id).first()
+    if not f:
+        return jsonify({'ok': False, 'error': 'العطل غير موجود'}), 404
+    tech_id = getattr(g, 'field_tech_id', None)
+    if tech_id and not technician_assigned_to_fault(f, tech_id):
+        return jsonify({'ok': False, 'error': 'العطل غير مخصص لهذا الفني'}), 403
+
+    upload = request.files.get('photo')
+    if upload and upload.filename:
+        if not _ext_ok(upload.filename, {'jpg', 'jpeg', 'png', 'webp', 'gif'}):
+            return jsonify({'ok': False, 'error': 'صيغة الصورة غير مدعومة'}), 400
+        ext = upload.filename.rsplit('.', 1)[-1].lower()
+        try:
+            url = save_visit_report_photo_bytes(
+                app.root_path, fault_id, upload.read(), ext=ext, kind='faults',
+            )
+        except ValueError as e:
+            return jsonify({'ok': False, 'error': str(e)}), 400
+        return jsonify({'ok': True, 'url': url})
+
+    data = request.get_json(silent=True) or {}
+    data_url = (data.get('data_url') or data.get('url') or '').strip()
+    if not data_url:
+        return jsonify({'ok': False, 'error': 'لا توجد صورة'}), 400
+    try:
+        url = persist_data_url_photo(app.root_path, fault_id, data_url, kind='faults')
+    except ValueError as e:
+        return jsonify({'ok': False, 'error': str(e)}), 400
+    if not url:
+        return jsonify({'ok': False, 'error': 'تعذّر حفظ الصورة'}), 400
+    return jsonify({'ok': True, 'url': url})
+
+
+@app.route('/r/fault/<token>/p/<filename>')
+def public_fault_report_photo(token, filename):
+    """صورة تقرير العطل للعميل — مربوطة برابط المشاركة."""
+    from fault_report_share import load_fault_report_share_token
+    from visit_report_media import VISIT_PHOTO_NAME_RE, resolve_upload_file
+
+    if not VISIT_PHOTO_NAME_RE.match(filename or ''):
+        abort(404)
+    data = load_fault_report_share_token(token)
+    if not data:
+        abort(404)
+    _bind_public_organization(data['organization_id'])
+    fault_id = data['fault_id']
+    if not tenant_query(Fault).filter_by(id=fault_id).first():
+        abort(404)
+    found = resolve_upload_file(app.root_path, f'uploads/faults/{fault_id}/{filename}')
+    if not found:
+        abort(404)
+    return _serve_public_image(*found)
 
 
 @app.route('/api/faults/<int:fault_id>/report', methods=['POST'])

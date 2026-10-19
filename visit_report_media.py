@@ -20,23 +20,36 @@ EXT_BY_MIME = {
 MAX_PHOTO_BYTES = 8 * 1024 * 1024
 
 
-def visit_upload_dir(root_path: str, visit_id: int) -> str:
-    path = os.path.join(root_path, 'static', 'uploads', 'visits', str(int(visit_id)))
+def media_kind(kind: str | None) -> str:
+    return 'faults' if (kind or '') == 'faults' else 'visits'
+
+
+def entity_upload_dir(root_path: str, entity_id: int, kind: str = 'visits') -> str:
+    folder = media_kind(kind)
+    path = os.path.join(root_path, 'static', 'uploads', folder, str(int(entity_id)))
     os.makedirs(path, exist_ok=True)
     return path
 
 
-def is_persisted_visit_photo_url(url: str) -> bool:
+def visit_upload_dir(root_path: str, visit_id: int) -> str:
+    return entity_upload_dir(root_path, visit_id, 'visits')
+
+
+def is_persisted_photo_url(url: str) -> bool:
     u = (url or '').strip()
-    return u.startswith('/static/uploads/visits/')
+    return u.startswith('/static/uploads/visits/') or u.startswith('/static/uploads/faults/')
 
 
-def persist_data_url_photo(root_path: str, visit_id: int, data_url: str) -> str:
-    """حفظ data URL كملف — يُرجع مسار /static/uploads/visits/..."""
+def is_persisted_visit_photo_url(url: str) -> bool:
+    return is_persisted_photo_url(url) and (url or '').strip().startswith('/static/uploads/visits/')
+
+
+def persist_data_url_photo(root_path: str, entity_id: int, data_url: str, *, kind: str = 'visits') -> str:
+    """حفظ data URL كملف — يُرجع مسار /static/uploads/..."""
     data_url = (data_url or '').strip()
     if not data_url:
         return ''
-    if is_persisted_visit_photo_url(data_url):
+    if is_persisted_photo_url(data_url):
         return data_url
     if data_url.startswith('http://') or data_url.startswith('https://'):
         return data_url
@@ -54,19 +67,20 @@ def persist_data_url_photo(root_path: str, visit_id: int, data_url: str) -> str:
         raise ValueError('حجم الصورة كبير جداً')
 
     name = f'{uuid.uuid4().hex[:12]}.{ext}'
-    folder = visit_upload_dir(root_path, visit_id)
+    folder = entity_upload_dir(root_path, entity_id, kind)
     abs_path = os.path.join(folder, name)
     with open(abs_path, 'wb') as fh:
         fh.write(raw)
-    return f'/static/uploads/visits/{int(visit_id)}/{name}'
+    return f'/static/uploads/{media_kind(kind)}/{int(entity_id)}/{name}'
 
 
 def save_visit_report_photo_bytes(
     root_path: str,
-    visit_id: int,
+    entity_id: int,
     raw: bytes,
     *,
     ext: str = 'jpg',
+    kind: str = 'visits',
 ) -> str:
     ext = (ext or 'jpg').lower().lstrip('.')
     if ext not in ('jpg', 'jpeg', 'png', 'webp', 'gif'):
@@ -74,19 +88,25 @@ def save_visit_report_photo_bytes(
     if not raw or len(raw) > MAX_PHOTO_BYTES:
         raise ValueError('حجم الصورة كبير جداً')
     name = f'{uuid.uuid4().hex[:12]}.{ext}'
-    folder = visit_upload_dir(root_path, visit_id)
+    folder = entity_upload_dir(root_path, entity_id, kind)
     with open(os.path.join(folder, name), 'wb') as fh:
         fh.write(raw)
-    return f'/static/uploads/visits/{int(visit_id)}/{name}'
+    return f'/static/uploads/{media_kind(kind)}/{int(entity_id)}/{name}'
 
 
-def normalize_report_photos(root_path: str, visit_id: int, photos: list | None) -> list[dict[str, str]]:
+def normalize_report_photos(
+    root_path: str,
+    entity_id: int,
+    photos: list | None,
+    *,
+    kind: str = 'visits',
+) -> list[dict[str, str]]:
     """توحيد قائمة الصور — data URL → ملف، مع captions."""
     out: list[dict[str, str]] = []
     for ph in photos or []:
         if not isinstance(ph, dict):
             continue
-        url = persist_data_url_photo(root_path, visit_id, ph.get('url') or '')
+        url = persist_data_url_photo(root_path, entity_id, ph.get('url') or '', kind=kind)
         if not url:
             continue
         out.append({
@@ -102,10 +122,10 @@ VISIT_PHOTO_NAME_RE = re.compile(
 )
 
 
-def visit_photo_filename(url: str, visit_id: int) -> str:
-    """اسم الملف إن كان الرابط صورة هذه الزيارة تحت uploads."""
+def visit_photo_filename(url: str, entity_id: int, *, kind: str = 'visits') -> str:
+    """اسم الملف إن كان الرابط صورة هذا السجل تحت uploads."""
     path = (url or '').strip().split('?', 1)[0].replace('\\', '/')
-    prefix = f'/static/uploads/visits/{int(visit_id)}/'
+    prefix = f'/static/uploads/{media_kind(kind)}/{int(entity_id)}/'
     if not path.startswith(prefix):
         return ''
     name = path[len(prefix):]
@@ -114,23 +134,30 @@ def visit_photo_filename(url: str, visit_id: int) -> str:
     return name
 
 
-def public_visit_photo_url(token: str, url: str, visit_id: int) -> str:
-    """رابط صورة يفتحه العميل من محضر المشاركة بدون تسجيل دخول."""
+def public_visit_photo_url(token: str, url: str, entity_id: int, *, kind: str = 'visits') -> str:
+    """رابط صورة يفتحه العميل من المحضر المشترك بدون تسجيل دخول."""
     raw = (url or '').strip()
-    name = visit_photo_filename(raw, visit_id)
+    name = visit_photo_filename(raw, entity_id, kind=kind)
     if name:
-        return f'/r/visit/{token}/p/{name}'
+        route = 'fault' if media_kind(kind) == 'faults' else 'visit'
+        return f'/r/{route}/{token}/p/{name}'
     if raw.startswith('data:image/') or raw.startswith('http://') or raw.startswith('https://'):
         return raw
     return ''
 
 
-def rewrite_report_photos_for_public(report_data: dict, visit_id: int, token: str) -> dict:
+def rewrite_report_photos_for_public(
+    report_data: dict,
+    entity_id: int,
+    token: str,
+    *,
+    kind: str = 'visits',
+) -> dict:
     photos: list[dict[str, str]] = []
     for ph in report_data.get('photos') or []:
         if not isinstance(ph, dict):
             continue
-        url = public_visit_photo_url(token, ph.get('url') or '', visit_id)
+        url = public_visit_photo_url(token, ph.get('url') or '', entity_id, kind=kind)
         if not url:
             continue
         photos.append({

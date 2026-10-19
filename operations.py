@@ -2820,6 +2820,55 @@ def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
     }
 
 
+def _contract_for_fault_report(elev, ref_date):
+    if not elev:
+        return None
+    from entity_links import active_contract_for_elevator
+    from models import Contract, ContractElevator
+
+    contract = active_contract_for_elevator(elev.id, ref_date)
+    if contract:
+        return contract
+    link = tenant_query(ContractElevator).filter_by(elevator_id=elev.id).first()
+    if not link:
+        return None
+    return tenant_query(Contract).filter_by(id=link.contract_id).first()
+
+
+def _enrich_fault_report_record(data: dict, fault) -> dict:
+    """ماركة/موديل/عقد/تاريخ من السجلات عندما تكون خانات التقرير فارغة."""
+    from fault_report import apply_report_context
+
+    elev = fault.elevator if fault else None
+    ref = fault.reported_at.date() if fault and fault.reported_at else None
+    contract = _contract_for_fault_report(elev, ref) if elev else None
+    visit_date = ''
+    if fault and fault.reported_at:
+        visit_date = fault.reported_at.strftime('%Y-%m-%d')
+    return apply_report_context(
+        data,
+        elevator_brand=(elev.brand if elev else '') or '',
+        elevator_model=(elev.model if elev else '') or '',
+        elevator_type=(elev.elev_type if elev else '') or '',
+        contract_active=bool(contract),
+        visit_date=visit_date,
+    )
+
+
+def _persist_fault_report_photos(fault_id: int, data: dict) -> dict:
+    photos = data.get('photos') if isinstance(data.get('photos'), list) else []
+    if not photos:
+        data['photos'] = []
+        return data
+    from flask import current_app
+    from visit_report_media import normalize_report_photos
+
+    data['photos'] = normalize_report_photos(
+        current_app.root_path, fault_id, photos, kind='faults',
+    )
+    return data
+
+
 def fault_report_payload(
     fault_id: int,
     *,
@@ -2852,17 +2901,32 @@ def fault_report_payload(
             raise PermissionError('العطل غير مخصص لهذا الفني')
     elev = f.elevator
     cust = elev.customer if elev else None
-    contract = None
-    if elev:
-        from models import Contract, ContractElevator
-        link = tenant_query(ContractElevator).filter_by(elevator_id=elev.id).first()
-        if link:
-            contract = tenant_query(Contract).filter_by(id=link.contract_id).first()
+    ref_date = f.reported_at.date() if f.reported_at else None
+    contract = _contract_for_fault_report(elev, ref_date)
+    site = _field_site_payload(elev, contract=contract, visit_date=ref_date, base_url=base_url)
     tech = f.technician
     saved = parse_fault_report_json(f.report_json)
-    report_data = merge_fault_report(saved, f)
+    report_data = _enrich_fault_report_record(merge_fault_report(saved, f), f)
+    from visit_report_media import photos_need_migration
+
+    if photos_need_migration(report_data.get('photos')):
+        report_data = _persist_fault_report_photos(f.id, report_data)
+        f.report_json = json.dumps(report_data, ensure_ascii=False)
+        db.session.commit()
     stats = report_stats(report_data)
     reported = f.reported_at.strftime('%Y-%m-%d %H:%M') if f.reported_at else ''
+    inventory_items = [
+        {
+            'id': i.id,
+            'code': i.code,
+            'name': i.name,
+            'unit': i.unit or 'قطعة',
+            'buy_price': i.buy_price or 0,
+            'sell_price': i.sell_price or 0,
+            'current_qty': i.current_qty or 0,
+        }
+        for i in tenant_query(InventoryItem).order_by(InventoryItem.name).all()
+    ]
 
     return {
         'fault_id': f.id,
@@ -2886,14 +2950,16 @@ def fault_report_payload(
             'code': cust.code if cust else '',
             'phone': cust.phone if cust else '',
             'city': cust.city if cust else '',
-            'district': cust.district if cust else '',
-            'address': cust.address if cust else '',
+            'district': (site.get('district') or '') if site.get('district') not in ('', '—') else ((cust.district if cust else '') or ''),
+            'address': (site.get('address') or '').strip() or ((cust.address if cust else '') or ''),
             'building_photo': customer_photo_url(cust, base_url) if cust else '',
         },
         'elevator': {
             'code': elev.code if elev else '',
-            'brand': (elev.elev_type if elev else '') or '',
-            'building': elev.building_name if elev else '',
+            'brand': (elev.brand if elev else '') or '',
+            'model': (elev.model if elev else '') or '',
+            'type': (elev.elev_type if elev else '') or '',
+            'building': (site.get('building') or '') if (site.get('building') or '') not in ('', '—') else ((elev.building_name if elev else '') or ''),
         },
         'contract': {
             'code': contract.code if contract else '',
@@ -2908,18 +2974,8 @@ def fault_report_payload(
         'fault_type_options_json': json.dumps(FAULT_TYPE_OPTIONS, ensure_ascii=False),
         'report_data': report_data,
         'report_data_json': json.dumps(report_data, ensure_ascii=False),
-        'inventory_items_json': json.dumps([
-            {
-                'id': i.id,
-                'code': i.code,
-                'name': i.name,
-                'unit': i.unit or 'قطعة',
-                'buy_price': i.buy_price or 0,
-                'sell_price': i.sell_price or 0,
-                'current_qty': i.current_qty or 0,
-            }
-            for i in tenant_query(InventoryItem).order_by(InventoryItem.name).all()
-        ], ensure_ascii=False),
+        'inventory_items': inventory_items,
+        'inventory_items_json': json.dumps(inventory_items, ensure_ascii=False),
         'logo_url': _report_brand_logo_url(),
         'company_name': _report_company_name(),
         'company_name_en': _report_company_name_en(),
@@ -2965,23 +3021,33 @@ def save_fault_report(
     if isinstance(payload, dict):
         meta = payload.get('meta') or {}
         if isinstance(meta, dict):
-            for key in merged['meta']:
-                if key in meta:
-                    merged['meta'][key] = meta.get(key) if meta.get(key) is not None else ''
+            for key, val in meta.items():
+                if val is None:
+                    continue
+                merged['meta'][key] = val
         if isinstance(payload.get('parts'), list):
             merged['parts'] = payload['parts']
         sig = payload.get('signatures') or {}
         if isinstance(sig, dict):
-            for key in merged['signatures']:
-                merged['signatures'][key] = sig.get(key) or merged['signatures'].get(key) or ''
+            for key in list(merged['signatures']) + [k for k in sig if k not in merged['signatures']]:
+                if key in sig:
+                    merged['signatures'][key] = sig.get(key) or merged['signatures'].get(key) or ''
         if isinstance(payload.get('photos'), list):
             merged['photos'] = payload['photos']
 
     _preserve_field_start_times(merged, existing)
+    prior_end = ((existing.get('meta') or {}).get('end_time') or '').strip()
+    if prior_end and not (merged['meta'].get('end_time') or '').strip():
+        merged['meta']['end_time'] = prior_end
+    merged = _enrich_fault_report_record(merged, f)
 
     if mark_resolved:
+        kept_end = (merged['meta'].get('end_time') or '').strip()
         merged['meta'] = _apply_field_end_timestamp(merged.get('meta') or {})
+        if kept_end:
+            merged['meta']['end_time'] = kept_end
 
+    merged = _persist_fault_report_photos(f.id, merged)
     apply_report_to_fault(f, merged, mark_resolved=mark_resolved)
     if status:
         f.status = status
@@ -3153,7 +3219,7 @@ def stamp_field_fault_arrival(fault_id: int, tech_id: int | None = None) -> None
     if tech_id and not technician_assigned_to_fault(f, tech_id):
         raise PermissionError('العطل غير مخصص لهذا الفني')
     saved = parse_fault_report_json(f.report_json)
-    data = merge_fault_report(saved, f)
+    data = _enrich_fault_report_record(merge_fault_report(saved, f), f)
     meta = data['meta']
     if (meta.get('arrival_time') or '').strip():
         return
@@ -3730,9 +3796,36 @@ def complete_field_fault(
     if close_err:
         raise ValueError(close_err)
     f = tenant_get_or_404(Fault, fault_id)
-    f.tech_notes = tech_notes
-    f.resolution = resolution
-    f.status = status or FAULT_STATUS_FIXED
+    from fault_report import merge_fault_report, parse_fault_report_json
+
+    old_status = f.status or ''
+    old_notes = (f.tech_notes or '').strip()
+    old_resolution = (f.resolution or '').strip()
+    notes = (tech_notes or '').strip()
+    res = (resolution or '').strip()
+    new_status = status or FAULT_STATUS_FIXED
+    data = _enrich_fault_report_record(merge_fault_report(parse_fault_report_json(f.report_json), f), f)
+    meta = data['meta']
+    if notes and (not (meta.get('diagnosis') or '').strip() or notes != old_notes):
+        meta['diagnosis'] = notes
+    if res and (not (meta.get('action_taken') or '').strip() or res != old_resolution):
+        meta['action_taken'] = res
+    if new_status != old_status:
+        if new_status in FAULT_CLOSED:
+            meta['visit_outcome'] = 'solved'
+        elif new_status == 'انتظار قطع':
+            meta['visit_outcome'] = 'needs_parts'
+        elif new_status == 'قيد المعالجة':
+            meta['visit_outcome'] = 'partial'
+    elif not (meta.get('visit_outcome') or '').strip():
+        if new_status in FAULT_CLOSED:
+            meta['visit_outcome'] = 'solved'
+        elif new_status == 'انتظار قطع':
+            meta['visit_outcome'] = 'needs_parts'
+    f.report_json = json.dumps(data, ensure_ascii=False)
+    f.tech_notes = notes
+    f.resolution = res
+    f.status = new_status
     f.resolved_at = datetime.utcnow()
     close_field_portal_tasks_for_fault(f)
     db.session.commit()

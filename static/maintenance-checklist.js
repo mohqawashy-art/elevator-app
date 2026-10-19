@@ -273,8 +273,9 @@
 
   function reportPhotoUploadUrl() {
     const cfg = global.REPORT_CFG || {};
-    if (!cfg.visitId) return '';
-    return '/api/maintenance-visits/' + cfg.visitId + '/report-photo';
+    if (cfg.faultId) return '/api/faults/' + cfg.faultId + '/report-photo';
+    if (cfg.visitId) return '/api/maintenance-visits/' + cfg.visitId + '/report-photo';
+    return '';
   }
 
   function uploadVisitReportPhoto(dataUrl) {
@@ -382,7 +383,7 @@
     const jobs = [];
     document.querySelectorAll('.photo-slot.has-img').forEach(function (slot) {
       const stored = slot.getAttribute('data-photo-url') || '';
-      if (stored.indexOf('/static/uploads/visits/') === 0) return;
+      if (stored.indexOf('/static/uploads/visits/') === 0 || stored.indexOf('/static/uploads/faults/') === 0) return;
       const img = slot.querySelector('img');
       const src = img && img.src;
       if (!src || src.indexOf('data:') !== 0) return;
@@ -515,7 +516,7 @@
     const cap = slot.querySelector('.photo-caption-input');
     slot.insertBefore(img, cap || null);
     slot.classList.add('has-img');
-    if (dataUrl && dataUrl.indexOf('/static/uploads/visits/') === 0) {
+    if (dataUrl && (dataUrl.indexOf('/static/uploads/visits/') === 0 || dataUrl.indexOf('/static/uploads/faults/') === 0)) {
       slot.setAttribute('data-photo-url', dataUrl);
     }
     syncPhotoVisibility();

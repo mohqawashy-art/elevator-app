@@ -76,9 +76,9 @@
   <div class="section" style="margin-top:12px">
     <div class="sec-title"><span class="sec-dot"></span> بيانات الزيارة</div>
     <div class="row row-4">
-      <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="visit-date" {% if not editable or field_times_locked %}readonly{% endif %}></div>
-      <div class="field"><label>وقت الوصول</label><input type="time" id="arrival-time" {% if not editable or field_times_locked %}readonly{% endif %}></div>
-      <div class="field"><label>وقت الانتهاء</label><input type="time" id="end-time" {% if not editable or field_times_locked %}readonly{% endif %}></div>
+      <div class="field"><label>تاريخ الزيارة</label><input type="date" lang="en-GB" id="visit-date" value="{{ report_data.meta.visit_date or '' }}" {% if not editable or field_times_locked %}readonly{% endif %}></div>
+      <div class="field"><label>وقت الوصول</label><input type="time" id="arrival-time" value="{{ report_data.meta.arrival_time or '' }}" {% if not editable or field_times_locked %}readonly{% endif %}></div>
+      <div class="field"><label>وقت الانتهاء</label><input type="time" id="end-time" value="{{ report_data.meta.end_time or '' }}" {% if not editable %}readonly{% endif %}></div>
       <div class="field"><label>الفني المنفذ</label><input type="text" value="{{ technician.name }}" readonly></div>
     </div>
   </div>
@@ -92,17 +92,24 @@
       <div class="field"><label>العنوان</label><input type="text" value="{{ customer.address or '—' }}" readonly></div>
     </div>
     <div class="row row-4">
-      <div class="field"><label>كود المصعد</label><input type="text" value="{{ elevator.code }}" readonly class="lc-code-field"></div>
-      <div class="field"><label>ماركة المصعد</label><input type="text" id="elevator-brand" value="{{ elevator.brand }}" {% if not editable %}readonly{% endif %}></div>
-      <div class="field"><label>موديل / السنة</label><input type="text" id="elevator-model" {% if not editable %}readonly{% endif %}></div>
+      <div class="field"><label>كود المصعد</label><input type="text" value="{{ elevator.code or '—' }}" readonly class="lc-code-field"></div>
+      <div class="field"><label>ماركة المصعد</label><input type="text" id="elevator-brand" value="{{ report_data.meta.elevator_brand or elevator.brand or '' }}" {% if not editable %}readonly{% endif %}></div>
+      <div class="field"><label>موديل / السنة</label><input type="text" id="elevator-model" value="{{ report_data.meta.elevator_model or elevator.model or '' }}" {% if not editable %}readonly{% endif %}></div>
       <div class="field"><label>نوع العقد</label>
+        {% set ct = report_data.meta.contract_type or contract.type %}
         <select id="contract-type" {% if not editable %}disabled{% endif %}>
-          <option {% if contract.type == 'عقد صيانة نشط' %}selected{% endif %}>عقد صيانة نشط</option>
-          <option>عقد ضمان</option>
-          <option>خارج العقد — بفاتورة</option>
-          <option>بدون عقد</option>
+          <option value="عقد صيانة نشط" {% if ct == 'عقد صيانة نشط' %}selected{% endif %}>عقد صيانة نشط</option>
+          <option value="عقد ضمان" {% if ct == 'عقد ضمان' %}selected{% endif %}>عقد ضمان</option>
+          <option value="خارج العقد — بفاتورة" {% if ct == 'خارج العقد — بفاتورة' %}selected{% endif %}>خارج العقد — بفاتورة</option>
+          <option value="بدون عقد" {% if ct == 'بدون عقد' %}selected{% endif %}>بدون عقد</option>
         </select>
       </div>
+    </div>
+    <div class="row row-4">
+      <div class="field"><label>اسم المُبلِّغ</label><input type="text" value="{{ fault.reporter_name or '—' }}" readonly></div>
+      <div class="field"><label>الحي</label><input type="text" value="{{ customer.district or '—' }}" readonly></div>
+      <div class="field"><label>نوع المصعد</label><input type="text" value="{{ elevator.type or '—' }}" readonly></div>
+      <div class="field"><label>الأولوية</label><input type="text" value="{{ fault.priority or '—' }}" readonly></div>
     </div>
   </div>
 
@@ -110,25 +117,29 @@
     <div class="sec-title red-sec"><span class="sec-dot" style="background:#fff"></span> تفاصيل العطل</div>
     <div class="field" style="margin-bottom:8px">
       <label>وصف العطل كما أبلغ عنه العميل</label>
-      <textarea id="client-description" rows="2" {% if not editable %}readonly{% endif %}></textarea>
+      <textarea id="client-description" rows="2" {% if not editable %}readonly{% endif %}>{{ report_data.meta.client_description or fault.client_report or '' }}</textarea>
     </div>
     <div class="field" style="margin-bottom:8px">
       <label>نوع العطل</label>
-      <div class="checkbox-group" id="fault-types-root"></div>
+      <div class="checkbox-group" id="fault-types-root">
+        {% for t in fault_type_options %}
+        <label class="checkbox-item"><input type="checkbox" value="{{ t }}" {% if t in (report_data.meta.fault_types or []) %}checked{% endif %} {% if not editable %}disabled{% endif %}> {{ t }}</label>
+        {% endfor %}
+      </div>
     </div>
     <div class="row row-2">
       <div class="field">
         <label>التشخيص الفني</label>
-        <textarea id="diagnosis" rows="3" placeholder="سبب العطل بعد الفحص..." {% if not editable %}readonly{% endif %}></textarea>
+        <textarea id="diagnosis" rows="3" placeholder="سبب العطل بعد الفحص..." {% if not editable %}readonly{% endif %}>{{ report_data.meta.diagnosis or '' }}</textarea>
       </div>
       <div class="field">
         <label>الإجراء المتخذ</label>
-        <textarea id="action-taken" rows="3" placeholder="ماذا تم عمله..." {% if not editable %}readonly{% endif %}></textarea>
+        <textarea id="action-taken" rows="3" placeholder="ماذا تم عمله..." {% if not editable %}readonly{% endif %}>{{ report_data.meta.action_taken or '' }}</textarea>
       </div>
     </div>
     <div class="field" style="margin-top:8px">
       <label>ضمان عدم التكرار</label>
-      <textarea id="prevention" rows="2" {% if not editable %}readonly{% endif %}></textarea>
+      <textarea id="prevention" rows="2" {% if not editable %}readonly{% endif %}>{{ report_data.meta.prevention or '' }}</textarea>
     </div>
   </div>
 
@@ -137,14 +148,27 @@
     <div class="parts-table-wrap">
       <table class="parts-table">
         <thead><tr><th>صنف من المخزن</th><th>اسم القطعة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th><th></th></tr></thead>
-        <tbody id="parts-body"></tbody>
+        <tbody id="parts-body">
+          {% for p in report_data.parts or [] %}
+          {% if p.name or p.item_id %}
+          <tr>
+            <td></td>
+            <td><input type="text" class="part-name" value="{{ p.name or '' }}" readonly></td>
+            <td><input type="text" class="qty-input" value="{{ p.qty or 1 }}" readonly></td>
+            <td><input type="text" class="price-input" value="{{ p.unit_price or '' }}" readonly></td>
+            <td></td>
+            <td></td>
+          </tr>
+          {% endif %}
+          {% endfor %}
+        </tbody>
       </table>
     </div>
     {% if editable %}<button type="button" class="add-row-btn" id="add-part-row">+ إضافة قطعة غيار</button>{% endif %}
     <div class="totals-box">
       <div class="total-row"><span>إجمالي قطع الغيار</span><span class="total-val" id="total-parts">0.00 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>
       <div class="total-row"><span>تكلفة الزيارة / العمالة</span>
-        <input type="number" class="labor-input" id="labor-cost" min="0" step="0.01" {% if not editable %}readonly{% endif %}>
+        <input type="number" class="labor-input" id="labor-cost" min="0" step="0.01" value="{{ report_data.meta.labor_cost or '' }}" {% if not editable %}readonly{% endif %}>
       </div>
       <div class="total-row"><span>المجموع قبل الضريبة</span><span class="total-val" id="subtotal">0.00 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>
       <div class="total-row"><span>ضريبة القيمة المضافة 15%</span><span class="total-val" id="vat-amount">0.00 <span class="lc-sar" role="img" aria-label="ريال سعودي"></span></span></div>
@@ -155,13 +179,13 @@
   <div class="section">
     <div class="sec-title green-sec"><span class="sec-dot" style="background:#fff"></span> حالة العطل بعد الزيارة</div>
     <div class="status-group" id="status-group">
-      <button type="button" class="status-btn" data-outcome="solved" {% if not editable %}disabled{% endif %}>✓ تم الحل بالكامل</button>
-      <button type="button" class="status-btn" data-outcome="partial" {% if not editable %}disabled{% endif %}>⚠ حل جزئي — يحتاج متابعة</button>
-      <button type="button" class="status-btn" data-outcome="needs_parts" {% if not editable %}disabled{% endif %}>✗ يحتاج قطعة غيار</button>
+      <button type="button" class="status-btn{% if report_data.meta.visit_outcome == 'solved' %} active-success{% endif %}" data-outcome="solved" aria-pressed="{{ 'true' if report_data.meta.visit_outcome == 'solved' else 'false' }}" {% if not editable %}disabled{% endif %}>✓ تم الحل بالكامل</button>
+      <button type="button" class="status-btn{% if report_data.meta.visit_outcome == 'partial' %} active-warning{% endif %}" data-outcome="partial" aria-pressed="{{ 'true' if report_data.meta.visit_outcome == 'partial' else 'false' }}" {% if not editable %}disabled{% endif %}>⚠ حل جزئي — يحتاج متابعة</button>
+      <button type="button" class="status-btn{% if report_data.meta.visit_outcome == 'needs_parts' %} active-danger{% endif %}" data-outcome="needs_parts" aria-pressed="{{ 'true' if report_data.meta.visit_outcome == 'needs_parts' else 'false' }}" {% if not editable %}disabled{% endif %}>✗ يحتاج قطعة غيار</button>
     </div>
     <div class="row row-2">
-      <div class="field"><label>موعد الزيارة القادمة</label><input type="date" lang="en-GB" id="next-visit" {% if not editable %}readonly{% endif %}></div>
-      <div class="field"><label>ملاحظات ختامية</label><textarea id="final-notes" rows="2" {% if not editable %}readonly{% endif %}></textarea></div>
+      <div class="field"><label>موعد الزيارة القادمة</label><input type="date" lang="en-GB" id="next-visit" value="{{ report_data.meta.next_visit or '' }}" {% if not editable %}readonly{% endif %}></div>
+      <div class="field"><label>ملاحظات ختامية</label><textarea id="final-notes" rows="2" {% if not editable %}readonly{% endif %}>{{ report_data.meta.final_notes or '' }}</textarea></div>
     </div>
   </div>
 
@@ -170,7 +194,7 @@
 
   <div class="section">
     <div class="sec-title"><span class="sec-dot"></span> تقييم العميل</div>
-    <input type="hidden" id="customer-rating" value="0">
+    <input type="hidden" id="customer-rating" value="{{ report_data.meta.customer_rating or 0 }}">
     <div class="rating-area">
       <div class="stars" id="stars">
         <span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span><span class="star">★</span>
@@ -179,7 +203,7 @@
     </div>
     <div class="field" style="margin-top:6px">
       <label>تعليق العميل</label>
-      <textarea id="customer-comment" {% if not editable %}readonly{% endif %}></textarea>
+      <textarea id="customer-comment" {% if not editable %}readonly{% endif %}>{{ report_data.meta.customer_comment or '' }}</textarea>
     </div>
   </div>
 
@@ -193,12 +217,12 @@
 </div>
 
 <script src="/static/field-offline.js?v=1"></script>
-<script src="/static/maintenance-checklist.js?v=8"></script>
+<script src="/static/maintenance-checklist.js?v=10"></script>
 <script src="/static/digital-signature.js?v=5"></script>
 <script src="/static/document-signatures.js?v=3"></script>
 <script src="/static/tax_calc.js?v=2"></script>
 <script src="/static/fault-report-send.js?v=1"></script>
-<script src="/static/fault-report.js?v=5"></script>
+<script src="/static/fault-report.js?v=6"></script>
 <script>
 const REPORT_CFG = {
   faultId: {{ fault_id }},
@@ -207,9 +231,10 @@ const REPORT_CFG = {
   techId: {{ tech_id or 'null' }},
   backUrl: {{ back_url|tojson if back_url else 'null' }},
 };
-const FAULT_TYPE_OPTIONS = {{ fault_type_options_json|safe }};
-const REPORT_DATA = {{ report_data_json|safe }};
-window.INVENTORY_ITEMS = {{ inventory_items_json|safe if inventory_items_json else '[]' }};
+window.REPORT_CFG = REPORT_CFG;
+const FAULT_TYPE_OPTIONS = {{ fault_type_options|tojson }};
+const REPORT_DATA = {{ report_data|tojson }};
+window.INVENTORY_ITEMS = {{ inventory_items|tojson if inventory_items is defined else '[]' }};
 const SIGN_CONFIG = {{ sign_config|tojson }};
 const TECH_NATIONAL_ID = {{ (technician.national_id or '')|tojson }};
 
@@ -296,6 +321,22 @@ document.addEventListener('DOMContentLoaded', function () {
     LiftCoreChecklist.buildPhotosGrid(6, false, REPORT_DATA.photos);
   }
   LiftCoreFaultReport.applyReportData(REPORT_DATA);
+  if (REPORT_CFG.editable && window.LiftCoreFieldOffline) {
+    LiftCoreFieldOffline.loadDraft('fault:' + REPORT_CFG.faultId).then(function (draft) {
+      if (!draft) return;
+      var merged = JSON.parse(JSON.stringify(REPORT_DATA || {}));
+      if (draft.meta) merged.meta = Object.assign({}, merged.meta || {}, draft.meta);
+      if (draft.parts && draft.parts.length) merged.parts = draft.parts;
+      if (draft.photos && draft.photos.length) merged.photos = draft.photos;
+      if (draft.signatures) merged.signatures = Object.assign({}, merged.signatures || {}, draft.signatures);
+      LiftCoreFaultReport.buildFaultTypes(FAULT_TYPE_OPTIONS, (merged.meta && merged.meta.fault_types) || [], true);
+      LiftCoreFaultReport.buildPartsTable(merged.parts || [], true);
+      LiftCoreChecklist.buildPhotosGrid(6, true, merged.photos || []);
+      LiftCoreFaultReport.applyReportData(merged);
+      if (window.LiftCoreDocSign) LiftCoreDocSign.applySaved(merged);
+      updateProgress();
+    });
+  }
   if (REPORT_CFG.editable && !REPORT_CFG.fieldTimesLocked && !document.getElementById('visit-date').value) {
     const now = new Date();
     const y = now.getFullYear(), m = String(now.getMonth()+1).padStart(2,'0'), d = String(now.getDate()).padStart(2,'0');
