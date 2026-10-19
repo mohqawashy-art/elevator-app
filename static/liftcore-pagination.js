@@ -181,6 +181,7 @@
     var storeKey = storageKey(options);
     var page = readStored(storeKey);
     var filteredTotal = 0;
+    var knownPages = 1;
     var getMasterTotal = options.getMasterTotal || null;
     var onPageChange = options.onPageChange || null;
     var sumFields = options.sumFields || null;
@@ -203,6 +204,11 @@
 
     function totalPages() {
       return Math.max(1, Math.ceil(filteredTotal / pageSize));
+    }
+
+    /** حد النقر: صفوف الجدول أو عدد الصفحات الذي رُسم فعلاً (ترقيم السيرفر). */
+    function pageLimit() {
+      return Math.max(totalPages(), knownPages || 1);
     }
 
     function clampPage() {
@@ -272,13 +278,16 @@
 
     function goTo(p) {
       p = Number(p);
-      if (isNaN(p) || p < 1 || p > totalPages() || p === page) return;
+      if (isNaN(p) || p < 1 || p > pageLimit() || p === page) return;
       setPage(p);
       if (onPageChange) onPageChange(page);
     }
 
     function render(meta) {
       meta = meta || {};
+      if (meta.filteredTotal != null) {
+        filteredTotal = Math.max(0, Number(meta.filteredTotal) || 0);
+      }
       var tp = meta.pages || totalPages();
       var cur = meta.page || page;
       var master = meta.masterTotal != null ? meta.masterTotal : filteredTotal;
@@ -302,11 +311,13 @@
       }
 
       if ((meta.filteredTotal || filteredTotal) <= pageSize) {
+        knownPages = 1;
         container.classList.add('lc-pagination');
         container.innerHTML = html;
         bindPageSizeSelect(container, pageSize, setPageSize);
         return;
       }
+      knownPages = tp;
 
       var rtl = isRtl();
       var prevChar = rtl ? '\u203A' : '\u2039';

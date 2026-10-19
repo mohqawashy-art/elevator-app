@@ -229,7 +229,7 @@ var __lcReportDomPager = null;
 function __lcLoadPagination(cb) {
     if (global.LiftCorePagination) { cb(); return; }
   var s = document.createElement('script');
-  s.src = '/static/liftcore-pagination.js?v=8';
+  s.src = '/static/liftcore-pagination.js?v=9';
   s.onload = cb;
   document.head.appendChild(s);
 }
