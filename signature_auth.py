@@ -75,7 +75,8 @@ def _find_signatory(national_id: str) -> Signatory | None:
 def _role_matches(role_key: str, signatory: Signatory) -> bool:
     sig_role = (signatory.role or 'technician').strip().lower()
     if role_key in ('tech', 'technician', 'فني'):
-        return sig_role in ('technician', 'tech', 'فني')
+        # زر «إضافة توقيع» في المحضر واحد، ويستخدمه الفني وموظف المكتب
+        return sig_role in ('technician', 'tech', 'فني', 'manager', 'rep', 'مدير')
     if role_key in ('manager', 'rep', 'مدير'):
         return sig_role in ('manager', 'rep', 'مدير')
     return True
