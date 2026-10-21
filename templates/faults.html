@@ -1343,6 +1343,66 @@ function editFault(id) {
 }
 
 // ===== عرض =====
+function escFaultText(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function faultPartsRequestOpen(events) {
+  let open = false;
+  (events || []).forEach(function (ev) {
+    if (ev.type === 'parts_requested') open = true;
+    if (ev.type === 'parts_received') open = false;
+  });
+  return open;
+}
+
+function faultEventsHtml(f) {
+  const events = (f && f.events) || [];
+  const rows = events.length
+    ? events.map(function (ev) {
+        const who = ev.actor ? escFaultText(ev.actor) : (ev.role === 'office' ? 'المكتب' : 'الفني');
+        const detail = ev.detail
+          ? '<div style="white-space:pre-wrap;margin-top:2px">' + escFaultText(ev.detail) + '</div>'
+          : '';
+        return '<div style="padding:8px 0;border-bottom:1px solid var(--border)">' +
+          '<div style="font-size:11px;color:var(--text3)">' + escFaultText(ev.at || '') + ' · ' + who + '</div>' +
+          '<div style="font-weight:600">' + escFaultText(ev.title || '') + '</div>' +
+          detail +
+          '</div>';
+      }).join('')
+    : '<div style="color:var(--text3);font-size:12px">لا حركات بعد. تُسجَّل عند وصول الفني، وطلب القطع، واستلام المكتب، ثم الإغلاق.</div>';
+  const btn = faultPartsRequestOpen(events)
+    ? '<button type="button" class="btn btn-primary btn-sm" style="margin-top:10px" onclick="receiveFaultParts(' + f.id + ')">استلام طلب القطع</button>'
+    : '';
+  return '<div class="view-item view-full"><div class="view-label">سجل الحركات</div><div class="view-val">' + rows + btn + '</div></div>';
+}
+
+async function receiveFaultParts(faultId) {
+  try {
+    const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
+    const csrf = document.querySelector('meta[name="csrf-token"]');
+    if (csrf && csrf.content) headers['X-CSRF-Token'] = csrf.content;
+    const r = await fetch('/api/faults/' + faultId + '/parts-received', {
+      method: 'POST',
+      headers: headers,
+      credentials: 'same-origin',
+    });
+    const data = await r.json();
+    if (!data.ok) {
+      alert(data.error || 'تعذّر تسجيل الاستلام');
+      return;
+    }
+    const f = FAULTS.find(x => x.id === faultId);
+    if (f) f.events = data.events || [];
+    viewFault(faultId);
+  } catch (e) {
+    alert('تعذّر تسجيل الاستلام');
+  }
+}
+
 function viewFault(id) {
   const f = FAULTS.find(x=>x.id===id);
   if(!f) return;
@@ -1362,6 +1422,7 @@ function viewFault(id) {
       <div class="view-item"><div class="view-label">تاريخ البلاغ</div><div class="view-val" style="direction:ltr">${f.reported_at}</div></div>
       <div class="view-item"><div class="view-label">وقت الاستجابة</div><div class="view-val">${f.response_time}</div></div>
       <div class="view-item"><div class="view-label">الحالة</div><div class="view-val"><span class="badge ${STATUS_BADGE[f.status]||'badge-expired'}">${f.status}</span></div></div>
+      ${faultEventsHtml(f)}
       <div class="view-item"><div class="view-label">الفوترة</div><div class="view-val">${faultBillingBadgeHtml(f)}${f.billed && !faultPartsOnCompanyAccount(f)?' · <span class="badge badge-active">مفوتر</span>':''}</div></div>
       ${f.needs_parts && f.parts_lines && f.parts_lines.length ? `<div class="view-item view-full"><div class="view-label">قطع الغيار</div><div class="view-val">${f.parts_lines.map(formatFaultPartLine).join('<br>')}</div></div>` : ''}
       ${f.visit_code?`<div class="view-item"><div class="view-label">رقم الزيارة</div><div class="view-val" style="font-family:var(--font-en)">${f.visit_code}</div></div>`:''}

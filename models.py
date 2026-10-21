@@ -593,6 +593,23 @@ class Fault(TenantMixin, db.Model):
         return f'<Fault {self.code}>'
 
 
+class FaultEvent(TenantMixin, db.Model):
+    """إثبات حركات العطل بين الفني والمكتب."""
+    __tablename__ = 'fault_events'
+
+    id = db.Column(db.Integer, primary_key=True)
+    fault_id = db.Column(db.Integer, db.ForeignKey('faults.id'), nullable=False, index=True)
+    event_type = db.Column(db.String(40), nullable=False)
+    title = db.Column(db.String(120), nullable=False)
+    detail = db.Column(db.Text)
+    actor_role = db.Column(db.String(20))
+    actor_name = db.Column(db.String(120))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    def __repr__(self):
+        return f'<FaultEvent {self.event_type} fault={self.fault_id}>'
+
+
 class WhatsAppInbox(TenantMixin, db.Model):
     """وارد واتساب — يستلمه المكتب أولاً ثم يُوزَّع كعطل."""
     __tablename__ = 'whatsapp_inbox'

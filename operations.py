@@ -20,6 +20,7 @@ from models import (
     Customer,
     Elevator,
     Fault,
+    FaultEvent,
     InventoryItem,
     Invoice,
     MaintenanceVisit,
@@ -2817,6 +2818,7 @@ def field_fault_detail(fault_id: int, tech_id: int | None = None) -> dict:
         'technician': fault_technicians_label(f),
         'report_url': f'/field/fault/{f.id}/report',
         'has_report': bool(f.report_json),
+        'events': fault_timeline(f),
     }
 
 
@@ -3052,6 +3054,18 @@ def save_fault_report(
     if status:
         f.status = status
     parts = merged.get('parts') if isinstance(merged.get('parts'), list) else []
+    parts_text = _format_report_parts(parts)
+    outcome = (merged.get('meta') or {}).get('visit_outcome') or ''
+    if parts_text:
+        record_parts_request(f, parts_text)
+    elif outcome == 'needs_parts':
+        record_parts_request(f, 'يحتاج قطع غيار')
+    record_fault_close(
+        f,
+        actor_role='technician',
+        actor_name=_technician_display_name(f),
+        detail=f.resolution or '',
+    )
     from inventory_stock import lines_with_inventory_ids, sync_entity_parts_stock
 
     stock_parts = lines_with_inventory_ids(parts)
@@ -3210,6 +3224,265 @@ def stamp_field_visit_report_start(visit_id: int, tech_id: int | None = None) ->
         db.session.commit()
 
 
+def _as_utc_naive(dt):
+    if dt is None:
+        return datetime.utcnow()
+    if getattr(dt, 'tzinfo', None) is None:
+        return dt
+    return dt.astimezone(ZoneInfo('UTC')).replace(tzinfo=None)
+
+
+def _fmt_event_at(dt) -> str:
+    if not dt:
+        return ''
+    if getattr(dt, 'tzinfo', None) is None:
+        dt = dt.replace(tzinfo=ZoneInfo('UTC'))
+    return dt.astimezone(RIYADH_TZ).strftime('%Y-%m-%d %H:%M')
+
+
+def _technician_display_name(fault, tech_id=None) -> str:
+    tid = tech_id or fault.technician_id
+    if tid:
+        tech = tenant_query(Technician).filter_by(id=tid).first()
+        if tech and (tech.name or '').strip():
+            return tech.name.strip()
+    if fault.technician and (fault.technician.name or '').strip():
+        return fault.technician.name.strip()
+    return 'الفني'
+
+
+def _office_actor_name() -> str:
+    try:
+        from flask import g
+        user = getattr(g, 'user', None)
+        if user:
+            return ((user.full_name or user.username or 'المكتب') or 'المكتب').strip()
+    except Exception:
+        pass
+    return 'المكتب'
+
+
+def _event_row(ev) -> dict:
+    return {
+        'type': ev.event_type,
+        'title': ev.title,
+        'detail': ev.detail or '',
+        'actor': ev.actor_name or '',
+        'role': ev.actor_role or '',
+        'at': _fmt_event_at(ev.created_at),
+    }
+
+
+def record_fault_event(
+    fault,
+    event_type: str,
+    title: str,
+    *,
+    detail: str = '',
+    actor_role: str = '',
+    actor_name: str = '',
+    created_at=None,
+):
+    ev = FaultEvent(
+        fault_id=fault.id,
+        event_type=event_type,
+        title=title,
+        detail=(detail or '').strip() or None,
+        actor_role=actor_role or None,
+        actor_name=(actor_name or '').strip() or None,
+        created_at=_as_utc_naive(created_at) if created_at else datetime.utcnow(),
+    )
+    assign_organization(ev)
+    db.session.add(ev)
+    return ev
+
+
+def _stored_fault_events(fault_ids: list[int]) -> dict[int, list]:
+    out = {int(i): [] for i in fault_ids}
+    if not fault_ids:
+        return out
+    rows = (
+        tenant_query(FaultEvent)
+        .filter(FaultEvent.fault_id.in_(fault_ids))
+        .order_by(FaultEvent.created_at.asc(), FaultEvent.id.asc())
+        .all()
+    )
+    for ev in rows:
+        out.setdefault(int(ev.fault_id), []).append(ev)
+    return out
+
+
+def _latest_parts_request_billing(fault_ids: list[int]) -> dict[int, PartsBilling]:
+    out: dict[int, PartsBilling] = {}
+    if not fault_ids:
+        return out
+    rows = (
+        tenant_query(PartsBilling)
+        .filter(PartsBilling.fault_id.in_(fault_ids))
+        .order_by(PartsBilling.id.asc())
+        .all()
+    )
+    for pb in rows:
+        notes = pb.notes or ''
+        if not notes.startswith('طلب من الفني'):
+            continue
+        if pb.fault_id:
+            out[int(pb.fault_id)] = pb
+    return out
+
+
+def _format_report_parts(parts) -> str:
+    lines = []
+    for row in parts or []:
+        if not isinstance(row, dict):
+            continue
+        name = str(row.get('name') or '').strip()
+        if not name:
+            continue
+        qty = row.get('qty') or 1
+        lines.append(f'{qty}× {name}')
+    return '\n'.join(lines)
+
+
+def fault_timelines(faults) -> dict[int, list[dict]]:
+    """سلسلة الحركات المخزّنة، مع وصول أو طلب قطع قديم إن لم يُسجَّل بعد في الجدول."""
+    ids = [f.id for f in faults if getattr(f, 'id', None)]
+    stored = _stored_fault_events(ids)
+    billings = _latest_parts_request_billing(ids)
+    result = {}
+    for fault in faults:
+        rows = [_event_row(ev) for ev in stored.get(fault.id, [])]
+        types = {row['type'] for row in rows}
+        if 'arrived' not in types and fault.responded_at:
+            rows.append({
+                'type': 'arrived',
+                'title': 'وصل الفني',
+                'detail': '',
+                'actor': _technician_display_name(fault),
+                'role': 'technician',
+                'at': _fmt_event_at(fault.responded_at),
+            })
+        if 'parts_requested' not in types:
+            pb = billings.get(fault.id)
+            if pb and (pb.description or '').strip():
+                when = pb.billing_date.strftime('%Y-%m-%d') if pb.billing_date else ''
+                rows.append({
+                    'type': 'parts_requested',
+                    'title': 'طلب قطع غيار',
+                    'detail': pb.description or '',
+                    'actor': _technician_display_name(fault),
+                    'role': 'technician',
+                    'at': when,
+                })
+        rows.sort(key=lambda row: (row.get('at') or '', row.get('type') or ''))
+        result[fault.id] = rows
+    return result
+
+
+def fault_timeline(fault) -> list[dict]:
+    return fault_timelines([fault]).get(fault.id, [])
+
+
+def record_fault_arrival(fault, tech_id=None, when=None) -> FaultEvent | None:
+    existing = (
+        tenant_query(FaultEvent)
+        .filter_by(fault_id=fault.id, event_type='arrived')
+        .first()
+    )
+    if existing:
+        return None
+    moment = when or fault.responded_at or datetime.utcnow()
+    label = _fmt_event_at(moment)
+    return record_fault_event(
+        fault,
+        'arrived',
+        'وصل الفني',
+        detail=label,
+        actor_role='technician',
+        actor_name=_technician_display_name(fault, tech_id),
+        created_at=moment,
+    )
+
+
+def record_parts_request(fault, description: str, *, tech_id=None) -> FaultEvent | None:
+    text = (description or '').strip()
+    if not text:
+        return None
+    last = (
+        tenant_query(FaultEvent)
+        .filter_by(fault_id=fault.id, event_type='parts_requested')
+        .order_by(FaultEvent.id.desc())
+        .first()
+    )
+    if last and (last.detail or '').strip() == text:
+        return None
+    return record_fault_event(
+        fault,
+        'parts_requested',
+        'طلب قطع غيار',
+        detail=text,
+        actor_role='technician',
+        actor_name=_technician_display_name(fault, tech_id),
+    )
+
+
+def record_fault_close(fault, *, actor_role: str, actor_name: str, detail: str = '') -> FaultEvent | None:
+    if fault_is_open(fault.status):
+        return None
+    text = (detail or fault.resolution or fault.status or '').strip()
+    last = (
+        tenant_query(FaultEvent)
+        .filter_by(fault_id=fault.id, event_type='closed')
+        .order_by(FaultEvent.id.desc())
+        .first()
+    )
+    if last and (last.detail or '').strip() == text and (last.actor_name or '') == (actor_name or ''):
+        return None
+    return record_fault_event(
+        fault,
+        'closed',
+        'إغلاق العطل',
+        detail=text,
+        actor_role=actor_role,
+        actor_name=actor_name,
+    )
+
+
+def receive_fault_parts_request(fault_id: int) -> list[dict]:
+    """المكتب يثبت استلام طلب القطع واسم المستلم."""
+    fault = tenant_get_or_404(Fault, fault_id)
+    pb = _latest_parts_request_billing([fault.id]).get(fault.id)
+    if pb and (pb.description or '').strip():
+        record_parts_request(fault, pb.description)
+    events = (
+        tenant_query(FaultEvent)
+        .filter_by(fault_id=fault.id)
+        .order_by(FaultEvent.id.asc())
+        .all()
+    )
+    last_request = None
+    received_after = False
+    for ev in events:
+        if ev.event_type == 'parts_requested':
+            last_request = ev
+            received_after = False
+        elif ev.event_type == 'parts_received' and last_request:
+            received_after = True
+    if not last_request or received_after:
+        raise ValueError('لا يوجد طلب قطع بانتظار الاستلام')
+    name = _office_actor_name()
+    record_fault_event(
+        fault,
+        'parts_received',
+        'استلم المكتب طلب القطع',
+        detail=last_request.detail or '',
+        actor_role='office',
+        actor_name=name,
+    )
+    db.session.commit()
+    return fault_timeline(fault)
+
+
 def stamp_field_fault_arrival(fault_id: int, tech_id: int | None = None) -> None:
     """عند فتح الفني لصفحة العطل — تسجيل وصول الميدان (مرة واحدة)."""
     from fault_report import merge_fault_report, parse_fault_report_json
@@ -3222,6 +3495,8 @@ def stamp_field_fault_arrival(fault_id: int, tech_id: int | None = None) -> None
     data = _enrich_fault_report_record(merge_fault_report(saved, f), f)
     meta = data['meta']
     if (meta.get('arrival_time') or '').strip():
+        if record_fault_arrival(f, tech_id):
+            db.session.commit()
         return
 
     parts = _field_stamp_now()
@@ -3232,6 +3507,7 @@ def stamp_field_fault_arrival(fault_id: int, tech_id: int | None = None) -> None
         f.responded_at = parts['dt']
     if (f.status or '') in ('', 'مفتوح', 'جديد'):
         f.status = 'قيد المعالجة'
+    record_fault_arrival(f, tech_id, when=parts['dt'])
     db.session.commit()
 
 
@@ -3827,6 +4103,12 @@ def complete_field_fault(
     f.resolution = res
     f.status = new_status
     f.resolved_at = datetime.utcnow()
+    record_fault_close(
+        f,
+        actor_role='technician',
+        actor_name=_technician_display_name(f),
+        detail=res,
+    )
     close_field_portal_tasks_for_fault(f)
     db.session.commit()
 
@@ -4160,5 +4442,6 @@ def request_fault_parts(fault_id: int, *, description: str, sell_price: float = 
     )
     assign_organization(part)
     db.session.add(part)
+    record_parts_request(f, description or part.description, tech_id=f.technician_id)
     db.session.commit()
     return part

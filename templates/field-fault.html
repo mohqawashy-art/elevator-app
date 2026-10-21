@@ -35,6 +35,21 @@
 <a class="fp-maps" href="{{ fault.maps_url }}" target="_blank" rel="noopener">🗺 فتح الموقع والتنقل</a>
 {% endif %}
 
+<div style="background:var(--fp-card);border:1px solid var(--fp-border);border-radius:12px;padding:14px;margin-bottom:14px">
+  <div style="font-size:12px;font-weight:600;margin-bottom:8px">سجل الحركات</div>
+  {% if fault.events %}
+    {% for ev in fault.events %}
+    <div style="padding:8px 0;border-top:1px solid var(--fp-border)">
+      <div style="font-size:11px;color:var(--fp-muted)">{{ ev.at }} · {{ ev.actor or '—' }}</div>
+      <div style="font-weight:600">{{ ev.title }}</div>
+      {% if ev.detail %}<div style="white-space:pre-wrap;font-size:13px;margin-top:2px">{{ ev.detail }}</div>{% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <div style="font-size:12px;color:var(--fp-muted)">لا حركات بعد. وقت الوصول يُسجَّل عند فتح التقرير، وطلب القطع يظهر هنا بعد إرساله.</div>
+  {% endif %}
+</div>
+
 <a class="fp-btn-report" href="{{ fault.report_url }}" style="background:var(--fp-success);margin-bottom:12px;display:block;text-align:center;text-decoration:none">📋 فتح تقرير العطل</a>
 
 <form method="post" action="/field/fault/{{ fault.id }}/complete">
@@ -60,7 +75,7 @@
 
 <div style="background:var(--fp-card);border:1px dashed var(--fp-border);border-radius:12px;padding:14px;margin-top:20px">
   <label style="display:block;font-size:12px;color:var(--fp-muted);margin-bottom:8px">يحتاج قطع غيار؟</label>
-  <p style="font-size:11px;color:var(--fp-muted);margin-bottom:10px">سيُبلّغ المكتب لتأكيد السعر مع العميل</p>
+  <p style="font-size:11px;color:var(--fp-muted);margin-bottom:10px">يُثبت الطلب في سجل الحركات، ويظهر عند المكتب مع اسم من يستلمه</p>
   <form method="post" action="/field/fault/{{ fault.id }}/request-parts">
     <input type="hidden" name="tech_id" value="{{ tech_id or fault.technician_id }}">
     <textarea name="parts_description" required style="min-height:70px;margin-bottom:10px" placeholder="وصف القطع المطلوبة..."></textarea>

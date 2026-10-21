@@ -6290,7 +6290,9 @@ def _faults_js_list(faults):
     fault_ids = [f.id for f in faults]
     wa_map = journey_snapshots_for_faults(list(faults))
     tech_map = fault_technician_rows_by_fault_ids(fault_ids)
+    from operations import fault_timelines
     parts_map = fault_registration_parts_lines_map(fault_ids)
+    events_map = fault_timelines(list(faults))
     rows = []
     for f in faults:
         elev = f.elevator
@@ -6336,6 +6338,7 @@ def _faults_js_list(faults):
             'reporter_phone': f.reporter_phone or '',
             'needs_parts': bool(f.needs_parts),
             'parts_lines': parts_map.get(f.id) or [],
+            'events': events_map.get(f.id) or [],
             'has_report': bool(f.report_json),
             'wa': wa,
         })
@@ -10524,6 +10527,18 @@ def api_dispatch_route(tech_id):
     return jsonify(result)
 
 
+@app.route('/api/faults/<int:fault_id>/parts-received', methods=['POST'])
+def api_fault_parts_received(fault_id):
+    """المكتب يثبت استلام طلب قطع الغيار من الفني."""
+    from operations import receive_fault_parts_request
+
+    try:
+        events = receive_fault_parts_request(fault_id)
+    except ValueError as exc:
+        return jsonify({'ok': False, 'error': str(exc)}), 400
+    return jsonify({'ok': True, 'events': events})
+
+
 @app.route('/api/faults/<int:fault_id>/dispatch', methods=['POST'])
 def api_dispatch_fault(fault_id):
     from operations import dispatch_fault
@@ -12326,6 +12341,14 @@ def fault_edit(id):
             cust_wa = notify_customer_stage(f, stage, next_code_fn=next_code)
         if not fault_is_open(f.status):
             close_field_portal_tasks_for_fault(f)
+        if fault_is_open(old_status) and not fault_is_open(f.status):
+            from operations import _office_actor_name, record_fault_close
+            record_fault_close(
+                f,
+                actor_role='office',
+                actor_name=_office_actor_name(),
+                detail=f.resolution or '',
+            )
         db.session.commit()
         dispatch_result = None
         if tech_ids and (set(tech_ids) != set(old_tech_ids) or not f.dispatched_at):
