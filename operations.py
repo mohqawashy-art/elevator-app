@@ -3389,17 +3389,22 @@ def fault_timelines(faults) -> dict[int, list[dict]]:
     billings = _latest_parts_request_billing(ids)
     result = {}
     for fault in faults:
-        rows = [_event_row(ev) for ev in stored.get(fault.id, [])]
+        rows = []
+        for index, ev in enumerate(stored.get(fault.id, [])):
+            row = _event_row(ev)
+            row['ord'] = index
+            rows.append(row)
         types = {row['type'] for row in rows}
         if 'arrived' not in types and fault.responded_at:
-            rows.append({
-                'type': 'arrived',
-                'title': 'وصل الفني',
-                'detail': '',
-                'actor': _technician_display_name(fault),
-                'role': 'technician',
-                'at': _fmt_event_at(fault.responded_at),
-            })
+                rows.append({
+                    'type': 'arrived',
+                    'title': 'وصل الفني',
+                    'detail': '',
+                    'actor': _technician_display_name(fault),
+                    'role': 'technician',
+                    'at': _fmt_event_at(fault.responded_at),
+                    'ord': len(rows),
+                })
         if 'parts_requested' not in types:
             pb = billings.get(fault.id)
             if pb and (pb.description or '').strip():
@@ -3411,8 +3416,9 @@ def fault_timelines(faults) -> dict[int, list[dict]]:
                     'actor': _technician_display_name(fault),
                     'role': 'technician',
                     'at': when,
+                    'ord': len(rows),
                 })
-        rows.sort(key=lambda row: (row.get('at') or '', row.get('type') or ''))
+        rows.sort(key=lambda row: (row.get('at') or '', row.get('ord', 0)))
         result[fault.id] = rows
     return result
 
@@ -3516,6 +3522,116 @@ def receive_fault_parts_request(fault_id: int) -> list[dict]:
         detail=last_request.detail or '',
         actor_role='office',
         actor_name=name,
+    )
+    db.session.commit()
+    return fault_timeline(fault)
+
+
+def _parts_need_customer_approval(pb: PartsBilling | None) -> bool:
+    if pb is None:
+        return True
+    if (pb.status or '') == COMPANY_ACCOUNT_STATUS:
+        return False
+    return (pb.sell_price or 0) > 0.01
+
+
+def parts_cycle_step(events, *, needs_approval: bool) -> str:
+    """الخطوة التالية في دورة القطع: receive | approve | supply | فارغ."""
+    step = ''
+    for ev in events or []:
+        kind = ev.get('type') if isinstance(ev, dict) else getattr(ev, 'event_type', '')
+        if kind == 'parts_requested':
+            step = 'receive'
+        elif kind == 'parts_received':
+            step = 'approve' if needs_approval else 'supply'
+        elif kind == 'customer_approved':
+            step = 'supply'
+        elif kind in ('parts_supplied', 'customer_rejected', 'closed'):
+            step = ''
+    return step
+
+
+def fault_parts_next(fault, events=None) -> str:
+    if not fault_is_open(fault.status):
+        return ''
+    if events is None:
+        events = fault_timeline(fault)
+    pb = _latest_parts_request_billing([fault.id]).get(fault.id)
+    return parts_cycle_step(events, needs_approval=_parts_need_customer_approval(pb))
+
+
+def _require_parts_step(fault, expected: str) -> tuple[FaultEvent | None, PartsBilling | None]:
+    events = (
+        tenant_query(FaultEvent)
+        .filter_by(fault_id=fault.id)
+        .order_by(FaultEvent.created_at.asc(), FaultEvent.id.asc())
+        .all()
+    )
+    pb = _latest_parts_request_billing([fault.id]).get(fault.id)
+    step = parts_cycle_step(events, needs_approval=_parts_need_customer_approval(pb))
+    if step != expected:
+        raise ValueError('هذه الخطوة ليست التالية في سجل القطع')
+    last_request = None
+    for ev in events:
+        if ev.event_type == 'parts_requested':
+            last_request = ev
+    return last_request, pb
+
+
+def approve_fault_parts_request(fault_id: int) -> list[dict]:
+    """العميل وافق على قطع الغيار وسعرها."""
+    fault = tenant_get_or_404(Fault, fault_id)
+    last_request, pb = _require_parts_step(fault, 'approve')
+    if pb:
+        pb.status = 'بانتظار التوريد'
+    record_fault_event(
+        fault,
+        'customer_approved',
+        'موافقة العميل على قطع الغيار',
+        detail=(last_request.detail if last_request else '') or (pb.description if pb else ''),
+        actor_role='office',
+        actor_name=_office_actor_name(),
+    )
+    db.session.commit()
+    return fault_timeline(fault)
+
+
+def reject_fault_parts_request(fault_id: int) -> list[dict]:
+    """العميل رفض القطع — يعود العطل للمعالجة ويمكن طلب قطع أخرى."""
+    fault = tenant_get_or_404(Fault, fault_id)
+    last_request, pb = _require_parts_step(fault, 'approve')
+    if pb:
+        pb.status = 'رفض العميل'
+    fault.status = 'قيد المعالجة'
+    record_fault_event(
+        fault,
+        'customer_rejected',
+        'رفض العميل قطع الغيار',
+        detail=(last_request.detail if last_request else '') or '',
+        actor_role='office',
+        actor_name=_office_actor_name(),
+    )
+    db.session.commit()
+    return fault_timeline(fault)
+
+
+def supply_fault_parts(fault_id: int) -> list[dict]:
+    """القطع توفرت للفني بعد موافقة العميل، أو مباشرة إن كانت على حساب الشركة."""
+    fault = tenant_get_or_404(Fault, fault_id)
+    last_request, pb = _require_parts_step(fault, 'supply')
+    if pb:
+        if (pb.sell_price or 0) <= 0.01:
+            pb.status = COMPANY_ACCOUNT_STATUS
+        else:
+            pb.status = 'غير محصل'
+    fault.status = 'قيد المعالجة'
+    record_fault_event(
+        fault,
+        'parts_supplied',
+        'تم توفير قطع الغيار',
+        detail=(last_request.detail if last_request else '') or (pb.description if pb else ''),
+        actor_role='office',
+        actor_name=_office_actor_name(),
     )
     db.session.commit()
     return fault_timeline(fault)

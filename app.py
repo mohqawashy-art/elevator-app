@@ -6290,7 +6290,7 @@ def _faults_js_list(faults):
     fault_ids = [f.id for f in faults]
     wa_map = journey_snapshots_for_faults(list(faults))
     tech_map = fault_technician_rows_by_fault_ids(fault_ids)
-    from operations import fault_timelines
+    from operations import fault_parts_next, fault_timelines
     parts_map = fault_registration_parts_lines_map(fault_ids)
     events_map = fault_timelines(list(faults))
     rows = []
@@ -6339,6 +6339,7 @@ def _faults_js_list(faults):
             'needs_parts': bool(f.needs_parts),
             'parts_lines': parts_map.get(f.id) or [],
             'events': events_map.get(f.id) or [],
+            'parts_next': fault_parts_next(f, events_map.get(f.id) or []),
             'has_report': bool(f.report_json),
             'wa': wa,
         })
@@ -10530,13 +10531,45 @@ def api_dispatch_route(tech_id):
 @app.route('/api/faults/<int:fault_id>/parts-received', methods=['POST'])
 def api_fault_parts_received(fault_id):
     """المكتب يثبت استلام طلب قطع الغيار من الفني."""
-    from operations import receive_fault_parts_request
+    return _fault_parts_action_response(fault_id, 'receive')
 
+
+@app.route('/api/faults/<int:fault_id>/parts-action', methods=['POST'])
+def api_fault_parts_action(fault_id):
+    """الخطوة التالية في سجل القطع: استلام، موافقة العميل، رفض، أو توفير."""
+    data = request.get_json(silent=True) or {}
+    return _fault_parts_action_response(fault_id, (data.get('action') or '').strip())
+
+
+def _fault_parts_action_response(fault_id, action):
+    from operations import (
+        approve_fault_parts_request,
+        fault_parts_next,
+        receive_fault_parts_request,
+        reject_fault_parts_request,
+        supply_fault_parts,
+    )
+
+    actions = {
+        'receive': receive_fault_parts_request,
+        'approve': approve_fault_parts_request,
+        'reject': reject_fault_parts_request,
+        'supply': supply_fault_parts,
+    }
+    handler = actions.get(action)
+    if not handler:
+        return jsonify({'ok': False, 'error': 'إجراء غير معروف'}), 400
     try:
-        events = receive_fault_parts_request(fault_id)
+        events = handler(fault_id)
     except ValueError as exc:
         return jsonify({'ok': False, 'error': str(exc)}), 400
-    return jsonify({'ok': True, 'events': events})
+    fault = tenant_query(Fault).filter_by(id=fault_id).first()
+    return jsonify({
+        'ok': True,
+        'events': events,
+        'status': fault.status if fault else '',
+        'parts_next': fault_parts_next(fault, events) if fault else '',
+    })
 
 
 @app.route('/api/faults/<int:fault_id>/dispatch', methods=['POST'])

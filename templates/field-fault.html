@@ -75,7 +75,7 @@
 
 <div style="background:var(--fp-card);border:1px dashed var(--fp-border);border-radius:12px;padding:14px;margin-top:20px">
   <label style="display:block;font-size:12px;color:var(--fp-muted);margin-bottom:8px">يحتاج قطع غيار؟</label>
-  <p style="font-size:11px;color:var(--fp-muted);margin-bottom:10px">يُثبت الطلب في سجل الحركات، ويظهر عند المكتب مع اسم من يستلمه</p>
+  <p style="font-size:11px;color:var(--fp-muted);margin-bottom:10px">يُثبت الطلب في السجل. المكتب يستلمه، ثم يسجّل موافقة العميل وتوفير القطع حتى إغلاق العطل</p>
   <form method="post" action="/field/fault/{{ fault.id }}/request-parts">
     <input type="hidden" name="tech_id" value="{{ tech_id or fault.technician_id }}">
     <textarea name="parts_description" required style="min-height:70px;margin-bottom:10px" placeholder="وصف القطع المطلوبة..."></textarea>

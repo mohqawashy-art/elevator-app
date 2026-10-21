@@ -65,6 +65,9 @@ def test_arrival_parts_receive_and_close(client):
     received = [ev for ev in body['events'] if ev['type'] == 'parts_received']
     assert received and received[0]['actor'] == 'admin'
     assert 'كونتاكتور' in received[0]['detail']
+    types = [ev['type'] for ev in body['events']]
+    assert types.index('parts_requested') < types.index('parts_received')
+    assert body['parts_next'] == 'supply'
 
     again = client.post(f'/api/faults/{fault_id}/parts-received', json={'csrf_token': 'test-csrf'})
     assert again.status_code == 400
@@ -81,3 +84,56 @@ def test_arrival_parts_receive_and_close(client):
         assert len(closed) == 1
         assert closed[0].actor_role == 'technician'
         assert 'استبدال' in (closed[0].detail or '')
+
+
+def test_priced_parts_go_through_customer_approval_then_supply(client):
+    from app import app
+    from models import PartsBilling
+    from operations import request_fault_parts, stamp_field_fault_arrival
+
+    fault_id, tech_id = _fault(app)
+    with app.app_context():
+        stamp_field_fault_arrival(fault_id, tech_id=tech_id)
+        request_fault_parts(fault_id, description='لوحة تحكم', sell_price=250)
+
+    login_as(client, role='admin')
+    with client.session_transaction() as sess:
+        sess['_csrf_token'] = 'test-csrf'
+
+    early = client.post(
+        f'/api/faults/{fault_id}/parts-action',
+        json={'action': 'supply', 'csrf_token': 'test-csrf'},
+    )
+    assert early.status_code == 400
+
+    received = client.post(
+        f'/api/faults/{fault_id}/parts-action',
+        json={'action': 'receive', 'csrf_token': 'test-csrf'},
+    )
+    assert received.status_code == 200, received.get_data(as_text=True)
+    assert received.get_json()['parts_next'] == 'approve'
+
+    approved = client.post(
+        f'/api/faults/{fault_id}/parts-action',
+        json={'action': 'approve', 'csrf_token': 'test-csrf'},
+    )
+    body = approved.get_json()
+    assert approved.status_code == 200, approved.get_data(as_text=True)
+    assert body['parts_next'] == 'supply'
+    assert any(ev['type'] == 'customer_approved' for ev in body['events'])
+
+    supplied = client.post(
+        f'/api/faults/{fault_id}/parts-action',
+        json={'action': 'supply', 'csrf_token': 'test-csrf'},
+    )
+    done = supplied.get_json()
+    assert supplied.status_code == 200, supplied.get_data(as_text=True)
+    assert done['parts_next'] == ''
+    assert done['status'] == 'قيد المعالجة'
+    assert any(ev['title'] == 'تم توفير قطع الغيار' for ev in done['events'])
+    types = [ev['type'] for ev in done['events']]
+    assert types.index('parts_received') < types.index('customer_approved') < types.index('parts_supplied')
+
+    with app.app_context():
+        pb = PartsBilling.query.filter_by(fault_id=fault_id).one()
+        assert pb.status == 'غير محصل'

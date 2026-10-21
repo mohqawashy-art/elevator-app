@@ -1350,13 +1350,33 @@ function escFaultText(value) {
     .replace(/>/g, '&gt;');
 }
 
-function faultPartsRequestOpen(events) {
-  let open = false;
-  (events || []).forEach(function (ev) {
-    if (ev.type === 'parts_requested') open = true;
-    if (ev.type === 'parts_received') open = false;
-  });
-  return open;
+function faultPartsActionsHtml(f) {
+  const step = (f && f.parts_next) || '';
+  if (!step) {
+    const events = (f && f.events) || [];
+    const last = events.length ? events[events.length - 1].type : '';
+    if (last === 'parts_supplied') {
+      return '<div style="margin-top:8px;font-size:12px;color:var(--text2)">القطع توفرت للفني. بعد التركيب يُغلق العطل من تقرير العطل.</div>';
+    }
+    if (last === 'customer_rejected') {
+      return '<div style="margin-top:8px;font-size:12px;color:var(--text2)">رُفضت القطع. يمكن للفني إرسال طلب جديد.</div>';
+    }
+    return '';
+  }
+  const id = f.id;
+  if (step === 'receive') {
+    return '<button type="button" class="btn btn-primary btn-sm" style="margin-top:10px" onclick="faultPartsAction(' + id + ',\'receive\')">استلام طلب القطع</button>';
+  }
+  if (step === 'approve') {
+    return '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px">' +
+      '<button type="button" class="btn btn-primary btn-sm" onclick="faultPartsAction(' + id + ',\'approve\')">موافقة العميل على قطع الغيار</button>' +
+      '<button type="button" class="btn btn-secondary btn-sm" onclick="faultPartsAction(' + id + ',\'reject\')">العميل رفض القطع</button>' +
+      '</div>';
+  }
+  if (step === 'supply') {
+    return '<button type="button" class="btn btn-primary btn-sm" style="margin-top:10px" onclick="faultPartsAction(' + id + ',\'supply\')">تم توفير قطع الغيار</button>';
+  }
+  return '';
 }
 
 function faultEventsHtml(f) {
@@ -1373,33 +1393,35 @@ function faultEventsHtml(f) {
           detail +
           '</div>';
       }).join('')
-    : '<div style="color:var(--text3);font-size:12px">لا حركات بعد. تُسجَّل عند وصول الفني، وطلب القطع، واستلام المكتب، ثم الإغلاق.</div>';
-  const btn = faultPartsRequestOpen(events)
-    ? '<button type="button" class="btn btn-primary btn-sm" style="margin-top:10px" onclick="receiveFaultParts(' + f.id + ')">استلام طلب القطع</button>'
-    : '';
-  return '<div class="view-item view-full"><div class="view-label">سجل الحركات</div><div class="view-val">' + rows + btn + '</div></div>';
+    : '<div style="color:var(--text3);font-size:12px">لا حركات بعد. تُسجَّل عند وصول الفني، ثم طلب القطع، واستلام المكتب، وموافقة العميل، وتوفير القطع، ثم الإغلاق.</div>';
+  return '<div class="view-item view-full"><div class="view-label">سجل الحركات</div><div class="view-val">' + rows + faultPartsActionsHtml(f) + '</div></div>';
 }
 
-async function receiveFaultParts(faultId) {
+async function faultPartsAction(faultId, action) {
   try {
     const headers = { 'Content-Type': 'application/json', 'Accept': 'application/json' };
     const csrf = document.querySelector('meta[name="csrf-token"]');
     if (csrf && csrf.content) headers['X-CSRF-Token'] = csrf.content;
-    const r = await fetch('/api/faults/' + faultId + '/parts-received', {
+    const r = await fetch('/api/faults/' + faultId + '/parts-action', {
       method: 'POST',
       headers: headers,
       credentials: 'same-origin',
+      body: JSON.stringify({ action: action }),
     });
     const data = await r.json();
     if (!data.ok) {
-      alert(data.error || 'تعذّر تسجيل الاستلام');
+      alert(data.error || 'تعذّر تسجيل الحركة');
       return;
     }
     const f = FAULTS.find(x => x.id === faultId);
-    if (f) f.events = data.events || [];
+    if (f) {
+      f.events = data.events || [];
+      f.parts_next = data.parts_next || '';
+      if (data.status) f.status = data.status;
+    }
     viewFault(faultId);
   } catch (e) {
-    alert('تعذّر تسجيل الاستلام');
+    alert('تعذّر تسجيل الحركة');
   }
 }
 
