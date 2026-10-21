@@ -714,6 +714,60 @@ def test_field_geofence_blocks_far_fault(client):
     assert r.status_code == 403
 
 
+def test_field_fault_report_records_arrival_when_technician_is_near(client):
+    """فتح التقرير من الجوال قرب العميل يحفظ وقت الوصول ويسجّله في الحركات."""
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(organization_id=oid, code='T-ARR', name='فني الوصول', phone='0501112233', team='أعطال')
+        db.session.add(tech)
+        cust = Customer(
+            organization_id=oid,
+            code='C-ARR',
+            name='عميل الوصول',
+            status='نشط',
+            lat='24.713600',
+            lng='46.675300',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-ARR', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        fault = Fault(
+            organization_id=oid,
+            code='F-ARR1',
+            elevator_id=elev.id,
+            technician_id=tech.id,
+            status='مفتوح',
+            priority='عادية',
+            reported_at=datetime.utcnow(),
+        )
+        db.session.add(fault)
+        db.session.commit()
+        fault_id, tech_id = fault.id, tech.id
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = tech_id
+
+    opened = client.get(f'/field/fault/{fault_id}/report?lat=24.713600&lng=46.675300')
+    assert opened.status_code == 200, opened.get_data(as_text=True)[:500]
+    html = opened.get_data(as_text=True)
+    assert 'id="arrival-time"' in html
+    assert 'value=""' not in html.split('id="arrival-time"', 1)[1][:120]
+
+    with client.application.app_context():
+        import json
+        from models import FaultEvent
+        saved = db.session.get(Fault, fault_id)
+        data = json.loads(saved.report_json)
+        assert (data['meta'].get('arrival_time') or '').strip()
+        assert saved.responded_at is not None
+        assert saved.responded_at.tzinfo is None
+        arrived = FaultEvent.query.filter_by(fault_id=fault_id, event_type='arrived').all()
+        assert len(arrived) == 1
+        assert arrived[0].actor_name == 'فني الوصول'
+
+
 def test_field_geofence_blocks_despite_office_responded_at(client):
     """responded_at من المكتب لا يُلغي التحقق — يلزم arrival_time من الميدان."""
     with client.application.app_context():

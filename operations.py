@@ -3088,6 +3088,8 @@ def save_fault_report(
 
     merged = _persist_fault_report_photos(f.id, merged)
     apply_report_to_fault(f, merged, mark_resolved=mark_resolved)
+    if (merged.get('meta') or {}).get('arrival_time'):
+        record_fault_arrival(f)
     if status:
         f.status = status
     parts = merged.get('parts') if isinstance(merged.get('parts'), list) else []
@@ -3395,14 +3397,26 @@ def fault_timelines(faults) -> dict[int, list[dict]]:
             row['ord'] = index
             rows.append(row)
         types = {row['type'] for row in rows}
-        if 'arrived' not in types and fault.responded_at:
+        if 'arrived' not in types:
+            saved_meta = {}
+            try:
+                from fault_report import parse_fault_report_json
+                saved_meta = (parse_fault_report_json(fault.report_json).get('meta') or {})
+            except Exception:
+                saved_meta = {}
+            saved_arrival = (saved_meta.get('arrival_time') or '').strip()
+            if fault.responded_at or saved_arrival:
+                visit_day = (saved_meta.get('visit_date') or '').strip()
+                at = _fmt_event_at(fault.responded_at) if fault.responded_at else (
+                    f'{visit_day} {saved_arrival}'.strip() if saved_arrival else ''
+                )
                 rows.append({
                     'type': 'arrived',
                     'title': 'وصل الفني',
-                    'detail': '',
+                    'detail': saved_arrival,
                     'actor': _technician_display_name(fault),
                     'role': 'technician',
-                    'at': _fmt_event_at(fault.responded_at),
+                    'at': at,
                     'ord': len(rows),
                 })
         if 'parts_requested' not in types:
@@ -3649,7 +3663,11 @@ def stamp_field_fault_arrival(fault_id: int, tech_id: int | None = None) -> None
     data = _enrich_fault_report_record(merge_fault_report(saved, f), f)
     meta = data['meta']
     if (meta.get('arrival_time') or '').strip():
+        if not f.responded_at:
+            f.responded_at = _as_utc_naive(datetime.now(RIYADH_TZ))
         if record_fault_arrival(f, tech_id):
+            db.session.commit()
+        elif f.responded_at:
             db.session.commit()
         return
 
@@ -3657,11 +3675,12 @@ def stamp_field_fault_arrival(fault_id: int, tech_id: int | None = None) -> None
     meta['visit_date'] = parts['date']
     meta['arrival_time'] = parts['time']
     f.report_json = json.dumps(data, ensure_ascii=False)
+    moment = _as_utc_naive(parts['dt'])
     if not f.responded_at:
-        f.responded_at = parts['dt']
+        f.responded_at = moment
     if (f.status or '') in ('', 'مفتوح', 'جديد'):
         f.status = 'قيد المعالجة'
-    record_fault_arrival(f, tech_id, when=parts['dt'])
+    record_fault_arrival(f, tech_id, when=moment)
     db.session.commit()
 
 
