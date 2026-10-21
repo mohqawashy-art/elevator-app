@@ -343,6 +343,16 @@
     };
   }
 
+  function syncPrintTimes() {
+    document.querySelectorAll('.fr-time-print[data-print-for]').forEach(function (el) {
+      const src = document.getElementById(el.getAttribute('data-print-for'));
+      const value = src && src.value ? src.value : '';
+      el.textContent = value || '—';
+    });
+  }
+
+  window.addEventListener('beforeprint', syncPrintTimes);
+
   global.LiftCoreFaultReport = {
     buildFaultTypes,
     buildPartsTable,

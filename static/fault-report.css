@@ -697,12 +697,30 @@ body.fr-report {
   .fr-report .page { margin: 8px 8px 20px; border-radius: var(--fr-r-sm); }
 }
 
+.fr-report .fr-time-print { display: none; }
+
 @media print {
   .fr-report .tech-bar,
   .fr-report .add-row-btn,
   .fr-report .del-btn,
   .fr-report .photo-remove,
   .fr-report .readonly-banner { display: none !important; }
+
+  .fr-report input[type="time"] { display: none !important; }
+  .fr-report .fr-time-print {
+    display: block !important;
+    font-family: var(--fr-font-en, 'DM Sans', sans-serif) !important;
+    direction: ltr !important;
+    text-align: left !important;
+    font-size: 12px !important;
+    font-weight: 600;
+    color: #000 !important;
+    background: #fff !important;
+    border: 1px solid #000 !important;
+    border-radius: 4px;
+    padding: 7px 10px !important;
+    min-height: 16px;
+  }
 
   .fr-report .page { box-shadow: none; margin: 0; max-width: none; }
   .fr-report .photo-slot:not(.has-img) { display: none !important; }

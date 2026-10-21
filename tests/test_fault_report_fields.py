@@ -163,3 +163,25 @@ def test_short_form_save_appears_in_report(client):
     html = client.get(f'/faults/{fault_id}/report').get_data(as_text=True)
     assert 'تم فحص اللوحة' in html
     assert 'إعادة ضبط القواطع' in html
+
+
+def test_print_report_shows_arrival_and_end_times(client):
+    from datetime import datetime
+
+    login_as(client, role='admin')
+    with client.application.app_context():
+        fault_id = _fault(
+            responded_at=datetime(2026, 10, 21, 6, 30),
+            resolved_at=datetime(2026, 10, 21, 8, 5),
+            report_json='{}',
+        )
+
+    html = client.get(f'/faults/{fault_id}/report?print=1').get_data(as_text=True)
+    assert 'class="fr-time-print" data-print-for="arrival-time">09:30' in html
+    assert 'class="fr-time-print" data-print-for="end-time">11:05' in html
+    assert 'value="09:30"' in html
+    assert 'value="11:05"' in html
+
+    with client.application.app_context():
+        saved = json.loads(Fault.query.get(fault_id).report_json or '{}')
+        assert (saved.get('meta') or {}).get('arrival_time', '') in ('', None)

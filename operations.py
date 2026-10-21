@@ -2428,6 +2428,42 @@ def _fmt_time_hm(dt) -> str:
         return ''
 
 
+def _riyadh_hm(dt) -> str:
+    """ساعة:دقيقة بتوقيت الرياض. القيم الساذجة في القاعدة تُخزَّن UTC."""
+    if not dt:
+        return ''
+    try:
+        if getattr(dt, 'tzinfo', None) is None:
+            dt = dt.replace(tzinfo=ZoneInfo('UTC'))
+        return dt.astimezone(RIYADH_TZ).strftime('%H:%M')
+    except (TypeError, ValueError, AttributeError):
+        return ''
+
+
+def _overlay_fault_report_clock(data: dict, fault) -> dict:
+    """يملأ وقت الوصول والانتهاء للعرض والطباعة إن غابا من محضر JSON."""
+    if not fault:
+        return data
+    meta = data.setdefault('meta', {})
+    if not (meta.get('arrival_time') or '').strip():
+        arrived = (
+            tenant_query(FaultEvent)
+            .filter_by(fault_id=fault.id, event_type='arrived')
+            .order_by(FaultEvent.created_at.asc(), FaultEvent.id.asc())
+            .first()
+        )
+        meta['arrival_time'] = _riyadh_hm(arrived.created_at if arrived else fault.responded_at)
+    if not (meta.get('end_time') or '').strip():
+        closed = (
+            tenant_query(FaultEvent)
+            .filter_by(fault_id=fault.id, event_type='closed')
+            .order_by(FaultEvent.created_at.desc(), FaultEvent.id.desc())
+            .first()
+        )
+        meta['end_time'] = _riyadh_hm(closed.created_at if closed else fault.resolved_at)
+    return data
+
+
 def _visit_tracking_action(v: MaintenanceVisit, meta: dict) -> tuple[str, str, int]:
     """label, tone, priority score for sorting current task."""
     st = (v.status or '').strip()
@@ -2915,6 +2951,7 @@ def fault_report_payload(
         report_data = _persist_fault_report_photos(f.id, report_data)
         f.report_json = json.dumps(report_data, ensure_ascii=False)
         db.session.commit()
+    report_data = _overlay_fault_report_clock(report_data, f)
     stats = report_stats(report_data)
     reported = f.reported_at.strftime('%Y-%m-%d %H:%M') if f.reported_at else ''
     inventory_items = [
