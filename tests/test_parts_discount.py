@@ -117,6 +117,48 @@ def test_fault_company_account_deducts_stock_and_not_collectible(client):
         assert pb.status == COMPANY_ACCOUNT_STATUS
 
 
+def test_fault_parts_save_when_item_is_not_in_stock(client):
+    """قطعة تُشترى عند الطلب: الحفظ ينجح ورصيد المخزن لا ينزل تحت الصفر."""
+    login_as(client, 'admin')
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        tech = Technician(
+            organization_id=oid, code='T-OS1', name='فني طلب',
+            phone='0501110002', team='صيانة', status='متاح',
+        )
+        cust = Customer(organization_id=oid, code='C-OS1', name='عميل طلب', status='نشط')
+        db.session.add_all([tech, cust])
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-OS1', customer_id=cust.id, status='نشط')
+        item = InventoryItem(
+            organization_id=oid, code='IT-OS1', name='كونتاكتور خاص',
+            unit='قطعة', current_qty=0, buy_price=30, sell_price=90,
+        )
+        db.session.add_all([elev, item])
+        db.session.flush()
+        fault = Fault(
+            organization_id=oid, code='FA-OS01', elevator_id=elev.id,
+            technician_id=tech.id, fault_type='عطل كهربائي', status='مفتوح',
+        )
+        db.session.add(fault)
+        db.session.commit()
+
+        lines = parse_fault_parts_lines(json.dumps([{
+            'item_id': item.id,
+            'name': item.name,
+            'qty': 2,
+            'unit_price': 90,
+            'cost_price': 30,
+        }]))
+        pb = apply_fault_parts_billing(fault, lines, technician_id=fault.technician_id)
+        db.session.commit()
+
+        assert pb is not None
+        assert 'كونتاكتور خاص' in (pb.description or '')
+        assert float(item.current_qty or 0) == 0
+        assert StockMovement.query.filter_by(item_id=item.id, direction='صادر').count() == 0
+
+
 def test_fault_add_company_account_via_form(client):
     login_as(client, 'admin')
     with client.application.app_context():

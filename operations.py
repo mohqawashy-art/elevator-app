@@ -3079,6 +3079,7 @@ def save_fault_report(
             elevator_id=elev.id if elev else None,
             movement_type='استخدام في محضر عطل',
             notes=f'محضر عطل {f.code}',
+            allow_shortage=True,
         )
     f.report_json = json.dumps(merged, ensure_ascii=False)
     db.session.commit()
@@ -4409,6 +4410,7 @@ def apply_fault_parts_billing(
         elevator_id=elev.id if elev else None,
         movement_type='استخدام في عطل',
         notes=f'عطل {fault.code}',
+        allow_shortage=True,
     )
     return pb
 

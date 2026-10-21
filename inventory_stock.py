@@ -61,6 +61,7 @@ def deduct_parts_from_stock(
     elevator_id: int | None = None,
     movement_type: str = 'استخدام قطع',
     notes: str = '',
+    allow_shortage: bool = False,
 ) -> None:
     from operations import next_code
     from tenant_scope import assign_organization, tenant_query
@@ -69,6 +70,7 @@ def deduct_parts_from_stock(
     if not stock_lines:
         return
 
+    ready = []
     for ln in stock_lines:
         item = tenant_query(InventoryItem).filter_by(id=int(ln['item_id'])).first()
         if not item:
@@ -76,13 +78,15 @@ def deduct_parts_from_stock(
         qty = float(ln.get('qty') or 0)
         available = float(item.current_qty or 0)
         if available + 1e-9 < qty:
+            # قطع تُشترى عند الطلب: تُحفظ على العطل دون رفض الحفظ ودون إنقاص الرصيد تحت الصفر
+            if allow_shortage:
+                continue
             raise ValueError(
                 f'رصيد «{item.name}» غير كافٍ (متوفر {available:g}، مطلوب {qty:g})'
             )
+        ready.append((ln, item, qty))
 
-    for ln in stock_lines:
-        item = tenant_query(InventoryItem).filter_by(id=int(ln['item_id'])).first()
-        qty = float(ln.get('qty') or 0)
+    for ln, item, qty in ready:
         unit_price = float(ln.get('cost_price') or item.buy_price or 0)
         m = StockMovement(
             code=next_code(StockMovement, 'MV-', digits=3),
@@ -112,6 +116,7 @@ def sync_entity_parts_stock(
     elevator_id: int | None = None,
     movement_type: str = 'استخدام قطع',
     notes: str = '',
+    allow_shortage: bool = False,
 ) -> None:
     ref = stock_reference(prefix, entity_id)
     reverse_stock_by_reference(ref)
@@ -122,4 +127,5 @@ def sync_entity_parts_stock(
         elevator_id=elevator_id,
         movement_type=movement_type,
         notes=notes,
+        allow_shortage=allow_shortage,
     )
