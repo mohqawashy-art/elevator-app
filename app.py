@@ -16851,6 +16851,7 @@ def settings_signatory_add():
         session['settings_notice'] = 'صلاحية المدير مطلوبة.'
         return _settings_redirect('signatures')
     from signatory_service import upsert_signatory
+    from signature_auth import normalize_national_id
 
     name = request.form.get('name', '').strip()
     national_id = request.form.get('national_id', '').strip()
