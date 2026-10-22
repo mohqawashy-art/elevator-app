@@ -577,7 +577,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
 
 <!-- PLAN MODAL — تخطيط يوم بيوم -->
 <div class="modal-overlay" id="modal-plan">
-  <div class="modal" style="max-width:980px;width:96vw;max-height:92vh">
+  <div class="modal" style="max-width:1120px;width:96vw;max-height:92vh">
     <div class="modal-head">
       <div class="modal-title">تخطيط الشهر</div>
       <button class="modal-close" onclick="closeModal('modal-plan')"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
@@ -652,7 +652,7 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <div id="plan-draft-wrap" style="margin-bottom:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
           <div style="font-size:14px;font-weight:600">مسودة الخطة <span id="plan-draft-count" style="color:var(--text3);font-weight:500"></span></div>
-          <div style="font-size:11px;color:var(--text3)">يمكنك حذف صف أو تغيير التاريخ قبل الاعتماد</div>
+          <div style="font-size:11px;color:var(--text3)">يمكنك حذف صف أو تغيير التاريخ أو الفرقة أو الفني قبل الاعتماد</div>
         </div>
         <div id="plan-districts" style="max-height:min(380px,42vh);overflow:auto"></div>
       </div>
@@ -1171,6 +1171,7 @@ function openPlanModal() {
   refreshMaintenanceTeams().then(function () {
     fillPlanTeamOptions();
     renderDispatchTeamSelect();
+    renderPlanDistricts();
   });
   refreshPlanDistricts().then(function () {
     loadPlanReadiness();
@@ -1524,7 +1525,7 @@ function updateWizardSummary() {
   var byTeam = {};
   PLAN_DRAFT.forEach(function (r) {
     byDay[r.visit_date] = (byDay[r.visit_date] || 0) + 1;
-    var t = r.team || '—';
+    var t = r.team || r.technician_name || r.technician || '—';
     byTeam[t] = (byTeam[t] || 0) + 1;
   });
   var days = Object.keys(byDay).sort();
@@ -1584,6 +1585,7 @@ function confirmDraftPlan() {
       route_order: r.route_order || (i + 1),
       district: r.district || '',
       team_id: r.team_id || null,
+      technician_id: r.team_id ? null : (r.technician_id || null),
     };
   });
   fetchPlanApi('/api/maintenance/run-plan', {
@@ -1600,7 +1602,7 @@ function confirmDraftPlan() {
       PLAN_DRAFT_META = null;
       var box = document.getElementById('plan-full-preview-box');
       if (box) {
-        box.innerHTML = '<strong>تم اعتماد الخطة</strong> — يمكنك تعديل تواريخ الزيارات أدناه.';
+        box.innerHTML = '<strong>تم اعتماد الخطة</strong> — يمكنك تعديل التاريخ أو الفرقة أو الفني أدناه.';
       }
       renderPlanDistricts();
       syncConfirmButton();
@@ -1634,6 +1636,123 @@ function changeDraftDate(key, newDate) {
   updateWizardSummary();
   renderPlanDistricts();
   fillPlanDayOptions();
+}
+
+function planOptionListHas(html, val) {
+  return html.indexOf('value="' + val + '">') >= 0 || html.indexOf('value="' + val + '" selected') >= 0;
+}
+
+function planAssigneeLocked(status) {
+  var s = status || '';
+  return s.indexOf('مكتمل') >= 0 || s.indexOf('ملغ') >= 0;
+}
+
+function planAssigneeValue(row) {
+  if (!row) return '';
+  if (row.team_id) return 'team:' + row.team_id;
+  if (row.technician_id) return 'tech:' + row.technician_id;
+  return '';
+}
+
+function planAssigneeLabel(row) {
+  if (!row) return '—';
+  if (row.team_id && row.team && row.team.indexOf('بدون فريق') < 0) return row.team;
+  if (row.technician_name) return row.technician_name;
+  if (row.team && row.team.indexOf('بدون فريق') < 0) return row.team;
+  if (row.technician && String(row.technician).indexOf('بدون فريق') < 0) return row.technician;
+  return '—';
+}
+
+function planAssigneeSelectHtml(row, handlerName, handlerArg) {
+  var selected = planAssigneeValue(row);
+  var teamOpts = (MAINT_TEAMS || []).map(function (t) {
+    var val = 'team:' + t.id;
+    return '<option value="' + val + '"' + (val === selected ? ' selected' : '') + '>' +
+      escHtml(t.label || t.name || ('فريق ' + t.id)) + '</option>';
+  }).join('');
+  if (selected.indexOf('team:') === 0 && !planOptionListHas(teamOpts, selected)) {
+    teamOpts = '<option value="' + selected + '" selected>' + escHtml(planAssigneeLabel(row)) + '</option>' + teamOpts;
+  }
+  var techList = (typeof MAINT_TECHS !== 'undefined' && MAINT_TECHS.length) ? MAINT_TECHS : (typeof TECHNICIANS !== 'undefined' ? TECHNICIANS : []);
+  var techOpts = techList.map(function (t) {
+    var val = 'tech:' + t.id;
+    return '<option value="' + val + '"' + (val === selected ? ' selected' : '') + '>' +
+      escHtml(t.name || ('فني ' + t.id)) + '</option>';
+  }).join('');
+  if (selected.indexOf('tech:') === 0 && !planOptionListHas(techOpts, selected)) {
+    techOpts = '<option value="' + selected + '" selected>' + escHtml(row.technician_name || row.technician || 'فني') + '</option>' + techOpts;
+  }
+  var arg = (typeof handlerArg === 'number')
+    ? String(handlerArg)
+    : ("'" + String(handlerArg || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'") + "'");
+  return '<select title="تغيير الفرقة أو الفني" style="width:100%;min-width:140px;font-size:12px;padding:4px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text1)" onchange="' +
+    handlerName + '(' + arg + ', this.value)">' +
+    '<option value=""' + (selected ? '' : ' selected') + '>— اختر —</option>' +
+    '<optgroup label="الفرق">' + (teamOpts || '<option value="" disabled>لا توجد فرق</option>') + '</optgroup>' +
+    '<optgroup label="الفنيون">' + (techOpts || '<option value="" disabled>لا يوجد فنيون</option>') + '</optgroup>' +
+    '</select>';
+}
+
+function applyDraftAssignee(row, value) {
+  if (!row || !value) return false;
+  var parts = String(value).split(':');
+  var kind = parts[0];
+  var id = parseInt(parts[1], 10);
+  if (!id) return false;
+  if (kind === 'team') {
+    var team = (MAINT_TEAMS || []).find(function (t) { return String(t.id) === String(id); });
+    row.team_id = id;
+    row.team = team ? (team.label || team.name || '') : (row.team || '');
+    row.technician_id = null;
+    row.technician_name = '';
+    row.technician = '';
+    return true;
+  }
+  if (kind === 'tech') {
+    var techList = (typeof MAINT_TECHS !== 'undefined' && MAINT_TECHS.length) ? MAINT_TECHS : (typeof TECHNICIANS !== 'undefined' ? TECHNICIANS : []);
+    var tech = techList.find(function (t) { return String(t.id) === String(id); });
+    row.technician_id = id;
+    row.technician_name = tech ? (tech.name || '') : '';
+    row.technician = row.technician_name;
+    row.team_id = null;
+    row.team = '';
+    return true;
+  }
+  return false;
+}
+
+function changeDraftAssignee(key, value) {
+  var row = PLAN_DRAFT.find(function (r) { return r._key === key; });
+  if (!row || !applyDraftAssignee(row, value)) {
+    renderPlanDistricts();
+    return;
+  }
+  updateWizardSummary();
+  renderPlanDistricts();
+}
+
+function updateSavedVisitAssignee(visitId, value) {
+  if (!visitId || !value) {
+    renderPlanDistricts();
+    return;
+  }
+  var parts = String(value).split(':');
+  var kind = parts[0];
+  var id = parseInt(parts[1], 10);
+  if (!id) {
+    renderPlanDistricts();
+    return;
+  }
+  var body = { plan_month: planMonth(), visit_ids: [visitId] };
+  if (kind === 'team') body.team_id = id;
+  else if (kind === 'tech') body.technician_id = id;
+  else {
+    renderPlanDistricts();
+    return;
+  }
+  fetchPlanApi('/api/maintenance/assign-visits', body)
+    .then(function (data) { applyPlanData(data); })
+    .catch(function (err) { alert(err.message || err); loadPlan(); });
 }
 
 function refreshMaintenanceTeams() {
@@ -2389,21 +2508,21 @@ function renderPlanDistricts() {
         var elev = v.elevator || '—';
         var bld = (v.building || '').trim() || '—';
         var order = v.route_order || (idx + 1);
-        return '<div style="display:grid;grid-template-columns:40px minmax(140px,1.2fr) 70px minmax(90px,.8fr) minmax(90px,.7fr) minmax(110px,.9fr) 130px 70px;gap:8px;align-items:center;padding:8px 8px;border-bottom:1px solid var(--border);font-size:13px">' +
+        return '<div style="display:grid;grid-template-columns:40px minmax(120px,1.1fr) 64px minmax(80px,.7fr) minmax(80px,.6fr) minmax(160px,1.1fr) 124px 64px;gap:8px;align-items:center;padding:8px 8px;border-bottom:1px solid var(--border);font-size:13px">' +
           '<div style="color:var(--accent);font-weight:700;font-family:var(--font-en)">' + order + '</div>' +
           '<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(cust) + '">' + escHtml(cust) + '</div>' +
           '<div style="font-family:var(--font-en);direction:ltr;color:var(--accent);font-weight:600">' + escHtml(elev) + '</div>' +
           '<div style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(bld) + '">' + escHtml(bld) + '</div>' +
           '<div style="color:var(--text3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(v.district || '') + '">' + escHtml(v.district || '—') + '</div>' +
-          '<div style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(v.team || '') + '">' + escHtml(v.team || '—') + '</div>' +
+          '<div>' + planAssigneeSelectHtml(v, 'changeDraftAssignee', v._key) + '</div>' +
           '<div><input type="date" lang="en-GB" value="' + escHtml(v.visit_date || '') + '" min="' + bounds.from + '" max="' + bounds.to + '" style="direction:ltr;width:100%;font-size:12px;padding:4px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text1)" onchange="changeDraftDate(\'' + escHtml(v._key) + '\', this.value)"></div>' +
           '<div><button type="button" class="btn btn-secondary btn-sm" style="padding:4px 8px" onclick="removeDraftRow(\'' + escHtml(v._key) + '\')">حذف</button></div>' +
         '</div>';
       }).join('');
       return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">' +
         '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>' + escHtml(formatPlanDayLabel(day)) + '</strong><span style="color:var(--text3);font-size:12px">' + visits.length + ' زيارة · ترتيب خط السير</span></div>' +
-        '<div style="display:grid;grid-template-columns:40px minmax(140px,1.2fr) 70px minmax(90px,.8fr) minmax(90px,.7fr) minmax(110px,.9fr) 130px 70px;gap:8px;padding:0 8px 6px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
-          '<span>#</span><span>العميل</span><span>المصعد</span><span>المبنى</span><span>المنطقة</span><span>الفريق</span><span>التاريخ</span><span></span>' +
+        '<div style="display:grid;grid-template-columns:40px minmax(120px,1.1fr) 64px minmax(80px,.7fr) minmax(80px,.6fr) minmax(160px,1.1fr) 124px 64px;gap:8px;padding:0 8px 6px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
+          '<span>#</span><span>العميل</span><span>المصعد</span><span>المبنى</span><span>المنطقة</span><span>الفرقة / الفني</span><span>التاريخ</span><span></span>' +
         '</div>' + rows + '</div>';
     }).join('');
     return;
@@ -2435,18 +2554,21 @@ function renderPlanDistricts() {
       });
       var rows = visits.map(function (v) {
         var cust = planVisitCustomerName(v);
-        return '<div style="display:grid;grid-template-columns:minmax(160px,1.3fr) 70px minmax(110px,1fr) minmax(120px,.9fr) 140px;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border);font-size:13px">' +
+        var assigneeCell = planAssigneeLocked(v.status)
+          ? '<div style="color:var(--text2);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + escHtml(planAssigneeLabel(v)) + '">' + escHtml(planAssigneeLabel(v)) + '</div>'
+          : planAssigneeSelectHtml(v, 'updateSavedVisitAssignee', v.id);
+        return '<div style="display:grid;grid-template-columns:minmax(140px,1.2fr) 64px minmax(90px,.8fr) minmax(170px,1.15fr) 124px;gap:8px;align-items:center;padding:8px;border-bottom:1px solid var(--border);font-size:13px">' +
           '<div style="font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(cust) + '</div>' +
           '<div style="font-family:var(--font-en);direction:ltr;color:var(--accent);font-weight:600">' + escHtml(v.elevator || '—') + '</div>' +
           '<div style="color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(v.building || '—') + '</div>' +
-          '<div style="color:var(--text3);font-size:12px">' + escHtml(v.team || v.technician || '—') + '</div>' +
+          '<div>' + assigneeCell + '</div>' +
           '<div><input type="date" lang="en-GB" value="' + escHtml(v.visit_date || '') + '" min="' + bounds2.from + '" max="' + bounds2.to + '" style="direction:ltr;width:100%;font-size:12px;padding:4px 6px;background:var(--bg4);border:1px solid var(--border);border-radius:6px;color:var(--text1)" onchange="updateSavedVisitDate(' + v.id + ', this.value)"></div>' +
         '</div>';
       }).join('');
       return '<div style="background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px">' +
         '<div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong>' + escHtml(formatPlanDayLabel(day)) + '</strong><span style="color:var(--text3);font-size:12px">' + visits.length + ' زيارة</span></div>' +
-        '<div style="display:grid;grid-template-columns:minmax(160px,1.3fr) 70px minmax(110px,1fr) minmax(120px,.9fr) 140px;gap:8px;padding:0 8px 6px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
-          '<span>العميل</span><span>المصعد</span><span>المبنى</span><span>الفريق</span><span>التاريخ</span>' +
+        '<div style="display:grid;grid-template-columns:minmax(140px,1.2fr) 64px minmax(90px,.8fr) minmax(170px,1.15fr) 124px;gap:8px;padding:0 8px 6px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">' +
+          '<span>العميل</span><span>المصعد</span><span>المبنى</span><span>الفرقة / الفني</span><span>التاريخ</span>' +
         '</div>' + rows + '</div>';
     }).join('');
 }

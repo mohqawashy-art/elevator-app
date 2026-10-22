@@ -1259,6 +1259,8 @@ def create_plan_from_draft(
         db.session.add(v)
         db.session.flush()
         team_id = row.get('team_id')
+        tech_id = row.get('technician_id')
+        assigned = False
         if team_id:
             try:
                 from maintenance_teams import assign_visit_to_team
@@ -1266,6 +1268,18 @@ def create_plan_from_draft(
                 team = _MT.query.get(int(team_id))
                 if team and team.active:
                     assign_visit_to_team(v, team)
+                    assigned = True
+            except (TypeError, ValueError):
+                pass
+        if not assigned and tech_id:
+            try:
+                from technician_assignments import sync_visit_technicians
+                tid = int(tech_id)
+                tech = tenant_query(Technician).filter_by(id=tid).first()
+                if tech:
+                    v.maintenance_team_id = None
+                    v.technician_id = tid
+                    sync_visit_technicians(v, [tid])
             except (TypeError, ValueError):
                 pass
         created += 1
@@ -1649,6 +1663,8 @@ def _visit_plan_row(v: MaintenanceVisit) -> dict:
     cust = v.elevator.customer if v.elevator else None
     team = v.maintenance_team
     team_label = team_display_label(team) if team else '— بدون فريق —'
+    tech = v.technician
+    tech_name = (tech.name or '').strip() if tech else ''
     return {
         'id': v.id,
         'code': v.code,
@@ -1661,6 +1677,7 @@ def _visit_plan_row(v: MaintenanceVisit) -> dict:
         'team_id': v.maintenance_team_id or None,
         'team': team_label,
         'technician_id': v.technician_id or None,
+        'technician_name': tech_name,
         'technician': team_label,
         'status': v.status,
         'route_order': v.route_order or 0,
