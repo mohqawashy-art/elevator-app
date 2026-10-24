@@ -230,9 +230,32 @@ def fault_technicians_payload(fault) -> list[dict]:
 def technician_assigned_to_visit(visit, tech_id: int) -> bool:
     if not tech_id:
         return True
-    if visit.technician_id == tech_id:
+    tid = int(tech_id)
+    if visit.technician_id == tid:
         return True
-    return tenant_query(VisitTechnician).filter_by(visit_id=visit.id, technician_id=tech_id).count() > 0
+    linked = (
+        VisitTechnician.query.execution_options(skip_tenant=True)
+        .filter_by(visit_id=visit.id, technician_id=tid)
+        .count()
+        > 0
+    )
+    if linked:
+        return True
+    team_id = getattr(visit, 'maintenance_team_id', None)
+    if not team_id:
+        return False
+    from models import MaintenanceTeam
+
+    team = getattr(visit, 'maintenance_team', None)
+    if team is None or getattr(team, 'id', None) != int(team_id):
+        team = (
+            MaintenanceTeam.query.execution_options(skip_tenant=True)
+            .filter_by(id=int(team_id))
+            .first()
+        )
+    if not team:
+        return False
+    return tid in (team.leader_id, team.assistant_id)
 
 
 def technician_assigned_to_fault(fault, tech_id: int) -> bool:
@@ -294,12 +317,27 @@ def unassigned_open_faults_filter():
 
 
 def visits_for_technician_filter(tech_id: int):
-    assigned = db.session.query(VisitTechnician.visit_id).filter(
-        VisitTechnician.technician_id == tech_id
+    """زيارات الفني: التعيين المباشر، صف الفريق، أو فريق هو رئيسه/مساعده الآن."""
+    from models import MaintenanceTeam
+
+    tid = int(tech_id)
+    assigned = (
+        db.session.query(VisitTechnician.visit_id)
+        .filter(VisitTechnician.technician_id == tid)
+        .execution_options(skip_tenant=True)
+    )
+    member_teams = (
+        db.session.query(MaintenanceTeam.id)
+        .filter(or_(
+            MaintenanceTeam.leader_id == tid,
+            MaintenanceTeam.assistant_id == tid,
+        ))
+        .execution_options(skip_tenant=True)
     )
     return or_(
-        MaintenanceVisit.technician_id == tech_id,
+        MaintenanceVisit.technician_id == tid,
         MaintenanceVisit.id.in_(assigned),
+        MaintenanceVisit.maintenance_team_id.in_(member_teams),
     )
 
 

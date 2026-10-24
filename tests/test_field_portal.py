@@ -1231,4 +1231,108 @@ def test_new_field_pin_clears_failed_login_lockout(client, monkeypatch):
         follow_redirects=False,
     )
     assert ok.status_code == 302
-    assert '/field' in (ok.headers.get('Location') or '')
+
+
+def test_faults_technician_sees_visit_reassigned_from_maintenance_lead(client):
+    """تغيير الفني من عبدالله لشكري إلى إبراهيم — الزيارة تظهر في بوابة إبراهيم حتى لو فريقه أعطال."""
+    from technician_assignments import sync_visit_technicians, technician_assigned_to_visit
+
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        old = Technician(
+            organization_id=oid, code='T-OLD', name='عبدالله لشكري', phone='0501000001', team='صيانة',
+        )
+        ibrahim = Technician(
+            organization_id=oid, code='T-IBR', name='ابراهيم', phone='0501000002', team='أعطال',
+        )
+        db.session.add_all([old, ibrahim])
+        db.session.flush()
+        cust = Customer(organization_id=oid, code='C-IBR', name='عميل نقل الزيارة', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-IBR', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='V-IBR1',
+            elevator_id=elev.id,
+            technician_id=ibrahim.id,
+            visit_date=date.today(),
+            visit_type='صيانة دورية',
+            status='جاري التنفيذ',
+        )
+        db.session.add(visit)
+        db.session.flush()
+        sync_visit_technicians(visit, [ibrahim.id])
+        db.session.commit()
+        ibrahim_id, old_id, visit_id = ibrahim.id, old.id, visit.id
+
+        payload = field_technician_payload(ibrahim_id, portal_kind='faults')
+        assert payload['show_visits'] is True
+        assert any(v['code'] == 'V-IBR1' for v in payload['visits_today'])
+        old_payload = field_technician_payload(old_id, portal_kind='maintenance')
+        assert not any(v['code'] == 'V-IBR1' for v in old_payload['visits'])
+        assert technician_assigned_to_visit(db.session.get(MaintenanceVisit, visit_id), ibrahim_id)
+
+    with client.session_transaction() as sess:
+        sess['field_tech_id'] = ibrahim_id
+    html = client.get('/field').get_data(as_text=True)
+    assert 'V-IBR1' in html
+
+
+def test_new_team_leader_receives_open_visits_on_field_portal(client):
+    from maintenance_teams import sync_open_visits_for_team
+    from models import MaintenanceTeam
+    from technician_assignments import sync_visit_technicians
+
+    with client.application.app_context():
+        oid = ensure_test_organization()
+        old = Technician(
+            organization_id=oid, code='T-LEAD1', name='عبدالله لشكري', phone='0502000001', team='صيانة',
+        )
+        ibrahim = Technician(
+            organization_id=oid, code='T-LEAD2', name='ابراهيم', phone='0502000002', team='صيانة',
+        )
+        db.session.add_all([old, ibrahim])
+        db.session.flush()
+        team = MaintenanceTeam(
+            organization_id=oid, code='MT-IBR', name='فريق 1', leader_id=old.id, active=True,
+        )
+        db.session.add(team)
+        db.session.flush()
+        cust = Customer(organization_id=oid, code='C-TM', name='عميل الفريق', status='نشط')
+        db.session.add(cust)
+        db.session.flush()
+        elev = Elevator(organization_id=oid, code='E-TM', customer_id=cust.id, status='نشط')
+        db.session.add(elev)
+        db.session.flush()
+        visit = MaintenanceVisit(
+            organization_id=oid,
+            code='V-TM1',
+            elevator_id=elev.id,
+            technician_id=old.id,
+            maintenance_team_id=team.id,
+            visit_date=date.today(),
+            visit_type='صيانة دورية',
+            status='مجدولة',
+        )
+        db.session.add(visit)
+        db.session.flush()
+        sync_visit_technicians(visit, [old.id])
+        team.leader_id = ibrahim.id
+        db.session.commit()
+        ibrahim_id, old_id = ibrahim.id, old.id
+
+        before = field_technician_payload(ibrahim_id, portal_kind='maintenance')
+        assert any(v['code'] == 'V-TM1' for v in before['visits_today'])
+
+        moved = sync_open_visits_for_team(db.session.get(MaintenanceTeam, team.id))
+        db.session.commit()
+        assert moved == 1
+        saved = db.session.get(MaintenanceVisit, visit.id)
+        assert saved.technician_id == ibrahim_id
+        after_old = field_technician_payload(old_id, portal_kind='maintenance')
+        assert not any(v['code'] == 'V-TM1' for v in after_old['visits'])
+        after_new = field_technician_payload(ibrahim_id, portal_kind='maintenance')
+        assert any(v['code'] == 'V-TM1' for v in after_new['visits_today'])

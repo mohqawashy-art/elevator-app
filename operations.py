@@ -34,7 +34,7 @@ from tenant_scope import assign_organization, tenant_get_or_404, tenant_query
 VISIT_AT_CLIENT = 'عند العميل'
 VISIT_FINISHED_AT_CLIENT = 'أنهى العمل عند العميل'
 VISIT_ACTIVE = (
-    'مجدولة', 'مُرسلة للفني', 'جارية',
+    'مجدولة', 'مُرسلة للفني', 'جارية', 'جاري التنفيذ', 'متأخرة',
     VISIT_AT_CLIENT, VISIT_FINISHED_AT_CLIENT,
 )
 VISIT_DONE = ('مكتملة', 'ملغاة')
@@ -1931,12 +1931,14 @@ def dispatch_technician_route(
     dispatch_day: str = 'today',
 ) -> dict:
     """إرسال زيارات يوم واحد فقط للفني — اليوم أو غداً (لا يُرسل الشهر كاملاً)."""
+    from technician_assignments import visits_for_technician_filter
+
     target = _resolve_dispatch_day(dispatch_day)
-    q = tenant_query(MaintenanceVisit).filter(
-        MaintenanceVisit.technician_id == technician_id,
+    q = exclude_fault_visits(tenant_query(MaintenanceVisit).filter(
+        visits_for_technician_filter(technician_id),
         MaintenanceVisit.visit_date == target,
-        MaintenanceVisit.status.in_(('مجدولة', 'مُرسلة للفني')),
-    )
+        MaintenanceVisit.status.in_(('مجدولة', 'مُرسلة للفني', 'متأخرة', 'جاري التنفيذ')),
+    ))
     visits = q.order_by(MaintenanceVisit.route_order, MaintenanceVisit.id).all()
     day_label = _dispatch_day_label(target)
     tech = tenant_query(Technician).filter_by(id=technician_id).first()
@@ -1951,7 +1953,8 @@ def dispatch_technician_route(
         }
     now = datetime.utcnow()
     for v in visits:
-        v.status = 'مُرسلة للفني'
+        if (v.status or '') not in (VISIT_AT_CLIENT, VISIT_FINISHED_AT_CLIENT, 'جارية', 'جاري التنفيذ'):
+            v.status = 'مُرسلة للفني'
         v.dispatched_at = now
     db.session.commit()
     return {
@@ -2219,26 +2222,23 @@ def field_technician_payload(tech_id: int, base_url: str = '', on_date: date | N
     tech = tenant_get_or_404(Technician, tech_id)
     today = on_date or date.today()
     tomorrow = today + timedelta(days=1)
-    show_visits = portal_kind in ('maintenance', 'both')
     show_faults = portal_kind in ('faults', 'both')
 
-    today_visits: list = []
-    tomorrow_visits: list = []
-    visits: list = []
-    if show_visits:
-        visits = (
-            exclude_fault_visits(
-                tenant_query(MaintenanceVisit).filter(
-                    visits_for_technician_filter(tech_id),
-                    MaintenanceVisit.visit_date.in_([today, tomorrow]),
-                    MaintenanceVisit.status.in_(VISIT_ACTIVE),
-                )
+    visits = (
+        exclude_fault_visits(
+            tenant_query(MaintenanceVisit).filter(
+                visits_for_technician_filter(tech_id),
+                MaintenanceVisit.visit_date.in_([today, tomorrow]),
+                MaintenanceVisit.status.in_(VISIT_ACTIVE),
             )
-            .order_by(MaintenanceVisit.visit_date, MaintenanceVisit.route_order)
-            .all()
         )
-        today_visits = [v for v in visits if v.visit_date == today]
-        tomorrow_visits = [v for v in visits if v.visit_date == tomorrow]
+        .order_by(MaintenanceVisit.visit_date, MaintenanceVisit.route_order)
+        .all()
+    )
+    today_visits = [v for v in visits if v.visit_date == today]
+    tomorrow_visits = [v for v in visits if v.visit_date == tomorrow]
+    # فريق الأعطال يرى زيارات الصيانة إذا أُسندت إليه أو أصبح رئيس/مساعد الفريق
+    show_visits = portal_kind in ('maintenance', 'both') or bool(visits)
 
     # أصلح روابط التعيين الناقصة قبل الجلب
     if ensure_fault_links_for_technician(tech_id):

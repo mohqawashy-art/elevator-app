@@ -305,6 +305,48 @@ def list_all_teams() -> list[MaintenanceTeam]:
     )
 
 
+def team_member_ids(team: MaintenanceTeam | None) -> list[int]:
+    if not team or not team.leader_id:
+        return []
+    ids = [int(team.leader_id)]
+    if team.assistant_id and int(team.assistant_id) != int(team.leader_id):
+        ids.append(int(team.assistant_id))
+    return ids
+
+
+def release_visit_team_if_mismatch(visit: MaintenanceVisit, technician_ids: list[int]) -> None:
+    """تعديل فني الزيارة يدوياً يفصلها عن الفريق القديم حتى لا تبقى عند رئيسه."""
+    team_id = getattr(visit, 'maintenance_team_id', None)
+    if not team_id:
+        return
+    team = visit.maintenance_team or MaintenanceTeam.query.get(int(team_id))
+    chosen = [int(x) for x in technician_ids if x]
+    if not team or chosen != team_member_ids(team):
+        visit.maintenance_team_id = None
+
+
+def sync_open_visits_for_team(team: MaintenanceTeam) -> int:
+    """بعد تغيير رئيس الفريق أو مساعده، الزيارات المفتوحة تتبع الأعضاء الحاليين."""
+    from operations import VISIT_ACTIVE
+    from technician_assignments import visit_technician_ids
+
+    if not team or not team.id or not team.leader_id:
+        return 0
+    expected = team_member_ids(team)
+    visits = MaintenanceVisit.query.filter(
+        MaintenanceVisit.maintenance_team_id == team.id,
+        MaintenanceVisit.status.in_(VISIT_ACTIVE),
+    ).all()
+    updated = 0
+    for visit in visits:
+        current = visit_technician_ids(visit)
+        if visit.technician_id == expected[0] and current == expected:
+            continue
+        assign_visit_to_team(visit, team)
+        updated += 1
+    return updated
+
+
 def assign_visit_to_team(visit: MaintenanceVisit, team: MaintenanceTeam) -> None:
     from technician_assignments import sync_visit_technicians
 

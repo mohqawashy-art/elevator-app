@@ -537,8 +537,23 @@ def _field_portal_context(tech_id: int) -> dict:
         ).count()
         > 0
     )
+    from datetime import date as _date, timedelta as _timedelta
+    from operations import VISIT_ACTIVE, exclude_fault_visits
+    from technician_assignments import visits_for_technician_filter
+
+    _today = _date.today()
+    has_visits = (
+        exclude_fault_visits(
+            tenant_query(MaintenanceVisit).filter(
+                visits_for_technician_filter(tech_id),
+                MaintenanceVisit.visit_date.in_([_today, _today + _timedelta(days=1)]),
+                MaintenanceVisit.status.in_(VISIT_ACTIVE),
+            )
+        ).count()
+        > 0
+    )
     show_faults = kind in ('faults', 'both') or has_faults
-    show_visits = kind in ('maintenance', 'both')
+    show_visits = kind in ('maintenance', 'both') or has_visits
     if show_faults and not show_visits:
         portal_label = technician_portal_label('faults')
     elif show_visits and not show_faults:
@@ -10039,6 +10054,8 @@ def visit_edit(id):
     v.notes         = request.form.get('notes','')
 
     sync_visit_technicians(v, tech_ids)
+    from maintenance_teams import release_visit_team_if_mismatch
+    release_visit_team_if_mismatch(v, tech_ids)
     db.session.commit()
     from operations import should_send_visit_done_notice, visit_customer_notice_whatsapp
 
@@ -10473,8 +10490,11 @@ def api_save_maintenance_team():
     team.active = str(data.get('active', '1')).lower() not in ('0', 'false', 'no')
     team.sort_order = int(data.get('sort_order') or team.sort_order or 0)
     team.notes = (data.get('notes') or '').strip() or None
+    db.session.flush()
+    from maintenance_teams import sync_open_visits_for_team
+    visits_updated = sync_open_visits_for_team(team)
     db.session.commit()
-    return jsonify({'team': team_to_dict(team)})
+    return jsonify({'team': team_to_dict(team), 'visits_updated': visits_updated})
 
 
 @app.route('/api/maintenance/teams/<int:team_id>/delete', methods=['POST'])
