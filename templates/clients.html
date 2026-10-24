@@ -1040,11 +1040,6 @@ function validateClientPhoneFields() {
       alert('رقم واتساب المسؤول غير مكتمل');
       return false;
     }
-    if (phoneKeyFromFull(fullWa) !== phoneKey && findPhoneDuplicate(fullWa, editId)) {
-      var dupWa = findPhoneDuplicate(fullWa, editId);
-      alert('واتساب المسؤول مستخدم للعميل «' + dupWa.name + '» (' + dupWa.code + ')');
-      return false;
-    }
   }
   var extra = collectExtraPhonesFromForm();
   if (extra.error) {

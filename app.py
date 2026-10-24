@@ -6676,11 +6676,7 @@ def client_add():
             flash('واتساب المسؤول: ' + wa_err, 'error')
             return redirect(url_for('clients'))
         wa = format_phone_storage(wa_raw)
-    if wa and phone_key(wa) != phone_key(phone):
-        taken2, msg2 = phone_taken(wa)
-        if taken2:
-            flash(msg2, 'error')
-            return redirect(url_for('clients'))
+    # واتساب المسؤول يُكرَّر بين العملاء/العقود؛ رقم الجوال الأساسي يبقى فريداً.
     extra_phones, extra_err = parse_extra_phones_from_request(request.form)
     if extra_err:
         flash(extra_err, 'error')
@@ -6748,11 +6744,6 @@ def client_edit(id):
             flash('واتساب المسؤول: ' + wa_err, 'error')
             return redirect(url_for('clients'))
         wa = format_phone_storage(wa_raw)
-    if wa and phone_key(wa) != phone_key(phone):
-        taken2, msg2 = phone_taken(wa, customer_id=c.id)
-        if taken2:
-            flash(msg2, 'error')
-            return redirect(url_for('clients'))
     extra_phones, extra_err = parse_extra_phones_from_request(request.form)
     if extra_err:
         flash(extra_err, 'error')
@@ -6850,10 +6841,6 @@ def api_clients_quick():
         if wa_err:
             return jsonify(ok=False, error='واتساب: ' + wa_err), 400
         wa = format_phone_storage(wa_raw)
-        if phone_key(wa) != phone_key(phone):
-            taken2, msg2 = phone_taken(wa)
-            if taken2:
-                return jsonify(ok=False, error=msg2), 400
 
     city = (data.get('city') or '').strip() or 'مكة المكرمة'
     c = Customer(
