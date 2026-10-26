@@ -67,6 +67,57 @@ def test_drill_expired_contracts_api_ok(client):
     data = r.get_json()
     assert 'columns' in data
     assert 'rows' in data
+    assert 'إجراء' in data['columns']
+
+
+def test_alert_row_links_to_customer_contracts(client):
+    from datetime import date as date_cls
+
+    from app import db
+    from models import Contract, Customer, Organization
+    from tests.conftest import login_as
+
+    login_as(client, role='admin')
+    with client.application.app_context():
+        org = Organization.query.filter_by(slug='default').first()
+        cust = Customer(
+            organization_id=org.id,
+            code='C-ALERT-GO',
+            name='عميل زر العقود',
+            status='نشط',
+        )
+        db.session.add(cust)
+        db.session.flush()
+        expired = Contract(
+            organization_id=org.id,
+            code='CN-ALERT-EXP',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            status='منتهي',
+            start_date=date_cls.today() - timedelta(days=400),
+            end_date=date_cls.today() - timedelta(days=3),
+        )
+        expiring = Contract(
+            organization_id=org.id,
+            code='CN-ALERT-SOON',
+            customer_id=cust.id,
+            contract_type='عقد صيانة',
+            status='نشط',
+            start_date=date_cls.today() - timedelta(days=20),
+            end_date=date_cls.today() + timedelta(days=12),
+        )
+        db.session.add_all([expired, expiring])
+        db.session.commit()
+        cid = cust.id
+
+    href = f'/contracts?customer_id={cid}'
+    for path, code in (
+        ('/api/dashboard/drill/contracts_expired', 'CN-ALERT-EXP'),
+        ('/api/dashboard/drill/contracts_expiring', 'CN-ALERT-SOON'),
+    ):
+        data = client.get(path).get_json()
+        match = next(row for row in data['rows'] if code in row['cells'])
+        assert any(isinstance(cell, str) and href in cell and 'عقود العميل' in cell for cell in match['cells'])
 
 
 def test_install_contract_excluded_from_expiring_alert(client):

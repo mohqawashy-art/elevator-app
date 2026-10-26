@@ -5330,6 +5330,25 @@ def _contract_file_cell_html(c) -> str:
     )
 
 
+def _contract_customer_action_cell(c) -> str:
+    """زر يفتح عقود هذا العميل لتسجيل التجديد أو الإلغاء."""
+    from markupsafe import escape
+
+    cid = getattr(c, 'customer_id', None)
+    customer = getattr(c, 'customer', None)
+    if not cid and customer is not None:
+        cid = customer.id
+    if not cid:
+        return '—'
+    name = ((customer.name if customer is not None else '') or '').strip()
+    title = f'عقود {name} — تجديد أو إلغاء' if name else 'فتح عقود العميل لتسجيل التجديد أو الإلغاء'
+    href = f'/contracts?customer_id={int(cid)}'
+    return (
+        f'<a href="{escape(href)}" class="btn btn-primary btn-sm" '
+        f'title="{escape(title)}" onclick="event.stopPropagation()">عقود العميل</a>'
+    )
+
+
 def _contract_alert_drill_cells(c, core_cells, *, wa_scene: str):
     from operations import customer_phones_display
 
@@ -5339,6 +5358,7 @@ def _contract_alert_drill_cells(c, core_cells, *, wa_scene: str):
             customer_phones_display(c.customer),
             _fmt_drill_sar(c.total or c.value),
             _contract_file_cell_html(c),
+            _contract_customer_action_cell(c),
         ],
         wa_alert={'scene': wa_scene, 'id': c.id},
     )
@@ -5390,7 +5410,7 @@ def _fault_drill_rows(faults, *, tech_default='غير مكلف', extra_reported_
 
 
 CUSTOMER_ALERT_WA_COL = 'واتساب'
-CONTRACT_ALERT_EXTRA_COLS = ['جوال العميل', 'قيمة العقد', 'ملف العقد', CUSTOMER_ALERT_WA_COL]
+CONTRACT_ALERT_EXTRA_COLS = ['جوال العميل', 'قيمة العقد', 'ملف العقد', 'إجراء', CUSTOMER_ALERT_WA_COL]
 CUSTOMER_CONTACT_COLS = ['جوال العميل', CUSTOMER_ALERT_WA_COL]
 
 
@@ -8251,10 +8271,20 @@ def contracts():
     hide_expired = request_hide_expired(request.args, request.cookies)
     hide_expired_explicit = 'hide_expired' in request.args
     due_only = request.args.get('due') == '1'
+    raw_customer = (request.args.get('customer_id') or '').strip()
+    customer_filter_id = int(raw_customer) if raw_customer.isdigit() else 0
+    customer_filter_name = ''
+    if customer_filter_id:
+        filtered_customer = tenant_query(Customer).filter_by(id=customer_filter_id).first()
+        customer_filter_name = ((filtered_customer.name if filtered_customer else '') or '').strip()
+    # من تنبيه العقود: أظهر المنتهي حتى لو الكوكي يخفيه، ما لم يختر المستخدم الإخفاء صراحة.
+    effective_hide = hide_expired and not (customer_filter_id and not hide_expired_explicit)
     visible = []
     map_points = []
     stats = {'total': 0, 'active': 0, 'expired': 0, 'expiring': 0, 'total_val': 0.0, 'unpaid': 0.0}
     for contract in contracts_list:
+        if customer_filter_id and int(contract.customer_id or 0) != customer_filter_id:
+            continue
         display = contract_display_status(contract, renewed_ids=renewed_ids)
         customer = contract.customer
         customer_name = (customer.name if customer else '') or ''
@@ -8274,7 +8304,7 @@ def contracts():
             continue
         if status_filter and display != status_filter:
             continue
-        if hide_expired and not status_filter and display in ('منتهي', 'تم تجديده', 'ملغي'):
+        if effective_hide and not status_filter and display in ('منتهي', 'تم تجديده', 'ملغي'):
             continue
         map_points.append({
             'id': contract.id,
@@ -8318,10 +8348,12 @@ def contracts():
     list_meta = list_meta_for(total, page, per_page=per_page, extra={
         'stats': stats,
         'status': status_filter,
-        'hide_expired': hide_expired,
+        'hide_expired': effective_hide,
         'due': due_only,
         'sort': sort_col,
         'dir': sort_dir,
+        'customer_id': customer_filter_id or '',
+        'customer_name': customer_filter_name,
     })
     resp = make_response(render_template(
         'contracts.html',

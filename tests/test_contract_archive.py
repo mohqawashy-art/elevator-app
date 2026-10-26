@@ -165,6 +165,42 @@ def test_hide_expired_survives_leaving_the_page(client):
     assert 'CN-ARCH-OLD' in again.get_data(as_text=True)
 
 
+def test_customer_contracts_page_from_alert(client):
+    _seed_old_and_new(client)
+    client.get('/contracts?z=5&hide_expired=1')
+    with client.application.app_context():
+        cust = Customer.query.filter_by(code='C-ARCH').first()
+        cid = cust.id
+        oid = cust.organization_id
+        other = Customer(
+            organization_id=oid,
+            code='C-ARCH-OTHER',
+            name='عميل آخر',
+            status='نشط',
+        )
+        db.session.add(other)
+        db.session.flush()
+        db.session.add(Contract(
+            organization_id=oid,
+            code='CN-ARCH-OTHER',
+            customer_id=other.id,
+            contract_type='عقد صيانة',
+            start_date=date.today() - timedelta(days=30),
+            end_date=date.today() + timedelta(days=300),
+            status='نشط',
+        ))
+        db.session.commit()
+
+    page = client.get(f'/contracts?z=5&customer_id={cid}')
+    html = page.get_data(as_text=True)
+    assert page.status_code == 200
+    assert 'CN-ARCH-OLD' in html
+    assert 'CN-ARCH-NEW' in html
+    assert 'CN-ARCH-OTHER' not in html
+    assert 'عيضة مسلم الحصيني' in html
+    assert 'كل العقود' in html
+
+
 def test_all_visits_visible_by_default(client):
     _seed_old_and_new(client)
     page = client.get('/maintenance-visits')

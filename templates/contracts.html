@@ -129,6 +129,8 @@ html[dir="ltr"] .btn{font-family:var(--font-en)}
 .alert-expired svg{width:16px;height:16px;flex-shrink:0}
 .alert-expiry{background:rgba(224,144,48,.08);border:1px solid rgba(224,144,48,.2);border-radius:var(--r);padding:12px 16px;margin-bottom:20px;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--warning);cursor:pointer}
 .alert-expiry svg{width:16px;height:16px;flex-shrink:0}
+.customer-scope-bar{background:rgba(42,127,255,.08);border:1px solid rgba(42,127,255,.22);border-radius:var(--r);padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:13px;color:var(--text1)}
+.customer-scope-bar a{text-decoration:none}
 .filters-bar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;align-items:center}
 .search-wrap{position:relative;flex:1;min-width:200px}
 .search-wrap svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:var(--text3);pointer-events:none}
@@ -352,6 +354,13 @@ html[dir="ltr"] .field input,html[dir="ltr"] .field select,html[dir="ltr"] .fiel
       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1L1 14h14L8 1z"/><line x1="8" y1="6" x2="8" y2="10"/><circle cx="8" cy="12" r=".6" fill="currentColor"/></svg>
       <span>تنبيه: <strong id="expiry-count">0 عقود</strong> على وشك الانتهاء خلال 30 يوماً — يُنصح بالتجديد قبل انتهاء المدة.</span>
     </div>
+
+    {% if list_meta and list_meta.customer_id %}
+    <div class="customer-scope-bar">
+      <span>عقود العميل <strong>{{ list_meta.customer_name or '—' }}</strong> — جدّد العقد أو ألغِه أو عدّل حالته من عمود الإجراءات.</span>
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('contracts', z=5) }}">كل العقود</a>
+    </div>
+    {% endif %}
 
     <!-- شريط: عنوان + تبويبات + أزرار -->
     <div class="lc-page-toolbar">
