@@ -12562,7 +12562,159 @@ def revenues():
         revenue_type_options=REVENUE_TYPE_OPTIONS,
     )
 
-def _revenue_from_form(form, existing: Revenue | None = None):
+def _form_value(form, key, default=''):
+    if form is None:
+        return default
+    val = form.get(key, default) if hasattr(form, 'get') else default
+    return default if val is None else val
+
+
+def _parse_revenue_sources(form) -> list[dict]:
+    raw = str(_form_value(form, 'sources_json', '') or '').strip()
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ValueError('تعذّر قراءة العمليات المحددة') from exc
+    if not isinstance(data, list):
+        return []
+    out = []
+    seen = set()
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        source_type = str(item.get('source_type') or '').strip()
+        source_id = str(item.get('source_id') or '').strip()
+        if not source_type or not source_id:
+            continue
+        key = (source_type, source_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append({'source_type': source_type, 'source_id': int(source_id)})
+    return out
+
+
+def _payment_shares_for_sources(sources: list[dict], payment_total: float) -> list[tuple[dict, dict, float]]:
+    """يوزّع مبلغ السداد على العمليات المحددة بالترتيب، ويسدّد المتبقي كاملاً إن طابق المجموع."""
+    from customer_billing import _round_money, describe_open_source
+
+    payment_total = _round_money(payment_total)
+    if payment_total <= 0:
+        raise ValueError('مبلغ التحصيل يجب أن يكون أكبر من صفر')
+    described = []
+    customer_ids = set()
+    for src in sources:
+        info = describe_open_source(src['source_type'], src['source_id'])
+        code = info.get('code') or 'العملية'
+        if info['remaining'] <= 0.01:
+            raise ValueError(f'لا يوجد متبقي على {code}')
+        if info.get('customer_id'):
+            customer_ids.add(int(info['customer_id']))
+        described.append((src, info))
+    if len(customer_ids) > 1:
+        raise ValueError('العمليات المحددة يجب أن تكون لنفس العميل')
+    cap = _round_money(sum(info['remaining'] for _, info in described))
+    if payment_total > cap + 0.05:
+        raise ValueError(f'المبلغ أكبر من مجموع المتبقي على العمليات المحددة ({cap:.2f})')
+    if abs(payment_total - cap) <= 0.05:
+        payment_total = cap
+    left = payment_total
+    shares = []
+    for src, info in described:
+        take = _round_money(min(info['remaining'], left))
+        if take > 0.01:
+            shares.append((src, info, take))
+        left = _round_money(left - take)
+        if left <= 0.01:
+            break
+    if not shares:
+        raise ValueError('مبلغ التحصيل يجب أن يكون أكبر من صفر')
+    return shares
+
+
+def _snapshot_upload_files(file_storages):
+    snaps = []
+    for f in file_storages or []:
+        if not f or not getattr(f, 'filename', None):
+            continue
+        try:
+            f.seek(0)
+        except Exception:
+            pass
+        data = f.read()
+        if data is None:
+            data = b''
+        snaps.append((f.filename, getattr(f, 'mimetype', None) or getattr(f, 'content_type', None) or '', data))
+    return snaps
+
+
+def _replay_upload_files(snaps):
+    from io import BytesIO
+    from werkzeug.datastructures import FileStorage
+
+    files = []
+    for filename, mimetype, data in snaps:
+        files.append(FileStorage(stream=BytesIO(data), filename=filename, content_type=mimetype))
+    return files
+
+
+def _reserve_revenue_codes(count: int) -> list[str]:
+    first = next_code(Revenue, 'REV-', digits=3)
+    prefix, num = first.rsplit('-', 1)
+    start = int(num)
+    width = len(num)
+    return [f'{prefix}-{str(start + i).zfill(width)}' for i in range(count)]
+
+
+def _new_revenues_from_form(form) -> list:
+    """إيراد واحد، أو إيراد لكل عملية محددة عند سداد عدة عمليات معاً."""
+    from customer_billing import split_vat_amounts
+
+    sources = _parse_revenue_sources(form)
+    if len(sources) <= 1:
+        return [_revenue_from_form(form)]
+
+    _amount, _tax, total = split_vat_amounts(
+        amount_ex_vat=_form_value(form, 'amount', ''),
+        total_incl_vat=_form_value(form, 'total', ''),
+        tax_pct=_form_value(form, 'tax_pct', 15),
+    )
+    type_locked = str(_form_value(form, 'revenue_type_locked', '1')).strip() != '0'
+    title_locked = str(_form_value(form, 'title_locked', '1')).strip() != '0'
+    ref_locked = str(_form_value(form, 'reference_locked', '1')).strip() != '0'
+    chosen_type = str(_form_value(form, 'revenue_type', '') or '').strip()
+    shared_title = str(_form_value(form, 'title', '') or '').strip()
+    shared_ref = str(_form_value(form, 'reference', '') or '').strip()
+    shares = _payment_shares_for_sources(sources, total)
+    rev_codes = _reserve_revenue_codes(len(shares))
+    rows = []
+    with db.session.no_autoflush:
+        for (src, info, pay), rev_code in zip(shares, rev_codes):
+            label = (info.get('title') or info.get('code') or '').strip()
+            source_code = (info.get('code') or '').strip()
+            sub = {
+                'customer_id': _form_value(form, 'customer_id', ''),
+                'revenue_date': _form_value(form, 'revenue_date', ''),
+                'title': shared_title if title_locked and shared_title else label,
+                'revenue_type': chosen_type if type_locked else '',
+                'payment_method': _form_value(form, 'payment_method', ''),
+                'amount': '',
+                'total': str(pay),
+                'tax_pct': _form_value(form, 'tax_pct', 15),
+                'status': _form_value(form, 'status', 'محصّل'),
+                'reference': shared_ref if ref_locked and shared_ref else source_code,
+                'notes': _form_value(form, 'notes', ''),
+                'source_type': src['source_type'],
+                'source_id': str(src['source_id']),
+            }
+            rows.append(_revenue_from_form(sub, code=rev_code))
+    db.session.flush()
+    return rows
+
+
+def _revenue_from_form(form, existing: Revenue | None = None, code: str | None = None):
     from customer_billing import apply_payment_to_source, split_vat_amounts
 
     amount, tax, total = split_vat_amounts(
@@ -12629,7 +12781,7 @@ def _revenue_from_form(form, existing: Revenue | None = None):
         for key, val in data.items():
             setattr(existing, key, val)
         return existing
-    r = Revenue(code=next_code(Revenue, 'REV-', digits=3), **data)
+    r = Revenue(code=code or next_code(Revenue, 'REV-', digits=3), **data)
     assign_organization(r)
     stamp_created_by(r)
     db.session.add(r)
@@ -12674,20 +12826,31 @@ def revenue_add():
     from customer_billing import COLLECTED_REVENUE_STATUSES, create_receipt_voucher_for_revenue
 
     try:
-        r = _revenue_from_form(request.form)
+        rows = _new_revenues_from_form(request.form)
         db.session.flush()
-        _add_fin_proof_files(r, request.files.getlist('proof_file'), kind='revenues', required=False)
+        proofs = _snapshot_upload_files(request.files.getlist('proof_file'))
+        for row in rows:
+            _add_fin_proof_files(row, _replay_upload_files(proofs), kind='revenues', required=False)
     except (ValueError, KeyError) as exc:
         db.session.rollback()
         flash(str(exc) or 'تعذّر حفظ الإيراد', 'error')
         return redirect(url_for('revenues'))
-    receipt = None
-    if (r.status or '') in COLLECTED_REVENUE_STATUSES:
-        receipt = create_receipt_voucher_for_revenue(r)
-    sync_contract_invoice_status(r.contract_id)
+    receipts = []
+    if rows and (rows[0].status or '') in COLLECTED_REVENUE_STATUSES:
+        for row in rows:
+            if (row.status or '') in COLLECTED_REVENUE_STATUSES:
+                receipt = create_receipt_voucher_for_revenue(row)
+                if receipt:
+                    receipts.append(receipt)
+    seen_contracts = []
+    for row in rows:
+        if row.contract_id and row.contract_id not in seen_contracts:
+            seen_contracts.append(row.contract_id)
+            sync_contract_invoice_status(row.contract_id)
     try:
         from accounting_journals import post_revenue_journal
-        post_revenue_journal(r)
+        for row in rows:
+            post_revenue_journal(row)
     except ClosedFiscalYearError as exc:
         db.session.rollback()
         flash(str(exc), 'error')
@@ -12695,8 +12858,11 @@ def revenue_add():
     except Exception:
         app.logger.exception('post_revenue_journal on add failed')
     db.session.commit()
-    if receipt:
-        flash(f'تم إنشاء سند قبض {receipt.code} تلقائياً', 'success')
+    if len(rows) > 1:
+        codes = '، '.join(r.code for r in rows if r.code)
+        flash(f'تم تسجيل {len(rows)} إيرادات لسداد العمليات المحددة ({codes})', 'success')
+    elif receipts:
+        flash(f'تم إنشاء سند قبض {receipts[0].code} تلقائياً', 'success')
     return redirect(url_for('revenues'))
 
 @app.route('/revenues/delete/<int:id>', methods=['POST'])

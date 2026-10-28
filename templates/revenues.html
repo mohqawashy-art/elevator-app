@@ -143,6 +143,8 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 .lc-ops-pick-table{width:100%;border-collapse:collapse;font-size:12px}
 .lc-ops-pick-table th,.lc-ops-pick-table td{padding:8px 10px;border-bottom:1px solid var(--border);text-align:right;vertical-align:top}
 .lc-ops-pick-table th{font-size:11px;color:var(--text3);font-weight:500;background:var(--bg4);position:sticky;top:0;z-index:1}
+.lc-ops-pick-table th.lc-pick,.lc-ops-pick-table td.lc-pick{width:32px;text-align:center;vertical-align:middle}
+.lc-ops-pick-table input[type=checkbox]{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
 .lc-ops-pick-table tr.lc-op-row{cursor:pointer;transition:background .15s}
 .lc-ops-pick-table tr.lc-op-row:hover,.lc-ops-pick-table tr.lc-op-row.selected{background:rgba(42,127,255,.12)}
 .lc-ops-pick-table td.lc-num{font-family:var(--font-en);direction:ltr;text-align:left;white-space:nowrap}
@@ -307,7 +309,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
 <!-- MODAL -->
 
 <div class="modal-overlay" id="modal-add">
-  <div class="modal" style="max-width:720px">
+  <div class="modal" style="max-width:860px">
     <div class="modal-head">
       <span class="modal-title" id="modal-title">إضافة إيراد جديد</span>
       <button type="button" class="modal-close" onclick="closeAddModal()"><svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="2" x2="12" y2="12"/><line x1="12" y1="2" x2="2" y2="12"/></svg></button>
@@ -322,7 +324,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
         <input type="hidden" id="f-source-id" value="">
         <input type="hidden" id="f-contract-id" value="">
         <div class="form-full" id="rev-billable-wrap" style="display:none;margin-bottom:12px">
-          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">عمليات غير محصّلة — اختر من الجدول</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text1)">عمليات غير محصّلة — يمكن اختيار أكثر من عملية وسدادها معاً</div>
           <div id="rev-billable-hint" style="font-size:11px;color:var(--warning);margin-bottom:8px"></div>
           <div id="rev-billable-list" style="max-height:240px;overflow:auto;border:1px solid var(--border);border-radius:8px;background:var(--bg3)"></div>
         </div>
@@ -669,12 +671,40 @@ const REV_TYPE_BY_SOURCE = {
 let pendingOps = [];
 let syncingCustomers = false;
 let revenueTypeTouched = false;
+let revenueTitleTouched = false;
+let revenueRefTouched = false;
+let revenueNotesTouched = false;
+let selectedOpKeys = {};
+
+function opKey(op) {
+  return String((op && op.source_type) || '') + ':' + String((op && op.source_id) || '');
+}
+
+function selectedRevenueOps() {
+  return pendingOps.filter(function (op) { return selectedOpKeys[opKey(op)]; });
+}
 
 (function bindRevenueTypeChoice() {
   const rt = document.getElementById('f-rev-type');
-  if (!rt || rt.dataset.lcTypeBound === '1') return;
-  rt.dataset.lcTypeBound = '1';
-  rt.addEventListener('change', function () { revenueTypeTouched = true; });
+  if (rt && rt.dataset.lcTypeBound !== '1') {
+    rt.dataset.lcTypeBound = '1';
+    rt.addEventListener('change', function () { revenueTypeTouched = true; });
+  }
+  const titleEl = document.getElementById('f-title');
+  if (titleEl && titleEl.dataset.lcTouchBound !== '1') {
+    titleEl.dataset.lcTouchBound = '1';
+    titleEl.addEventListener('input', function () { revenueTitleTouched = true; });
+  }
+  const refEl = document.getElementById('f-reference');
+  if (refEl && refEl.dataset.lcTouchBound !== '1') {
+    refEl.dataset.lcTouchBound = '1';
+    refEl.addEventListener('input', function () { revenueRefTouched = true; });
+  }
+  const notesEl = document.getElementById('f-notes');
+  if (notesEl && notesEl.dataset.lcTouchBound !== '1') {
+    notesEl.dataset.lcTouchBound = '1';
+    notesEl.addEventListener('input', function () { revenueNotesTouched = true; });
+  }
 })();
 
 function initRevenueClientSelects() {
@@ -727,7 +757,7 @@ function loadUncollectedOps(cid, opts) {
     .then(function (data) {
       pendingOps = data.operations || [];
       const msg = pendingOps.length
-        ? ('يوجد ' + pendingOps.length + ' عملية غير محصّلة — اختر صفاً من الجدول')
+        ? ('يوجد ' + pendingOps.length + ' عملية غير محصّلة — حدّد عملية أو أكثر لسدادها معاً')
         : 'لا توجد عمليات غير محصّلة لهذا العميل — يمكنك إدخال الإيراد يدوياً';
       if (hint) hint.textContent = msg;
       renderRevenuePendingOps();
@@ -736,11 +766,87 @@ function loadUncollectedOps(cid, opts) {
           return op.source_type === opts.source_type && String(op.source_id) === String(opts.source_id);
         });
         if (idx >= 0) selectRevenuePendingOp(idx);
+        else applySelectedOpsToForm();
+      } else {
+        applySelectedOpsToForm();
       }
     })
     .catch(function () {
       if (list) list.innerHTML = '<p style="padding:12px;color:var(--danger);font-size:12px">تعذّر تحميل العمليات</p>';
     });
+}
+
+function setRevenueInclusiveTotal(total) {
+  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
+  const inclusiveTotal = Number(total || 0);
+  if (taxBlock && window.LiftCoreTaxCalc) {
+    if (LiftCoreTaxCalc.loadInclusiveElement) LiftCoreTaxCalc.loadInclusiveElement(taxBlock, inclusiveTotal, 15);
+    else LiftCoreTaxCalc.loadElement(taxBlock, inclusiveTotal / 1.15, 15);
+  } else {
+    const amt = document.getElementById('f-amount');
+    if (amt) amt.value = (inclusiveTotal / 1.15).toFixed(2);
+    const tot = document.getElementById('f-total');
+    if (tot) tot.value = inclusiveTotal.toFixed(2);
+  }
+}
+
+function clearSingleRevenueSourceFields() {
+  ['f-source-type', 'f-source-id', 'f-contract-id'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+}
+
+function applySelectedOpsToForm() {
+  const ops = selectedRevenueOps();
+  const hintEl = document.getElementById('rev-billable-hint');
+  document.querySelectorAll('#rev-billable-list tr.lc-op-row').forEach(function (row) {
+    const op = pendingOps[Number(row.dataset.opIdx)];
+    const on = !!(op && selectedOpKeys[opKey(op)]);
+    row.classList.toggle('selected', on);
+    const box = row.querySelector('input[type=checkbox]');
+    if (box) box.checked = on;
+  });
+  const allBox = document.getElementById('rev-ops-all');
+  if (allBox) {
+    allBox.checked = pendingOps.length > 0 && ops.length === pendingOps.length;
+    allBox.indeterminate = ops.length > 0 && ops.length < pendingOps.length;
+  }
+  if (!ops.length) {
+    clearSingleRevenueSourceFields();
+    if (hintEl && pendingOps.length) {
+      hintEl.textContent = 'حدد عملية أو أكثر من الجدول — يمكن سدادها معاً في هذه الإضافة';
+    }
+    return;
+  }
+  if (ops.length === 1) {
+    applyPendingOpFields(ops[0]);
+    if (hintEl) {
+      hintEl.textContent = 'تم اختيار: ' + (ops[0].code || '') + ' — المتبقي ' + Number(ops[0].remaining || 0).toLocaleString('en-US') + ' ⃁ (شامل الضريبة)';
+    }
+    return;
+  }
+  clearSingleRevenueSourceFields();
+  const sum = ops.reduce(function (s, op) {
+    return s + Number(op.remaining != null ? op.remaining : (op.total || 0));
+  }, 0);
+  setRevenueInclusiveTotal(sum);
+  const codes = ops.map(function (op) { return op.code || ''; }).filter(Boolean);
+  const titleEl = document.getElementById('f-title');
+  if (titleEl && !revenueTitleTouched) titleEl.value = 'سداد ' + codes.join('، ');
+  const ref = document.getElementById('f-reference');
+  if (ref && !revenueRefTouched) ref.value = codes.join(', ');
+  const notes = document.getElementById('f-notes');
+  if (notes && !revenueNotesTouched) {
+    notes.value = ops.map(function (op) {
+      return (op.code || '') + ' — ' + (op.title || op.description || '');
+    }).join('\n');
+  }
+  const st = document.getElementById('f-status-sel');
+  if (st) st.value = 'محصّل';
+  if (hintEl) {
+    hintEl.textContent = 'تم اختيار ' + ops.length + ' عمليات — الإجمالي ' + sum.toLocaleString('en-US') + ' ⃁. الحفظ يسددها معاً، وإن خفّضت المبلغ يُوزَّع بالترتيب.';
+  }
 }
 
 function applyPendingOpFields(op) {
@@ -752,24 +858,16 @@ function applyPendingOpFields(op) {
   const rt = document.getElementById('f-rev-type');
   if (rt && !revenueTypeTouched) rt.value = revType;
   const ref = document.getElementById('f-reference');
-  if (ref) ref.value = op.code || '';
+  if (ref && !revenueRefTouched) ref.value = op.code || '';
   const titleEl = document.getElementById('f-title');
-  if (titleEl && !titleEl.value.trim()) titleEl.value = (op.title || op.description || '').trim();
+  if (titleEl && !revenueTitleTouched && !titleEl.value.trim()) titleEl.value = (op.title || op.description || '').trim();
   const notes = document.getElementById('f-notes');
-  if (notes && !notes.value.trim()) notes.value = (op.title || '') + ' — ' + (op.description || '');
+  if (notes && !revenueNotesTouched && !notes.value.trim()) notes.value = (op.title || '') + ' — ' + (op.description || '');
   const dateEl = document.getElementById('f-date');
   if (dateEl && op.date) dateEl.value = op.date;
   const st = document.getElementById('f-status-sel');
   if (st) st.value = 'محصّل';
-  const inclusiveTotal = Number(op.remaining != null ? op.remaining : (op.total || 0));
-  const taxBlock = document.querySelector('#modal-add .lc-tax-block');
-  if (taxBlock && window.LiftCoreTaxCalc) {
-    if (LiftCoreTaxCalc.loadInclusiveElement) LiftCoreTaxCalc.loadInclusiveElement(taxBlock, inclusiveTotal, 15);
-    else LiftCoreTaxCalc.loadElement(taxBlock, inclusiveTotal / 1.15, 15);
-  } else {
-    const amt = document.getElementById('f-amount');
-    if (amt) amt.value = (inclusiveTotal / 1.15).toFixed(2);
-  }
+  setRevenueInclusiveTotal(Number(op.remaining != null ? op.remaining : (op.total || 0)));
 }
 
 function renderRevenuePendingOps() {
@@ -783,6 +881,7 @@ function renderRevenuePendingOps() {
     <table class="lc-ops-pick-table">
       <thead>
         <tr>
+          <th class="lc-pick"><input type="checkbox" id="rev-ops-all" title="تحديد الكل" onclick="event.stopPropagation(); toggleAllRevenueOps(this.checked)"></th>
           <th>الكود</th>
           <th>التاريخ</th>
           <th>الاستحقاق</th>
@@ -794,7 +893,8 @@ function renderRevenuePendingOps() {
       </thead>
       <tbody>
         ${pendingOps.map((op, idx) => `
-          <tr class="lc-op-row" data-op-idx="${idx}" onclick="selectRevenuePendingOp(${idx})">
+          <tr class="lc-op-row${selectedOpKeys[opKey(op)] ? ' selected' : ''}" data-op-idx="${idx}" onclick="onRevenueOpRowClick(${idx}, event)">
+            <td class="lc-pick"><input type="checkbox" ${selectedOpKeys[opKey(op)] ? 'checked' : ''} onclick="onRevenueOpCheck(${idx}, event)"></td>
             <td class="lc-code">${escHtml(op.code)}</td>
             <td class="lc-num">${escHtml(op.date)}</td>
             <td class="lc-num">${escHtml(op.due_date || '—')}</td>
@@ -805,22 +905,49 @@ function renderRevenuePendingOps() {
           </tr>`).join('')}
       </tbody>
     </table>`;
+  const allBox = document.getElementById('rev-ops-all');
+  const selectedCount = selectedRevenueOps().length;
+  if (allBox) {
+    allBox.checked = pendingOps.length > 0 && selectedCount === pendingOps.length;
+    allBox.indeterminate = selectedCount > 0 && selectedCount < pendingOps.length;
+  }
+}
+
+function onRevenueOpRowClick(idx, ev) {
+  if (ev && ev.target && ev.target.closest && ev.target.closest('input,button,a')) return;
+  toggleRevenuePendingOp(idx);
+}
+
+function onRevenueOpCheck(idx, ev) {
+  if (ev) ev.stopPropagation();
+  toggleRevenuePendingOp(idx);
+}
+
+function toggleRevenuePendingOp(idx) {
+  const op = pendingOps[idx];
+  if (!op) return;
+  const key = opKey(op);
+  if (selectedOpKeys[key]) delete selectedOpKeys[key];
+  else selectedOpKeys[key] = true;
+  applySelectedOpsToForm();
+}
+
+function toggleAllRevenueOps(on) {
+  selectedOpKeys = {};
+  if (on) pendingOps.forEach(function (op) { selectedOpKeys[opKey(op)] = true; });
+  applySelectedOpsToForm();
 }
 
 function selectRevenuePendingOp(idx) {
   const op = pendingOps[idx];
   if (!op) return;
-  applyPendingOpFields(op);
-  const hintEl = document.getElementById('rev-billable-hint');
-  if (hintEl) {
-    hintEl.textContent = 'تم اختيار: ' + (op.code || '') + ' — المتبقي ' + Number(op.remaining || 0).toLocaleString('en-US') + ' ⃁ (شامل الضريبة)';
-  }
-  document.querySelectorAll('#rev-billable-list tr.lc-op-row').forEach(row => {
-    row.classList.toggle('selected', String(row.dataset.opIdx) === String(idx));
-  });
+  selectedOpKeys = {};
+  selectedOpKeys[opKey(op)] = true;
+  applySelectedOpsToForm();
 }
 
 function clearRevenueSource() {
+  selectedOpKeys = {};
   ['f-source-type', 'f-source-id', 'f-contract-id'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -864,6 +991,9 @@ function openAddModal(preselectedCustomerId, opts) {
   document.getElementById('modal-title').textContent = 'إضافة إيراد جديد';
   document.getElementById('modal-add').dataset.editId = '';
   revenueTypeTouched = false;
+  revenueTitleTouched = false;
+  revenueRefTouched = false;
+  revenueNotesTouched = false;
   initRevenueClientSelects();
   const cid = preselectedCustomerId || '';
   syncRevenueCustomerSelectors(cid);
@@ -915,8 +1045,18 @@ function saveRevenue() {
     ['reference', 'f-reference'], ['notes', 'f-notes']
   ].forEach(([f, i]) => { const el = document.getElementById(i); if (el) fd.append(f, el.value); });
   if (!editId) {
-    [['source_type', 'f-source-type'], ['source_id', 'f-source-id'], ['contract_id', 'f-contract-id']]
-      .forEach(([f, i]) => { const el = document.getElementById(i); if (el && el.value) fd.append(f, el.value); });
+    const ops = selectedRevenueOps();
+    if (ops.length > 1) {
+      fd.append('sources_json', JSON.stringify(ops.map(function (op) {
+        return { source_type: op.source_type, source_id: op.source_id };
+      })));
+      fd.append('revenue_type_locked', revenueTypeTouched ? '1' : '0');
+      fd.append('title_locked', revenueTitleTouched ? '1' : '0');
+      fd.append('reference_locked', revenueRefTouched ? '1' : '0');
+    } else {
+      [['source_type', 'f-source-type'], ['source_id', 'f-source-id'], ['contract_id', 'f-contract-id']]
+        .forEach(([f, i]) => { const el = document.getElementById(i); if (el && el.value) fd.append(f, el.value); });
+    }
   }
   if (proofInput && window.LiftCoreMultiAttach) {
     LiftCoreMultiAttach.appendToFormData(fd, proofInput, 'proof_file');

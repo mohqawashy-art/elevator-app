@@ -1087,6 +1087,42 @@ def apply_payment_to_source(
     raise ValueError('نوع العملية غير معروف')
 
 
+def describe_open_source(source_type: str, source_id: int) -> dict:
+    """المتبقي والكود والعميل لعملية غير محصّلة — للسداد المتعدد."""
+    st = (source_type or '').strip()
+    sid = int(source_id)
+    if st == 'contract':
+        row = tenant_get_or_404(Contract, sid)
+        code = (row.code or '').strip()
+        return {
+            'remaining': contract_remaining(row),
+            'code': code,
+            'title': code,
+            'customer_id': row.customer_id,
+        }
+    if st == 'invoice':
+        row = tenant_get_or_404(Invoice, sid)
+        code = (row.code or '').strip()
+        title = (row.description or code).strip()
+        return {
+            'remaining': invoice_remaining(row),
+            'code': code,
+            'title': title or code,
+            'customer_id': row.customer_id,
+        }
+    if st == 'parts_billing':
+        row = tenant_get_or_404(PartsBilling, sid)
+        code = (row.code or '').strip()
+        title = (row.description or code or '').strip()
+        return {
+            'remaining': parts_remaining(row),
+            'code': code,
+            'title': title or code,
+            'customer_id': row.customer_id,
+        }
+    raise ValueError('نوع العملية غير معروف')
+
+
 def is_payment_voucher(invoice_type: str | None) -> bool:
     t = (invoice_type or '').strip()
     return t == 'سند صرف' or ('صرف' in t and 'قبض' not in t)

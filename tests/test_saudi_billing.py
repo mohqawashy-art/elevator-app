@@ -273,6 +273,104 @@ def test_chosen_revenue_type_kept_when_collecting_contract(client):
         assert saved.contract_id == contract_id
 
 
+def test_multi_source_payment_settles_each_operation(client):
+    """سداد عدة عمليات غير محصّلة من إضافة واحدة يخصم متبقي كل عملية."""
+    import json
+    from app import _new_revenues_from_form
+    from customer_billing import contract_remaining
+
+    cid, contract_id, _ = _seed_customer_contract(client, total=1000.0)
+    with client.application.app_context():
+        second = Contract(
+            code='CN-SA02',
+            customer_id=cid,
+            contract_type='صيانة',
+            start_date=date.today(),
+            end_date=date.today(),
+            total=2000.0,
+            status='نشط',
+        )
+        db.session.add(second)
+        db.session.commit()
+        second_id = second.id
+
+    sources = [
+        {'source_type': 'contract', 'source_id': contract_id},
+        {'source_type': 'contract', 'source_id': second_id},
+    ]
+    with client.application.test_request_context():
+        rows = _new_revenues_from_form({
+            'customer_id': str(cid),
+            'revenue_date': date.today().isoformat(),
+            'revenue_type': 'تجديد عقد',
+            'revenue_type_locked': '1',
+            'title_locked': '0',
+            'reference_locked': '0',
+            'amount': '',
+            'total': '3000',
+            'tax_pct': '15',
+            'status': 'محصّل',
+            'sources_json': json.dumps(sources),
+        })
+        db.session.commit()
+        assert len(rows) == 2
+        assert {r.contract_id for r in rows} == {contract_id, second_id}
+        assert {round(r.total, 2) for r in rows} == {1000.0, 2000.0}
+        assert all(r.revenue_type == 'تجديد عقد' for r in rows)
+        assert contract_remaining(db.session.get(Contract, contract_id)) == 0
+        assert contract_remaining(db.session.get(Contract, second_id)) == 0
+
+    with client.application.app_context():
+        third = Contract(
+            code='CN-SA03',
+            customer_id=cid,
+            contract_type='تركيب',
+            start_date=date.today(),
+            end_date=date.today(),
+            total=800.0,
+            status='نشط',
+        )
+        fourth = Contract(
+            code='CN-SA04',
+            customer_id=cid,
+            contract_type='صيانة',
+            start_date=date.today(),
+            end_date=date.today(),
+            total=500.0,
+            status='نشط',
+        )
+        db.session.add_all([third, fourth])
+        db.session.commit()
+        third_id, fourth_id = third.id, fourth.id
+
+    partial = [
+        {'source_type': 'contract', 'source_id': third_id},
+        {'source_type': 'contract', 'source_id': fourth_id},
+    ]
+    with client.application.test_request_context():
+        part_rows = _new_revenues_from_form({
+            'customer_id': str(cid),
+            'revenue_date': date.today().isoformat(),
+            'revenue_type': '',
+            'revenue_type_locked': '0',
+            'title_locked': '0',
+            'reference_locked': '0',
+            'amount': '',
+            'total': '1000',
+            'tax_pct': '15',
+            'status': 'محصّل',
+            'sources_json': json.dumps(partial),
+        })
+        db.session.commit()
+        by_contract = {r.contract_id: r for r in part_rows}
+        assert round(by_contract[third_id].total, 2) == 800.0
+        assert by_contract[third_id].revenue_type == 'عقد تركيب'
+        assert round(by_contract[fourth_id].total, 2) == 200.0
+        assert by_contract[fourth_id].revenue_type == 'دفعة عقد'
+        assert contract_remaining(db.session.get(Contract, third_id)) == 0
+        assert contract_remaining(db.session.get(Contract, fourth_id)) == 300.0
+
+
 def test_statement_includes_contract_without_invoice(client):
     login_as(client, 'admin')
     cid, contract_id, total = _seed_customer_contract(client, total=2500.0)
