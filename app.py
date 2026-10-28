@@ -3781,6 +3781,7 @@ def operator_onboarding_cancel(invite_id):
 @app.route('/platform')
 @app.route('/platform/')
 def platform_home():
+    from demo_provisioning import demo_shared_password
     from platform_admin import is_admin_host, list_organizations, org_stats, recent_invites, server_status, tenant_ops_by_id
     from sales_leads import list_sales_leads, sales_lead_stats
     from platform_catalog_store import catalog_meta, live_plan_catalog
@@ -3808,6 +3809,7 @@ def platform_home():
         plan_order=PLAN_ORDER,
         plans_preview=plans,
         catalog_meta=catalog_meta(),
+        demo_password=demo_shared_password(),
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
     )
@@ -4046,7 +4048,7 @@ def platform_leads_clear():
 
 @app.route('/platform/orgs')
 def platform_orgs():
-    from demo_provisioning import demo_days_default
+    from demo_provisioning import demo_days_default, demo_shared_password
     from platform_admin import is_admin_host, list_organizations, server_status, tenant_ops_by_id
 
     if not is_admin_host():
@@ -4066,6 +4068,7 @@ def platform_orgs():
         q=q,
         status=status,
         demo_days=demo_days_default(),
+        demo_password=demo_shared_password(),
         notice=session.pop('plat_notice', None),
         notice_type=session.pop('plat_notice_type', None),
     )

@@ -141,7 +141,7 @@
 
 <div class="card">
   <div class="section">حساب تجريبي سريع</div>
-  <p class="muted" style="margin-bottom:12px">إصدار يوزر مؤقت + كلمة مرور + 4 مصاعد لتجربة العملاء المحتملين.</p>
+  <p class="muted" style="margin-bottom:12px">إصدار يوزر <strong>demo</strong> وكلمة المرور الموحّدة <strong>{{ demo_password }}</strong> مع 4 مصاعد لتجربة العملاء المحتملين.</p>
   <form method="post" action="/platform/demos/create">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <div class="actions">

@@ -66,18 +66,9 @@ def _unique_demo_slug(company_hint: str = '') -> str:
     raise RuntimeError('تعذّر توليد معرّف تجريبي فريد')
 
 
-def _generate_temp_password(length: int = 14) -> str:
-    # يطابق سياسة كلمات المرور الشائعة: حروف + أرقام + رمز
-    alphabet = string.ascii_letters + string.digits + '@#$!&'
-    while True:
-        pwd = ''.join(secrets.choice(alphabet) for _ in range(length))
-        if (
-            any(c.islower() for c in pwd)
-            and any(c.isupper() for c in pwd)
-            and any(c.isdigit() for c in pwd)
-            and any(c in '@#$!&' for c in pwd)
-        ):
-            return pwd
+def demo_shared_password() -> str:
+    """كلمة مرور موحّدة لكل الحسابات التجريبية: Liftcore + سنة الإصدار."""
+    return f'Liftcore{date.today().year}'
 
 
 def seed_lightweight_demo(organization_id: int) -> dict:
@@ -273,7 +264,7 @@ def create_demo_account(
         return {'ok': False, 'errors': ['البريد الإلكتروني غير صالح.']}
 
     slug = _unique_demo_slug(label if label != 'حساب تجريبي LiftCore' else '')
-    password = _generate_temp_password(14)
+    password = demo_shared_password()
     pwd_err = password_policy_error(password)
     if pwd_err:
         return {'ok': False, 'errors': [pwd_err]}

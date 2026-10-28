@@ -8,7 +8,8 @@
   <div class="section">إصدار حساب تجريبي للعملاء</div>
   <p class="muted" style="margin-bottom:12px">
     ينشئ مؤسسة تجريبية مؤقتة بـ <strong>4 مصاعد</strong> وبيانات بسيطة (عملاء، عقد، زيارات، عطل)،
-    مع يوزر وكلمة مرور مؤقتين تُعرض مرة واحدة. الصلاحية الافتراضية {{ demo_days }} أيام.
+    مع يوزر <strong>demo</strong> وكلمة مرور موحّدة <strong>{{ demo_password }}</strong> (Liftcore ثم سنة الإصدار).
+    الصلاحية الافتراضية {{ demo_days }} أيام.
   </p>
   <form method="post" action="/platform/demos/create" class="toolbar" style="align-items:flex-end">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

@@ -1,8 +1,8 @@
 """اختبارات إصدار حساب ديمو من لوحة المنصة."""
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from app import app, db, hash_password
-from demo_provisioning import create_demo_account, organization_access_allowed
+from demo_provisioning import create_demo_account, demo_shared_password, organization_access_allowed
 from models import Customer, Elevator, Fault, MaintenanceVisit, Organization, User
 
 
@@ -50,7 +50,8 @@ def test_create_demo_account_seeds_four_elevators():
         )
         assert result['ok'] is True
         assert result['username'] == 'demo'
-        assert result['password']
+        assert result['password'] == demo_shared_password()
+        assert result['password'] == f'Liftcore{date.today().year}'
         assert result['slug'].startswith('demo-')
         org = db.session.get(Organization, result['organization_id'])
         assert org is not None
@@ -117,6 +118,7 @@ def test_platform_demo_create_route_shows_credentials_once():
     assert 'بيانات الدخول المؤقتة' in body
     assert 'demo' in body
     assert 'كلمة المرور' in body
+    assert f'Liftcore{date.today().year}' in body
     assert '4 مصاعد' in body or 'تجريبي' in body
 
     # مرة ثانية لا تُعرض كلمة المرور من الجلسة
