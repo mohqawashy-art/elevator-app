@@ -247,6 +247,32 @@ def test_statement_links_invoice_and_receipt(client):
     assert data['lines'][-1]['balance'] == 6500
 
 
+def test_chosen_revenue_type_kept_when_collecting_contract(client):
+    """اختيار نوع الإيراد يبقى كما هو حتى لو رُبط التحصيل بعقد (لا يُستبدل بدفعة عقد)."""
+    from app import _revenue_from_form
+
+    cid, contract_id, _ = _seed_customer_contract(client, total=11500.0)
+    with client.application.test_request_context():
+        rev = _revenue_from_form({
+            'customer_id': str(cid),
+            'contract_id': str(contract_id),
+            'revenue_date': date.today().isoformat(),
+            'revenue_type': 'تجديد عقد',
+            'payment_method': 'تحويل',
+            'amount': '1000',
+            'total': '1150',
+            'tax_pct': '15',
+            'status': 'محصّل',
+            'source_type': 'contract',
+            'source_id': str(contract_id),
+        })
+        db.session.commit()
+        saved = db.session.get(Revenue, rev.id)
+        assert saved is not None
+        assert saved.revenue_type == 'تجديد عقد'
+        assert saved.contract_id == contract_id
+
+
 def test_statement_includes_contract_without_invoice(client):
     login_as(client, 'admin')
     cid, contract_id, total = _seed_customer_contract(client, total=2500.0)

@@ -338,7 +338,7 @@ tbody td{padding:11px 14px;color:var(--text2);white-space:nowrap}
           <label>نوع الإيراد <span>*</span></label>
           <select id="f-rev-type">
             {% for t in revenue_type_options %}
-            <option>{{ t }}</option>
+            <option value="{{ t }}">{{ t }}</option>
             {% endfor %}
           </select>
         </div>
@@ -668,6 +668,14 @@ const REV_TYPE_BY_SOURCE = {
 
 let pendingOps = [];
 let syncingCustomers = false;
+let revenueTypeTouched = false;
+
+(function bindRevenueTypeChoice() {
+  const rt = document.getElementById('f-rev-type');
+  if (!rt || rt.dataset.lcTypeBound === '1') return;
+  rt.dataset.lcTypeBound = '1';
+  rt.addEventListener('change', function () { revenueTypeTouched = true; });
+})();
 
 function initRevenueClientSelects() {
   if (typeof LcClientSelect === 'undefined') return;
@@ -742,7 +750,7 @@ function applyPendingOpFields(op) {
   document.getElementById('f-contract-id').value = op.contract_id || '';
   const revType = revenueTypeForPendingOp(op);
   const rt = document.getElementById('f-rev-type');
-  if (rt) rt.value = revType;
+  if (rt && !revenueTypeTouched) rt.value = revType;
   const ref = document.getElementById('f-reference');
   if (ref) ref.value = op.code || '';
   const titleEl = document.getElementById('f-title');
@@ -855,6 +863,7 @@ function openAddModal(preselectedCustomerId, opts) {
   opts = opts || {};
   document.getElementById('modal-title').textContent = 'إضافة إيراد جديد';
   document.getElementById('modal-add').dataset.editId = '';
+  revenueTypeTouched = false;
   initRevenueClientSelects();
   const cid = preselectedCustomerId || '';
   syncRevenueCustomerSelectors(cid);
