@@ -601,9 +601,13 @@ def _request_settings():
         return getattr(g, '_lc_settings', None)
     try:
         row = tenant_query(Settings).first()
+        if in_request:
+            g._lc_settings_error = False
     except Exception:
         db.session.rollback()
         row = None
+        if in_request:
+            g._lc_settings_error = True
     if in_request:
         g._lc_settings_loaded = True
         g._lc_settings = row
@@ -822,6 +826,9 @@ def en_datetime_filter(value):
 def get_app_settings():
     s = _request_settings()
     if not s:
+        from flask import has_request_context
+        if has_request_context() and getattr(g, '_lc_settings_error', False):
+            return None
         from tenant_scope import effective_organization_id
 
         if not effective_organization_id():
@@ -2050,9 +2057,36 @@ def _startup_schema_and_data_sync():
         app.logger.warning('Contract billing cache backfill skip: %s', exc)
 
 
+def _ensure_settings_backup_columns():
+    """أعمدة النسخ الاحتياطي حتى عندما LIFTCORE_ALEMBIC=1 يوقف باقي الترقيات."""
+    try:
+        insp = inspect(db.engine)
+        if 'settings' not in set(insp.get_table_names()):
+            return
+        settings_cols = {c['name'] for c in insp.get_columns('settings')}
+        needed = {
+            'last_data_backup_at': 'TIMESTAMP',
+            'data_backup_remind_days': 'INTEGER DEFAULT 30',
+        }
+        for col_name, column_type in needed.items():
+            if col_name in settings_cols:
+                continue
+            db.session.execute(text(
+                f'ALTER TABLE settings ADD COLUMN {col_name} {column_type}'
+            ))
+            db.session.commit()
+            app.logger.info('Added settings.%s column', col_name)
+    except Exception as exc:
+        db.session.rollback()
+        app.logger.warning('settings backup column ensure skip: %s', exc)
+
+
 if os.environ.get('LIFTCORE_ALEMBIC', '').strip().lower() not in ('1', 'true', 'yes'):
     with app.app_context():
         _startup_schema_and_data_sync()
+else:
+    with app.app_context():
+        _ensure_settings_backup_columns()
 
 from live_sync import register_live_sync
 
