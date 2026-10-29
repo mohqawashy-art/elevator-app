@@ -1,0 +1,46 @@
+{% if data_backup_reminder and not (request.endpoint == 'settings' and (request.args.get('tab') or '') == 'backup') %}
+<div class="lc-backup-remind" id="lc-backup-remind" role="status">
+  <div class="lc-backup-remind-text">
+    {% if data_backup_reminder.never %}
+    {{ ui('لم تُحفظ نسخة احتياطية من بيانات الشركة على جهازك بعد.', 'No company data backup has been saved to your device yet.') }}
+    {% else %}
+    {{ ui('مرّ ' ~ data_backup_reminder.age_days ~ ' يوماً على آخر نسخة احتياطية.', data_backup_reminder.age_days ~ ' days since the last backup.') }}
+    {% endif %}
+    {{ ui('الفترة المحددة ' ~ data_backup_reminder.remind_days ~ ' يوماً.', 'Reminder every ' ~ data_backup_reminder.remind_days ~ ' days.') }}
+  </div>
+  <div class="lc-backup-remind-actions">
+    <a class="lc-backup-remind-go" href="{{ url_for('settings_data_backup') }}">{{ ui('تنزيل الآن', 'Download now') }}</a>
+    <button type="button" class="lc-backup-remind-later" id="lc-backup-snooze">{{ ui('ذكّرني بعد أسبوع', 'Remind me in a week') }}</button>
+  </div>
+</div>
+<style>
+.lc-backup-remind{margin:10px 16px 0;padding:12px 14px;border-radius:12px;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:13px;line-height:1.7;color:inherit;background:color-mix(in srgb,#c9a14a 16%,transparent);border:1px solid color-mix(in srgb,#c9a14a 48%,transparent)}
+.lc-backup-remind-actions{display:flex;gap:8px;flex-wrap:wrap}
+.lc-backup-remind-go,.lc-backup-remind-later{border-radius:8px;padding:8px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer;text-decoration:none}
+.lc-backup-remind-go{background:#c9a14a;color:#1a1408}
+.lc-backup-remind-later{background:transparent;color:inherit;border:1px solid color-mix(in srgb,currentColor 28%,transparent)}
+</style>
+<script>
+(function () {
+  var bar = document.getElementById('lc-backup-remind');
+  if (!bar) return;
+  var key = 'lc-data-backup-snooze-until';
+  var until = 0;
+  try { until = parseInt(localStorage.getItem(key) || '0', 10) || 0; } catch (e) { until = 0; }
+  if (until && Date.now() < until) {
+    bar.remove();
+    return;
+  }
+  var snooze = document.getElementById('lc-backup-snooze');
+  var days = {{ data_backup_reminder.snooze_days or 7 }};
+  if (snooze) snooze.addEventListener('click', function () {
+    try { localStorage.setItem(key, String(Date.now() + days * 86400000)); } catch (e) {}
+    bar.remove();
+  });
+  var go = bar.querySelector('.lc-backup-remind-go');
+  if (go) go.addEventListener('click', function () {
+    try { localStorage.removeItem(key); } catch (e) {}
+  });
+})();
+</script>
+{% endif %}

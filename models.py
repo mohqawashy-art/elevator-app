@@ -1473,6 +1473,8 @@ class Settings(TenantMixin, db.Model):
     contract_template_path = db.Column(db.String(300))  # نموذج عقد Word لكل مؤسسة
     field_geofence_enabled = db.Column(db.Boolean, default=True)
     field_geofence_radius_m = db.Column(db.Integer, default=300)
+    last_data_backup_at = db.Column(db.DateTime)  # آخر تنزيل نسخة احتياطية على جهاز المدير
+    data_backup_remind_days = db.Column(db.Integer, default=30)  # 0 = إيقاف التذكير
 
 
 # =============================================

@@ -38,6 +38,7 @@ ADMIN_ONLY_ENDPOINTS = frozenset({
     'settings_user_add',
     'settings_user_edit',
     'settings_user_toggle',
+    'settings_data_backup_reminder',
 })
 
 PASSWORD_CHANGE_ALLOWED_ENDPOINTS = frozenset({

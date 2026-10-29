@@ -121,6 +121,7 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
     <button type="button" class="tab {% if active_tab == 'field-portal' %}active{% endif %}" data-tab="field-portal">دخول الفني (الجوال)</button>
     <button type="button" class="tab {% if active_tab == 'signatures' %}active{% endif %}" data-tab="signatures">التوقيعات</button>
     <button type="button" class="tab {% if active_tab == 'screensaver' %}active{% endif %}" data-tab="screensaver">شاشة الحفظ</button>
+    <button type="button" class="tab {% if active_tab == 'backup' %}active{% endif %}" data-tab="backup">النسخ الاحتياطي</button>
     {% endif %}
     <button type="button" class="tab {% if active_tab == 'account' %}active{% endif %}" data-tab="account">حسابي</button>
     <button type="button" class="tab {% if active_tab == 'appearance' %}active{% endif %}" data-tab="appearance">المظهر</button>
@@ -884,6 +885,53 @@ html[data-theme="premium"] .theme-card.selected{border-color:#c9a14a;box-shadow:
       </div>
       <div class="actions" style="margin-top:14px">
         <button type="submit" class="btn btn-primary">حفظ إعدادات الشريط</button>
+      </div>
+    </form>
+    {% endif %}
+  </div>
+
+  <!-- النسخ الاحتياطي -->
+  <div class="panel {% if active_tab == 'backup' %}active{% endif %}" id="panel-backup">
+    {% if current_user.role != 'admin' %}
+    <div class="card">
+      <p style="font-size:13px;color:var(--text2)">تنزيل النسخة الاحتياطية متاح لمدير النظام فقط.</p>
+    </div>
+    {% else %}
+    <div class="card">
+      <div class="section">نسخة احتياطية على جهازك</div>
+      <p class="hint" style="margin-bottom:14px;line-height:1.8">
+        ملف ZIP مؤرخ يُحفظ على جهازك ويضم سجلات الشركة: العملاء، المصاعد، العقود، الزيارات، الأعطال،
+        الفواتير، المخزون، المحاسبة، عروض الأسعار، التركيبات، والحضور.
+        اسم الملف يتضمن التاريخ والوقت حتى تميّز كل نسخة.
+        الصور وملفات PDF المرفوعة غير مشمولة. كلمات المرور والمفاتيح السرية لا تُنزَّل كما هي.
+      </p>
+      {% if backup_status.last_label %}
+      <p style="font-size:13px;margin:0 0 12px">آخر تنزيل: <strong dir="ltr">{{ backup_status.last_label }}</strong> <span class="hint">بتوقيت الرياض</span></p>
+      {% else %}
+      <p style="font-size:13px;margin:0 0 12px">لم يتم تنزيل نسخة احتياطية بعد.</p>
+      {% endif %}
+      <div class="actions">
+        <a class="btn btn-primary" href="{{ url_for('settings_data_backup') }}">تنزيل النسخة الاحتياطية</a>
+      </div>
+    </div>
+    <form class="card" method="post" action="{{ url_for('settings_data_backup_reminder') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="section">تذكير دوري</div>
+      <p class="hint" style="margin-bottom:14px;line-height:1.8">
+        يظهر شريط تذكير لمدير النظام داخل البرنامج إذا مرّت الفترة دون تنزيل.
+        يمكن تأجيل الشريط أسبوعاً من الشريط نفسه، والتنزيل يبقى متاحاً هنا في أي وقت.
+      </p>
+      <div style="max-width:280px">
+        <label for="backup-remind-days">ذكّرني كل</label>
+        <select id="backup-remind-days" name="remind_days">
+          {% for days in backup_remind_choices %}
+          <option value="{{ days }}" {% if backup_status.remind_days == days %}selected{% endif %}>{{ days }} يوماً</option>
+          {% endfor %}
+          <option value="0" {% if backup_status.remind_days == 0 %}selected{% endif %}>إيقاف التذكير</option>
+        </select>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn btn-secondary">حفظ فترة التذكير</button>
       </div>
     </form>
     {% endif %}

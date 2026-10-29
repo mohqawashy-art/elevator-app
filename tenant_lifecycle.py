@@ -39,7 +39,43 @@ EXPORT_TABLES: tuple[tuple[str, str], ...] = (
     ('audit_logs', 'AuditLog'),
     ('platform_payments', 'PlatformPayment'),
     ('onboarding_invites', 'OnboardingInvite'),
+    ('fault_events', 'FaultEvent'),
+    ('accounts', 'Account'),
+    ('journal_entries', 'JournalEntry'),
+    ('journal_lines', 'JournalLine'),
+    ('fiscal_years', 'FiscalYear'),
+    ('customer_opening_balances', 'CustomerOpeningBalance'),
+    ('suppliers', 'Supplier'),
+    ('supplier_prices', 'SupplierPrice'),
+    ('supplier_quote_requests', 'SupplierQuoteRequest'),
+    ('supplier_quote_request_lines', 'SupplierQuoteRequestLine'),
+    ('maintenance_quotes', 'MaintenanceQuote'),
+    ('maintenance_quote_elevators', 'MaintenanceQuoteElevator'),
+    ('maintenance_quote_surveys', 'MaintenanceQuoteSurvey'),
+    ('maintenance_quote_survey_units', 'MaintenanceQuoteSurveyUnit'),
+    ('external_elevator_inspections', 'ExternalElevatorInspection'),
+    ('attendance_branches', 'AttendanceBranch'),
+    ('attendance_employees', 'AttendanceEmployee'),
+    ('biometric_devices', 'BiometricDevice'),
+    ('attendance_punches', 'AttendancePunch'),
+    ('attendance_days', 'AttendanceDay'),
+    ('installation_leads', 'InstallLead'),
+    ('installation_projects', 'InstallProject'),
+    ('installation_quotations', 'InstallQuotation'),
+    ('installation_quotation_lines', 'InstallQuotationLine'),
+    ('installation_timeline_steps', 'InstallTimelineStep'),
+    ('installation_project_costs', 'InstallProjectCostItem'),
+    ('installation_project_receipts', 'InstallProjectReceipt'),
+    ('installation_project_documents', 'InstallProjectDocument'),
+    ('installation_contracts', 'InstallContract'),
+    ('installation_contract_installments', 'InstallContractInstallment'),
+    ('installation_contract_documents', 'InstallContractDocument'),
 )
+
+# تذكير مدير الشركة بتنزيل نسخة على جهازه. 0 = إيقاف التذكير.
+BACKUP_REMIND_DEFAULT_DAYS = 30
+BACKUP_REMIND_DAY_CHOICES = (7, 14, 30, 60, 90)
+BACKUP_SNOOZE_DAYS = 7
 
 # حقول حساسة — لا تُسلَّم في تصدير المنصة (hashes / مفاتيح / أسرار)
 EXPORT_REDACT_MARKER = '[REDACTED]'
@@ -52,23 +88,40 @@ EXPORT_SENSITIVE_FIELDS: dict[str, frozenset[str]] = {
         'private_key', 'api_secret', 'csid', 'certificate',
     }),
     'onboarding_invites': frozenset({'token'}),
+    'biometric_devices': frozenset({'auth_token'}),
 }
 
 
 def _model_map():
     from models import (
+        Account,
+        AttendanceBranch,
+        AttendanceDay,
+        AttendanceEmployee,
+        AttendancePunch,
         AuditLog,
+        BiometricDevice,
         Contract,
         ContractElevator,
         Customer,
+        CustomerOpeningBalance,
         Elevator,
         ElevatorEstimate,
         ElevatorEstimateLine,
         Expense,
+        ExternalElevatorInspection,
         Fault,
+        FaultEvent,
         FaultTechnician,
+        FiscalYear,
         InventoryItem,
         Invoice,
+        JournalEntry,
+        JournalLine,
+        MaintenanceQuote,
+        MaintenanceQuoteElevator,
+        MaintenanceQuoteSurvey,
+        MaintenanceQuoteSurveyUnit,
         MaintenanceTeam,
         MaintenanceVisit,
         OnboardingInvite,
@@ -80,12 +133,29 @@ def _model_map():
         Settings,
         Signatory,
         StockMovement,
+        Supplier,
+        SupplierPrice,
+        SupplierQuoteRequest,
+        SupplierQuoteRequestLine,
         Technician,
         TechnicianDocument,
         User,
         VisitTechnician,
         WhatsAppInbox,
         ZatcaCredentials,
+    )
+    from installation.models import (
+        InstallContract,
+        InstallContractDocument,
+        InstallContractInstallment,
+        InstallLead,
+        InstallProject,
+        InstallProjectCostItem,
+        InstallProjectDocument,
+        InstallProjectReceipt,
+        InstallQuotation,
+        InstallQuotationLine,
+        InstallTimelineStep,
     )
 
     return {
@@ -103,17 +173,48 @@ def _model_map():
         'MaintenanceVisit': MaintenanceVisit,
         'VisitTechnician': VisitTechnician,
         'Fault': Fault,
+        'FaultEvent': FaultEvent,
         'FaultTechnician': FaultTechnician,
         'WhatsAppInbox': WhatsAppInbox,
         'Revenue': Revenue,
         'Expense': Expense,
         'Invoice': Invoice,
+        'Account': Account,
+        'JournalEntry': JournalEntry,
+        'JournalLine': JournalLine,
+        'FiscalYear': FiscalYear,
+        'CustomerOpeningBalance': CustomerOpeningBalance,
         'StockMovement': StockMovement,
         'PartsBilling': PartsBilling,
         'PurchaseOrder': PurchaseOrder,
         'PurchaseOrderLine': PurchaseOrderLine,
+        'Supplier': Supplier,
+        'SupplierPrice': SupplierPrice,
+        'SupplierQuoteRequest': SupplierQuoteRequest,
+        'SupplierQuoteRequestLine': SupplierQuoteRequestLine,
+        'MaintenanceQuote': MaintenanceQuote,
+        'MaintenanceQuoteElevator': MaintenanceQuoteElevator,
+        'MaintenanceQuoteSurvey': MaintenanceQuoteSurvey,
+        'MaintenanceQuoteSurveyUnit': MaintenanceQuoteSurveyUnit,
+        'ExternalElevatorInspection': ExternalElevatorInspection,
         'ElevatorEstimate': ElevatorEstimate,
         'ElevatorEstimateLine': ElevatorEstimateLine,
+        'AttendanceBranch': AttendanceBranch,
+        'AttendanceEmployee': AttendanceEmployee,
+        'BiometricDevice': BiometricDevice,
+        'AttendancePunch': AttendancePunch,
+        'AttendanceDay': AttendanceDay,
+        'InstallLead': InstallLead,
+        'InstallProject': InstallProject,
+        'InstallQuotation': InstallQuotation,
+        'InstallQuotationLine': InstallQuotationLine,
+        'InstallTimelineStep': InstallTimelineStep,
+        'InstallProjectCostItem': InstallProjectCostItem,
+        'InstallProjectReceipt': InstallProjectReceipt,
+        'InstallProjectDocument': InstallProjectDocument,
+        'InstallContract': InstallContract,
+        'InstallContractInstallment': InstallContractInstallment,
+        'InstallContractDocument': InstallContractDocument,
         'ZatcaCredentials': ZatcaCredentials,
         'AuditLog': AuditLog,
         'PlatformPayment': PlatformPayment,
@@ -187,10 +288,16 @@ def export_tenant_payload(org) -> dict:
     tables: dict[str, list] = {}
     counts: dict[str, int] = {}
 
+    present = _present_table_names()
+    skipped: list[str] = []
+
     prev = getattr(g, '_resolving_default_org', False)
     g._resolving_default_org = True
     try:
         for table_name, model_name in EXPORT_TABLES:
+            if present and table_name not in present:
+                skipped.append(table_name)
+                continue
             model = models[model_name]
             q = model.query.execution_options(skip_tenant=True)
             if hasattr(model, 'organization_id'):
@@ -205,7 +312,7 @@ def export_tenant_payload(org) -> dict:
     finally:
         g._resolving_default_org = prev
 
-    return {
+    payload = {
         'version': 2,
         'format': 'liftcore-tenant-export',
         'exported_at': datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z'),
@@ -217,12 +324,25 @@ def export_tenant_payload(org) -> dict:
             },
             'note': (
                 'Password hashes, PIN hashes, ZATCA keys/secrets, invite tokens, '
-                'and Maps API keys are redacted. Re-set credentials after restore.'
+                'biometric device tokens, and Maps API keys are redacted. '
+                'Re-set credentials after restore.'
             ),
         },
         'counts': counts,
         'tables': tables,
     }
+    if skipped:
+        payload['skipped_tables'] = skipped
+    return payload
+
+
+def _present_table_names() -> set[str]:
+    try:
+        from app import db
+        from sqlalchemy import inspect
+        return set(inspect(db.engine).get_table_names())
+    except Exception:
+        return set()
 
 
 def build_tenant_export_zip(org) -> tuple[bytes, str, dict]:
@@ -246,16 +366,78 @@ def build_tenant_export_zip(org) -> tuple[bytes, str, dict]:
                 f"المؤسسة: {org.name}\n"
                 f"المعرّف: {slug}\n"
                 f"التاريخ: {payload['exported_at']}\n"
+                f"اسم الملف: {filename}\n"
                 f"الملف الرئيسي: {json_name}\n"
                 '\n'
-                'احفظ هذا الملف على جهازك قبل حذف الحساب.\n'
+                'اسم الملف مؤرخ (UTC) حتى تميّز كل نسخة على جهازك.\n'
+                'احفظ هذا الملف خارج المتصفح — على القرص أو وحدة تخزين خاصة بك.\n'
                 'لا يحتوي على ملفات الوسائط المرفوعة (الصور/PDF) — فقط سجلات قاعدة البيانات.\n'
                 '\n'
                 'أمني: تم تهذيب الحقول الحساسة (كلمات مرور مشفّرة، PIN، مفاتيح ZATCA،\n'
-                'أسرار API، رموز الدعوات، مفتاح خرائط). أعِد ضبط الاعتمادات بعد الاستعادة.\n'
+                'أسرار API، رموز الدعوات، رمز جهاز البصمة، مفتاح خرائط).\n'
+                'أعِد ضبط الاعتمادات بعد الاستعادة.\n'
             ),
         )
     return buf.getvalue(), filename, payload.get('counts') or {}
+
+
+def normalize_backup_remind_days(value) -> int:
+    """0 يوقف التذكير. أي قيمة أخرى تُقرَّب لأقرب خيار مسموح."""
+    try:
+        days = int(value)
+    except (TypeError, ValueError):
+        return BACKUP_REMIND_DEFAULT_DAYS
+    if days == 0:
+        return 0
+    if days in BACKUP_REMIND_DAY_CHOICES:
+        return days
+    return BACKUP_REMIND_DEFAULT_DAYS
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def format_backup_stamp(value) -> str:
+    """وقت التنزيل بتوقيت الرياض للعرض داخل الواجهة."""
+    if not value:
+        return ''
+    try:
+        from zoneinfo import ZoneInfo
+        local = _as_utc(value).astimezone(ZoneInfo('Asia/Riyadh'))
+    except Exception:
+        local = _as_utc(value)
+    return local.strftime('%Y-%m-%d %H:%M')
+
+
+def data_backup_status(settings) -> dict:
+    """هل حان تذكير المدير بتنزيل نسخة على جهازه."""
+    raw_days = getattr(settings, 'data_backup_remind_days', None) if settings else None
+    remind_days = (
+        BACKUP_REMIND_DEFAULT_DAYS if raw_days is None
+        else normalize_backup_remind_days(raw_days)
+    )
+    last = getattr(settings, 'last_data_backup_at', None) if settings else None
+    age_days = None
+    due = False
+    if remind_days > 0:
+        if last is None:
+            due = True
+        else:
+            age = datetime.now(timezone.utc) - _as_utc(last)
+            age_days = max(0, age.days)
+            due = age_days >= remind_days
+    return {
+        'remind_days': remind_days,
+        'last_at': last,
+        'last_label': format_backup_stamp(last),
+        'age_days': age_days,
+        'due': due,
+        'never': last is None,
+        'snooze_days': BACKUP_SNOOZE_DAYS,
+    }
 
 
 def is_protected_operator_org(org) -> bool:

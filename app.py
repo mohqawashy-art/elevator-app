@@ -999,6 +999,21 @@ def _platform_support_context(*, user=None, settings=None, lang: str = 'ar') -> 
     }
 
 
+def _data_backup_reminder_for(user, settings):
+    """تذكير مدير الشركة بتنزيل نسخة احتياطية إن فاتت الفترة."""
+    if not user or getattr(user, 'role', None) != 'admin' or not settings:
+        return None
+    try:
+        from tenant_lifecycle import data_backup_status
+        status = data_backup_status(settings)
+    except Exception:
+        db.session.rollback()
+        return None
+    if not status.get('due'):
+        return None
+    return status
+
+
 @app.context_processor
 def inject_global_template_vars():
     s = _request_settings()
@@ -1123,6 +1138,7 @@ def inject_global_template_vars():
         'user_permissions': user_perms,
         'permission_groups': perm_groups,
         'must_change_password': bool(user and getattr(user, 'must_change_password', False)),
+        'data_backup_reminder': _data_backup_reminder_for(user, s),
         'is_platform_operator': platform_op,
         'platform_admin_host': bool(getattr(g, 'platform_admin_host', False)),
         'active_department': active_department if active_department_portal else '',
@@ -1668,6 +1684,8 @@ def _sqlite_legacy_schema_patches():
                 ('extra_work_days_json', 'TEXT'),
                 ('custom_permissions_enabled', 'BOOLEAN'),
                 ('contract_template_path', 'VARCHAR(300)'),
+                ('last_data_backup_at', 'DATETIME'),
+                ('data_backup_remind_days', 'INTEGER DEFAULT 30'),
             ],
             'users': [
                 ('theme', 'VARCHAR(10)'),
@@ -1901,6 +1919,8 @@ def _startup_schema_and_data_sync():
                 'contract_template_path': 'VARCHAR(300)',
                 'field_geofence_enabled': 'BOOLEAN DEFAULT TRUE',
                 'field_geofence_radius_m': 'INTEGER DEFAULT 300',
+                'last_data_backup_at': 'TIMESTAMP',
+                'data_backup_remind_days': 'INTEGER DEFAULT 30',
             }
             for col_name, column_type in seal_columns.items():
                 if col_name in settings_cols:
@@ -17064,7 +17084,106 @@ def settings():
         contract_placeholders=PLACEHOLDER_HELP,
         has_contract_template=has_contract_template(s, app.root_path),
         contract_template_url=upload_url(getattr(s, 'contract_template_path', None)) if s else '',
+        backup_status=_settings_backup_status(s),
+        backup_remind_choices=_settings_backup_choices(),
     )
+
+
+def _settings_backup_status(settings):
+    try:
+        from tenant_lifecycle import data_backup_status
+        return data_backup_status(settings)
+    except Exception:
+        app.logger.exception('settings backup status failed')
+        return {
+            'due': False,
+            'never': True,
+            'remind_days': 30,
+            'last_label': '',
+            'age_days': None,
+        }
+
+
+def _settings_backup_choices():
+    from tenant_lifecycle import BACKUP_REMIND_DAY_CHOICES
+    return BACKUP_REMIND_DAY_CHOICES
+
+
+@app.route('/settings/data-backup')
+def settings_data_backup():
+    """تنزيل نسخة احتياطية مؤرخة لبيانات المؤسسة الحالية على جهاز المدير."""
+    from flask import Response
+    from models import Organization
+    from tenant_lifecycle import build_tenant_export_zip
+    from tenant_scope import effective_organization_id
+
+    user = current_user()
+    if not user:
+        return redirect(url_for('login'))
+    if user.role != 'admin':
+        session['settings_notice'] = 'تنزيل النسخة الاحتياطية متاح لمدير النظام فقط.'
+        return _settings_redirect('backup')
+
+    oid = effective_organization_id()
+    org = db.session.get(Organization, oid) if oid else None
+    if not org:
+        session['settings_notice'] = 'تعذر تحديد بيانات الشركة الحالية.'
+        return _settings_redirect('backup')
+    try:
+        data, filename, counts = build_tenant_export_zip(org)
+    except Exception:
+        app.logger.exception('tenant data backup failed org_id=%s', oid)
+        session['settings_notice'] = 'فشل تجهيز النسخة الاحتياطية. حاول مرة أخرى.'
+        return _settings_redirect('backup')
+
+    from datetime import datetime as dt
+    s = get_app_settings()
+    if s is not None:
+        s.last_data_backup_at = dt.utcnow()
+        db.session.commit()
+    try:
+        from audit_log import log_audit
+        log_audit(
+            'tenant_data_backup_downloaded',
+            user=user,
+            organization_id=org.id,
+            details={'slug': org.slug, 'counts': counts, 'bytes': len(data), 'filename': filename},
+        )
+    except Exception:
+        app.logger.exception('tenant backup audit failed')
+    return Response(
+        data,
+        mimetype='application/zip',
+        headers={
+            'Content-Disposition': f'attachment; filename="{filename}"',
+            'Cache-Control': 'no-store',
+        },
+    )
+
+
+@app.route('/settings/data-backup/reminder', methods=['POST'])
+def settings_data_backup_reminder():
+    from tenant_lifecycle import normalize_backup_remind_days
+
+    user = current_user()
+    if not user:
+        return redirect(url_for('login'))
+    if user.role != 'admin':
+        session['settings_notice'] = 'تعديل التذكير متاح لمدير النظام فقط.'
+        return _settings_redirect('backup')
+    s = get_app_settings()
+    if s is None:
+        session['settings_notice'] = 'تعذر حفظ فترة التذكير.'
+        return _settings_redirect('backup')
+    s.data_backup_remind_days = normalize_backup_remind_days(request.form.get('remind_days'))
+    db.session.commit()
+    if s.data_backup_remind_days == 0:
+        session['settings_notice'] = 'تم إيقاف تذكير النسخ الاحتياطي. التنزيل يبقى متاحاً من الإعدادات.'
+    else:
+        session['settings_notice'] = (
+            f'سيظهر تذكير تنزيل النسخة الاحتياطية كل {s.data_backup_remind_days} يوماً.'
+        )
+    return _settings_redirect('backup')
 
 
 @app.route('/settings/field-portal/<int:tech_id>/pin', methods=['POST'])
