@@ -131,10 +131,13 @@ def get_report_visits(db, MaintenanceVisit):
             v.id or 0,
         ),
     )
+    from operations import elevator_building_label
+
     return [{
         'code': v.code,
         'customer': v.elevator.customer.name if v.elevator and v.elevator.customer else '—',
         'elevator': v.elevator.code if v.elevator else '—',
+        'building': elevator_building_label(v.elevator) or '—',
         'technician': v.technician.name if v.technician else '—',
         'visit_type': v.visit_type or '',
         'visit_date': str(v.visit_date or ''),
@@ -145,11 +148,14 @@ def get_report_visits(db, MaintenanceVisit):
 
 
 def get_report_faults(db, Fault):
+    from operations import elevator_building_label
+
     faults = tenant_query(Fault).order_by(Fault.reported_at.desc()).all()
     return [{
         'code': f.code,
         'customer': f.elevator.customer.name,
         'elevator': f.elevator.code,
+        'building': elevator_building_label(f.elevator) or '—',
         'fault_type': f.fault_type or '',
         'priority': f.priority or '',
         'technician': f.technician.name if f.technician else '—',

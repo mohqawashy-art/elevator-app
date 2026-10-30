@@ -208,8 +208,9 @@ body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:1
 
   <div class="section" style="margin-top:12px">
     <div class="sec-title"><span class="sec-dot"></span> بيانات العميل والمصعد</div>
-    <div class="row row-3">
+    <div class="row row-4">
       <div class="field"><label>اسم العميل</label><input type="text" value="{{ customer.name }}" readonly></div>
+      <div class="field"><label>اسم المبنى</label><input type="text" value="{{ elevator.building or '—' }}" readonly></div>
       <div class="field"><label>كود المصعد</label><input type="text" class="lc-code-field" value="{{ elevator.code }}" readonly></div>
       <div class="field"><label>رقم العقد</label><input type="text" class="lc-code-field" value="{{ contract.code or '—' }}" readonly></div>
     </div>

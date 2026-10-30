@@ -96,6 +96,15 @@ def test_fault_report_send_api(client):
     assert 'LiftCoreFaultReportSend.send' in html
 
 
+def test_faults_report_rows_include_building(client):
+    from report_data import get_report_faults
+
+    with client.application.app_context():
+        _seed_fault(building='مجمع التقرير')
+        rows = get_report_faults(db, Fault)
+    assert any(r.get('building') == 'مجمع التقرير' for r in rows)
+
+
 def test_faults_list_includes_building_name(client):
     from app import _faults_js_list
 

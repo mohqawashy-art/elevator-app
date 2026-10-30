@@ -2937,6 +2937,7 @@ function viewVisit(id) {
       <div class="view-item"><div class="view-label">رقم العقد</div><div class="view-val lc-code">${v.contract_code || '—'}</div></div>
       <div class="view-item"><div class="view-label">المنطقة</div><div class="view-val">${v.district || '—'}</div></div>
       <div class="view-item"><div class="view-label">المصعد</div><div class="view-val lc-elev">${v.elevator}</div></div>
+      <div class="view-item"><div class="view-label">المبنى</div><div class="view-val">${v.building || '—'}</div></div>
       <div class="view-item"><div class="view-label">الفنيون</div><div class="view-val">${v.technician}</div></div>
       <div class="view-item"><div class="view-label">نوع الزيارة</div><div class="view-val">${v.visit_type}</div></div>
       <div class="view-item"><div class="view-label">التاريخ</div><div class="view-val lc-date">${v.visit_date}</div></div>
@@ -2987,20 +2988,53 @@ function tomorrowPeriodicVisits() {
   });
 }
 
+function visitBuildingLabel(v) {
+  var raw = String((v && v.building) || '').trim();
+  var code = String((v && v.elevator) || '').trim();
+  if (!raw || (code && raw === code)) return '';
+  if (code) {
+    [' — ', ' - ', ' – '].some(function (sep) {
+      var suffix = sep + code;
+      if (raw.slice(-suffix.length) === suffix) {
+        raw = raw.slice(0, -suffix.length).trim();
+        return true;
+      }
+      return false;
+    });
+  }
+  if (!raw || (code && raw === code)) return '';
+  if (/^(?:EL|EV|E)-\d+$/i.test(raw)) return '';
+  return raw;
+}
+
 function refreshTomorrowNoticeBar() {
   var bar = document.getElementById('tomorrow-customer-bar');
   var text = document.getElementById('tomorrow-customer-text');
   if (!bar || !text) return;
   var rows = tomorrowPeriodicVisits();
   var customers = {};
-  rows.forEach(function (v) { customers[v.customer_id || v.id] = true; });
+  var buildings = [];
+  var seenBuildings = {};
+  rows.forEach(function (v) {
+    customers[v.customer_id || v.id] = true;
+    var name = visitBuildingLabel(v);
+    if (!name || seenBuildings[name]) return;
+    seenBuildings[name] = true;
+    buildings.push(name);
+  });
   var n = Object.keys(customers).length;
   if (!n) {
     bar.style.display = 'none';
     return;
   }
+  var where = '';
+  if (buildings.length) {
+    var shown = buildings.slice(0, 8);
+    where = ' — ' + shown.join('، ');
+    if (buildings.length > shown.length) where += ' و' + (buildings.length - shown.length) + ' أخرى';
+  }
   bar.style.display = 'flex';
-  text.textContent = 'غداً عند ' + n + ' عميل صيانة دورية. أرسل لهم: موعد الصيانة غداً، وتسهيل أمر فريق الصيانة.';
+  text.textContent = 'غداً عند ' + n + ' عميل صيانة دورية' + where + '. أرسل لهم: موعد الصيانة غداً، وتسهيل أمر فريق الصيانة.';
 }
 
 function beginTomorrowNoticeQueue(items, skipped) {

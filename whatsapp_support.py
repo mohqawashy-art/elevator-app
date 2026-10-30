@@ -313,6 +313,10 @@ def build_customer_journey_message(
     cust = elev.customer if elev else None
     cust_name = (fault.reporter_name or (cust.name if cust else '') or 'عميلنا الكريم').strip()
     elev_code = elev.code if elev else '—'
+    from operations import elevator_building_label
+
+    building = elevator_building_label(elev)
+    building_line = f'\nالمبنى: {building}' if building else ''
     tech_name = fault.technician.name if fault.technician else 'الفني المختص'
     track = fault.code
     ref = f' (مرجع الوارد {thread_code})' if thread_code else ''
@@ -322,7 +326,7 @@ def build_customer_journey_message(
             f'مرحباً {cust_name}\n'
             f'تم استلام بلاغكم بنجاح.\n'
             f'رقم المتابعة: {track}{ref}\n'
-            f'المصعد: {elev_code}\n'
+            f'المصعد: {elev_code}{building_line}\n'
             f'المكتب يستلم البلاغ الآن وسيتم تحويله للفني قريباً.\n'
             f'شكراً لتواصلكم.'
         )
@@ -331,21 +335,21 @@ def build_customer_journey_message(
             f'مرحباً {cust_name}\n'
             f'بلاغكم {track} قيد المعالجة.\n'
             f'تم تعيين الفني: {tech_name}\n'
-            f'المصعد: {elev_code}\n'
+            f'المصعد: {elev_code}{building_line}\n'
             f'سنتواصل عند التوجه للموقع.'
         )
     if stage == 'on_way':
         return (
             f'مرحباً {cust_name}\n'
             f'الفني {tech_name} في الطريق إليكم الآن.\n'
-            f'بلاغ: {track} · المصعد: {elev_code}\n'
+            f'بلاغ: {track} · المصعد: {elev_code}{building_line}\n'
             f'نعتذر عن أي إزعاج ونقدّر تعاونكم.'
         )
     if stage == 'parts_needed':
         return (
             f'مرحباً {cust_name}\n'
             f'بلاغكم {track} يحتاج قطع غيار لإكمال الإصلاح.\n'
-            f'المصعد: {elev_code}\n'
+            f'المصعد: {elev_code}{building_line}\n'
             f'الفني: {tech_name}\n'
             f'نعمل على توفير القطع وسنُعلمكم فور استئناف العمل.\n'
             f'شكراً لصبركم.'
@@ -355,8 +359,10 @@ def build_customer_journey_message(
         f'مرحباً {cust_name}',
         f'تم الانتهاء من بلاغكم {track}.',
         f'المصعد: {elev_code}',
-        f'الفني: {tech_name}',
     ]
+    if building:
+        lines.append(f'المبنى: {building}')
+    lines.append(f'الفني: {tech_name}')
     if summary:
         lines.append(f'ملخص الإصلاح: {summary}')
     pdf = (report_url or '').strip()

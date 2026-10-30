@@ -2111,16 +2111,20 @@ def visit_alerts(today: date | None = None) -> list[dict]:
             'alert_id': 'visits_critical',
             'text': f'{critical} زيارة حرجة لم تُكتمل بعد',
         })
-    tomorrow = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
+    tomorrow_visits = exclude_fault_visits(tenant_query(MaintenanceVisit)).filter(
         MaintenanceVisit.visit_date == today + timedelta(days=1),
         MaintenanceVisit.status == 'مجدولة',
-    ).count()
-    if tomorrow:
+    ).order_by(MaintenanceVisit.id).all()
+    if tomorrow_visits:
+        buildings = join_building_labels(v.elevator for v in tomorrow_visits)
+        text = f'{len(tomorrow_visits)} زيارة مجدولة غداً'
+        if buildings:
+            text = f'{text} — {buildings}'
         alerts.append({
             'level': 'info',
             'filter': 'tomorrow',
             'alert_id': 'visits_tomorrow',
-            'text': f'{tomorrow} زيارة مجدولة غداً',
+            'text': text,
         })
     return alerts
 
@@ -3781,6 +3785,7 @@ def visit_report_payload(
         },
         'elevator': {
             'code': elev.code if elev else '',
+            'building': elevator_building_label(elev),
             'type': (elev.elev_type if elev else '') or (elev.building_name if elev else ''),
             'location': elev.building_name if elev else '',
         },
@@ -3850,6 +3855,32 @@ def should_send_visit_done_notice(prev_status: str | None, new_status: str | Non
     return prev not in VISIT_CUSTOMER_DONE_STATUSES
 
 
+def elevator_building_label(elev) -> str:
+    """اسم المبنى للعرض في الرسائل والتقارير — بدون كود المصعد."""
+    if elev is None:
+        return ''
+    from app import _elevator_building_display
+
+    return (_elevator_building_display(elev) or '').strip()
+
+
+def join_building_labels(elevators, *, limit: int = 8) -> str:
+    """أسماء مبانٍ فريدة مفصولة بفاصلة عربية."""
+    names: list[str] = []
+    for elev in elevators:
+        name = elevator_building_label(elev)
+        if name and name not in names:
+            names.append(name)
+    if not names:
+        return ''
+    shown = names[:limit]
+    text = '، '.join(shown)
+    extra = len(names) - len(shown)
+    if extra:
+        text += f' و{extra} أخرى'
+    return text
+
+
 def _visit_notice_date_line(visit_day: date | None) -> tuple[str, str]:
     from contract_print import weekday_ar
 
@@ -3863,20 +3894,36 @@ def build_periodic_visit_eve_message(
     visit: MaintenanceVisit,
     *,
     company_name: str | None = None,
+    buildings: list[str] | None = None,
 ) -> str:
     """تذكير العميل بزيارة الصيانة الدورية غداً."""
     weekday, shown = _visit_notice_date_line(visit.visit_date)
     company = _company_signature(company_name)
-    return '\n'.join([
+    names: list[str] = []
+    if buildings is not None:
+        for raw in buildings:
+            name = (raw or '').strip()
+            if name and name not in names:
+                names.append(name)
+    else:
+        name = elevator_building_label(getattr(visit, 'elevator', None))
+        if name:
+            names.append(name)
+    lines = [
         'عميلنا العزيز',
         '',
         f'نفيدكم علما بأن موعد الصيانة الدورية لمصعدكم غدا {weekday}',
+    ]
+    if names:
+        lines.append('المبنى: ' + '، '.join(names))
+    lines.extend([
         f'الموافق {shown} م',
         '',
         'نرجوا منكم تسهيل أمر فريق الصيانه ولكم جزيل الشكر',
         '',
         company,
     ])
+    return '\n'.join(lines)
 
 
 def build_periodic_visit_done_message(
@@ -3892,6 +3939,9 @@ def build_periodic_visit_done_message(
         'عميلنا العزيز',
         'نفيدكم علما بانه تم عمل الصيانه الدوريه لمصعدكم اليوم و نرجوا ان نحوز على رضاكم',
     ]
+    building = elevator_building_label(visit.elevator) if visit is not None else ''
+    if building:
+        lines.append(f'المبنى: {building}')
     if phone:
         lines.append(f'ولاى ملاحظات او استفسار التواصل علي هذا الرقم {phone}.')
     else:
@@ -3917,7 +3967,8 @@ def tomorrow_customer_eve_notices(
     if technician_id:
         q = q.filter(MaintenanceVisit.technician_id == int(technician_id))
     visits = q.order_by(MaintenanceVisit.route_order, MaintenanceVisit.id).all()
-    seen: set[str] = set()
+    groups: dict[str, dict] = {}
+    order: list[str] = []
     items: list[dict] = []
     skipped = 0
     for visit in visits:
@@ -3928,13 +3979,18 @@ def tomorrow_customer_eve_notices(
             skipped += 1
             continue
         key = phone_key(phone) or phone
-        if key in seen:
-            continue
-        url = visit_customer_notice_whatsapp(visit, 'eve')
+        if key not in groups:
+            groups[key] = {'visit': visit, 'buildings': []}
+            order.append(key)
+        name = elevator_building_label(visit.elevator)
+        if name and name not in groups[key]['buildings']:
+            groups[key]['buildings'].append(name)
+    for key in order:
+        visit = groups[key]['visit']
+        url = visit_customer_notice_whatsapp(visit, 'eve', buildings=groups[key]['buildings'])
         if not url:
             skipped += 1
             continue
-        seen.add(key)
         cust = visit.elevator.customer if visit.elevator else None
         items.append({
             'visit_id': visit.id,
@@ -3958,7 +4014,12 @@ def visit_eve_customer_whatsapp(visit: MaintenanceVisit | None) -> str:
     return whatsapp_url(phone, build_periodic_visit_eve_message(visit))
 
 
-def visit_customer_notice_whatsapp(visit: MaintenanceVisit | None, kind: str) -> str:
+def visit_customer_notice_whatsapp(
+    visit: MaintenanceVisit | None,
+    kind: str,
+    *,
+    buildings: list[str] | None = None,
+) -> str:
     """رابط واتساب جاهز للإرسال: eve = زيارة الغد، done = بعد الانتهاء."""
     if not visit or not is_periodic_maintenance_visit(visit):
         return ''
@@ -3969,7 +4030,7 @@ def visit_customer_notice_whatsapp(visit: MaintenanceVisit | None, kind: str) ->
     if kind in ('eve', 'tomorrow', 'غد', 'غدا'):
         if not visit.visit_date:
             return ''
-        msg = build_periodic_visit_eve_message(visit)
+        msg = build_periodic_visit_eve_message(visit, buildings=buildings)
     elif kind in ('done', 'complete', 'finished'):
         msg = build_periodic_visit_done_message(visit)
     else:
@@ -4000,6 +4061,7 @@ def build_visit_report_customer_message(
     cust_name = (cust.name if cust else '') or 'عميلنا الكريم'
     company = (company_name or '').strip() or 'LiftCore'
     elev_code = elev.code if elev else '—'
+    building = elevator_building_label(elev)
     tech_name = visit.technician.name if visit.technician else 'فريق الصيانة'
     vdate = visit.visit_date.strftime('%Y-%m-%d') if visit.visit_date else '—'
     pdf = (report_url or '').strip()
@@ -4008,9 +4070,13 @@ def build_visit_report_customer_message(
         'محضر صيانة المصعد جاهز.',
         f'رقم الزيارة: {visit.code}',
         f'المصعد: {elev_code}',
+    ]
+    if building:
+        lines.append(f'المبنى: {building}')
+    lines.extend([
         f'تاريخ الزيارة: {vdate}',
         f'الفني: {tech_name}',
-    ]
+    ])
     if pdf:
         lines.append(f'تقرير الصيانة (PDF): {pdf}')
     else:
@@ -4077,7 +4143,7 @@ def build_fault_report_customer_message(
     cust_name = (fault.reporter_name or (cust.name if cust else '') or 'عميلنا الكريم').strip()
     company = (company_name or '').strip() or 'LiftCore'
     elev_code = elev.code if elev else '—'
-    building = ((elev.building_name if elev else '') or '').strip()
+    building = elevator_building_label(elev)
     tech_name = fault.technician.name if fault.technician else 'فريق الصيانة'
     reported = fault.reported_at.strftime('%Y-%m-%d') if fault.reported_at else '—'
     lines = [

@@ -125,6 +125,7 @@ def test_journey_messages_include_fault_code(client):
             code='EL-WA02',
             customer_id=cust.id,
             status='نشط',
+            building_name='برج الرحلة',
         )
         db.session.add(elev)
         db.session.flush()
@@ -143,6 +144,7 @@ def test_journey_messages_include_fault_code(client):
         for stage in JOURNEY_STAGES:
             msg = build_customer_journey_message(fault, stage)
             assert 'FA-00999' in msg
+            assert 'المبنى: برج الرحلة' in msg
             assert len(msg) > 20
 
 

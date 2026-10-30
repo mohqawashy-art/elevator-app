@@ -150,9 +150,9 @@ var __lcReportDomPager = null;
       case 'report-technicians':
         return [row.code, row.name, row.phone, row.job_title, row.specialization, row.city, row.status, row.emergency, row.visits];
       case 'report-maintenance':
-        return [row.code, row.customer, row.elevator, row.technician, row.visit_type, row.visit_date, row.visit_time || '—', row.priority, row.status];
+        return [row.code, row.customer, row.elevator, row.building || '—', row.technician, row.visit_type, row.visit_date, row.visit_time || '—', row.priority, row.status];
       case 'report-faults':
-        return [row.code, row.customer, row.elevator, row.fault_type, row.priority, row.technician, row.response, row.status, row.billed];
+        return [row.code, row.customer, row.elevator, row.building || '—', row.fault_type, row.priority, row.technician, row.response, row.status, row.billed];
       case 'report-revenues':
         return [row.code, joinClientContract(row), row.date, row.title || '—', row.revenue_type, row.pay_method, row.total, row.status, row.created_by || '—'];
       case 'report-expenses':
@@ -178,8 +178,8 @@ var __lcReportDomPager = null;
     'report-elevators': [7],
     'report-contracts': [8, 9],
     'report-technicians': [6, 7],
-    'report-maintenance': [7, 8],
-    'report-faults': [4, 7, 8],
+    'report-maintenance': [8, 9],
+    'report-faults': [5, 8, 9],
     'report-revenues': [7],
     'report-invoices': [7],
     'report-parts': [11],

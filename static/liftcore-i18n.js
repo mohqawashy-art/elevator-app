@@ -433,6 +433,10 @@
       .replace(/(\d+)\s*عميل/g, '$1 clients')
       .replace(/(\d+)\s*عقد/g, '$1 contracts')
       .replace(/(\d+)\s*عطل/g, '$1 faults')
+      .replace(/(\d+)\s*زيارة مجدولة غداً(?:\s*—\s*([^\n]+))?/g, function (_m, n, buildings) {
+        var base = n + ' scheduled visit(s) tomorrow';
+        return buildings ? base + ' — ' + buildings : base;
+      })
       .replace(/(\d+)\s*زيارة/g, '$1 visits')
       .replace(/(\d+)\s*فني/g, '$1 technicians')
       .replace(/(\d+)\s*فاتورة/g, '$1 invoices')

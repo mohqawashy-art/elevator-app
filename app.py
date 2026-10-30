@@ -5430,19 +5430,25 @@ def _customer_alert_drill_cells(core_cells, customer, *, wa_scene: str, wa_id: i
     )
 
 
-def _visit_drill_rows(visits, *, date_cell, wa_scene='visit'):
+def _visit_drill_rows(visits, *, date_cell, wa_scene='visit', include_building=False):
+    from operations import elevator_building_label
+
     rows = []
     for v in visits:
         cust = v.elevator.customer if v.elevator else None
         core = [
             v.code,
             cust.name if cust else '—',
+        ]
+        if include_building:
+            core.append(elevator_building_label(v.elevator) or '—')
+        core.extend([
             v.elevator.code if v.elevator else '—',
             date_cell(v),
             v.visit_type or '—',
             v.technician.name if v.technician else '—',
             v.status,
-        ]
+        ])
         rows.append(_customer_alert_drill_cells(core, cust, wa_scene=wa_scene, wa_id=v.id))
     return rows
 
@@ -5719,9 +5725,14 @@ def api_dashboard_drill(card_type):
         ).order_by(MaintenanceVisit.visit_time).all()
         payload = {
             'title': 'زيارات مجدولة غداً', 'link': '/maintenance-visits',
-            'columns': ['الكود', 'العميل', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة']
+            'columns': ['الكود', 'العميل', 'المبنى', 'المصعد', 'التاريخ', 'النوع', 'الفني', 'الحالة']
             + CUSTOMER_CONTACT_COLS,
-            'rows': _visit_drill_rows(visits, date_cell=lambda v: str(v.visit_date), wa_scene='visit_eve'),
+            'rows': _visit_drill_rows(
+                visits,
+                date_cell=lambda v: str(v.visit_date),
+                wa_scene='visit_eve',
+                include_building=True,
+            ),
         }
     elif card_type == 'faults_critical':
         from operations import FAULT_OPEN

@@ -11,7 +11,7 @@ from operations import (
 from tests.conftest import ensure_test_organization
 
 
-def _seed(*, phone='0555123456', visit_type='صيانة دورية', status='مجدولة', visit_day=None):
+def _seed(*, phone='0555123456', visit_type='صيانة دورية', status='مجدولة', visit_day=None, building='', suffix='VN'):
     oid = ensure_test_organization()
     settings = Settings.query.filter_by(organization_id=oid).first()
     if not settings:
@@ -24,23 +24,29 @@ def _seed(*, phone='0555123456', visit_type='صيانة دورية', status='م�
     else:
         settings.company_name = 'تقنية جما التميز للمصاعد'
         settings.phone = '0509988776'
-    tech = Technician(organization_id=oid, code='T-VN', name='فني رسالة', phone='0501111111')
+    tech = Technician(organization_id=oid, code=f'T-{suffix}', name='فني رسالة', phone='0501111111')
     db.session.add(tech)
     cust = Customer(
         organization_id=oid,
-        code='C-VN',
+        code=f'C-{suffix}',
         name='عميل رسالة',
         phone=phone,
         status='نشط',
     )
     db.session.add(cust)
     db.session.flush()
-    elev = Elevator(organization_id=oid, code='E-VN', customer_id=cust.id, status='نشط')
+    elev = Elevator(
+        organization_id=oid,
+        code=f'E-{suffix}',
+        customer_id=cust.id,
+        status='نشط',
+        building_name=building or None,
+    )
     db.session.add(elev)
     db.session.flush()
     visit = MaintenanceVisit(
         organization_id=oid,
-        code='V-VN1',
+        code=f'V-{suffix}1',
         elevator_id=elev.id,
         technician_id=tech.id,
         visit_type=visit_type,
@@ -166,6 +172,61 @@ def test_tomorrow_alert_whatsapp_uses_eve_message(client):
     assert 'تسهيل أمر فريق الصيانه' in text
     assert text.endswith('شركة تقنية جما التميز للمصاعد')
     assert 'متابعة زيارة' not in text
+
+
+def test_eve_and_done_messages_include_building(client):
+    with client.application.app_context():
+        visit_id, _tech_id = _seed(building='برج النور', visit_day=date(2026, 10, 4))
+        visit = db.session.get(MaintenanceVisit, visit_id)
+        eve = build_periodic_visit_eve_message(visit)
+        done = build_periodic_visit_done_message(
+            visit,
+            company_name='تقنية جما التميز للمصاعد',
+            contact_phone='0509988776',
+        )
+    assert 'المبنى: برج النور' in eve
+    assert 'المبنى: برج النور' in done
+
+
+def test_tomorrow_notice_lists_each_building(client):
+    from datetime import timedelta
+    from operations import tomorrow_customer_eve_notices
+
+    day = date.today() + timedelta(days=1)
+    with client.application.app_context():
+        _seed(visit_day=day, building='برج أ', phone='0555000111', suffix='B1')
+        _seed(visit_day=day, building='برج ب', phone='0555000111', suffix='B2')
+        items, skipped = tomorrow_customer_eve_notices(on_date=date.today())
+    assert skipped == 0
+    assert len(items) == 1
+    text = unquote(items[0]['url'].split('text=', 1)[-1])
+    assert 'المبنى: برج أ، برج ب' in text
+
+
+def test_scheduled_tomorrow_alert_includes_building(client):
+    from datetime import timedelta
+    from operations import visit_alerts
+
+    with client.application.app_context():
+        _seed(visit_day=date.today() + timedelta(days=1), building='برج التنبيه', suffix='AL')
+        alerts = visit_alerts()
+    tomorrow = next(a for a in alerts if a['alert_id'] == 'visits_tomorrow')
+    assert 'زيارة مجدولة غداً' in tomorrow['text']
+    assert 'برج التنبيه' in tomorrow['text']
+
+
+def test_visits_tomorrow_drill_includes_building(client):
+    from datetime import timedelta
+    from tests.conftest import login_as
+
+    login_as(client, 'admin')
+    with client.application.app_context():
+        _seed(visit_day=date.today() + timedelta(days=1), building='برج البيان', suffix='DR')
+    res = client.get('/api/dashboard/drill/visits_tomorrow')
+    assert res.status_code == 200
+    data = res.get_json()
+    assert data['columns'][2] == 'المبنى'
+    assert any('برج البيان' in (row.get('cells') or []) for row in data['rows'])
 
 
 def test_customer_notice_api_eve(client):

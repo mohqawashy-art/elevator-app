@@ -7,7 +7,7 @@ from operations import build_visit_report_customer_message, visit_report_custome
 from tests.conftest import ensure_test_organization, login_as
 
 
-def _seed_visit(*, phone='0555123456', with_report=True):
+def _seed_visit(*, phone='0555123456', with_report=True, building=''):
     oid = ensure_test_organization()
     tech = Technician(organization_id=oid, code='T-VS', name='فني محضر', phone='0501111111')
     db.session.add(tech)
@@ -20,7 +20,13 @@ def _seed_visit(*, phone='0555123456', with_report=True):
     )
     db.session.add(cust)
     db.session.flush()
-    elev = Elevator(organization_id=oid, code='E-VS', customer_id=cust.id, status='نشط')
+    elev = Elevator(
+        organization_id=oid,
+        code='E-VS',
+        customer_id=cust.id,
+        status='نشط',
+        building_name=building or None,
+    )
     db.session.add(elev)
     db.session.flush()
     checklist = ''
@@ -132,7 +138,7 @@ def test_public_visit_report_without_login(client):
 
 def test_visit_report_message_includes_pdf_link(client):
     with client.application.app_context():
-        visit_id = _seed_visit()
+        visit_id = _seed_visit(building='برج المحضر')
         visit = db.session.get(MaintenanceVisit, visit_id)
         msg = build_visit_report_customer_message(
             visit,
@@ -142,6 +148,27 @@ def test_visit_report_message_includes_pdf_link(client):
         assert 'محضر صيانة' in msg
         assert 'PDF' in msg
         assert visit.code in msg
+        assert 'المبنى: برج المحضر' in msg
+
+
+def test_maintenance_report_rows_include_building(client):
+    from report_data import get_report_visits
+
+    with client.application.app_context():
+        _seed_visit(building='برج التقرير')
+        rows = get_report_visits(db, MaintenanceVisit)
+    assert any(r.get('building') == 'برج التقرير' for r in rows)
+
+
+def test_visit_report_page_shows_building(client):
+    login_as(client, 'admin')
+    with client.application.app_context():
+        visit_id = _seed_visit(building='برج المحضر')
+    page = client.get(f'/maintenance-visits/{visit_id}/report')
+    assert page.status_code == 200
+    html = page.get_data(as_text=True)
+    assert 'اسم المبنى' in html
+    assert 'برج المحضر' in html
 
 
 def test_visit_report_customer_send_api(client):
